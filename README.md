@@ -9,12 +9,47 @@ seus.
 
 ### 1. Instale — escolha uma porta
 
-**A. Como extensão do seu agente (recomendado):**
+**A. Como extensão do seu agente (recomendado — roda junto com ele):**
 
-- **Claude Code:** `/plugin marketplace add dannowk/creative-kit-generator` e depois
-  `/plugin install campaign-kit@creative-kit-generator`. Use `/campaign-kit:start`.
-- **Qoder / Claude (skill):** copie a pasta `skills/campaign-kit/` para
-  `~/.qoder/skills/` (ou `~/.claude/skills/`) e chame o skill `campaign-kit`.
+Escolha o seu agente abaixo e siga os passos na ordem. O **A1 não precisa de terminal
+nem de clone**: você cola comandos dentro do próprio Claude Code.
+
+**A1 · Claude Code (plugin — o caminho mais fácil):**
+
+1. Abra o Claude Code (digite `claude` no terminal, em qualquer pasta).
+2. Cole o comando abaixo e dê Enter — ele registra a "loja" do kit:
+   ```
+   /plugin marketplace add dannowk/creative-kit-generator
+   ```
+3. Cole o próximo e dê Enter — ele instala o plugin:
+   ```
+   /plugin install campaign-kit@creative-kit-generator
+   ```
+4. Para começar uma campanha, digite:
+   ```
+   /campaign-kit:start
+   ```
+   A partir daí o agente faz tudo: instala o Python sozinho (sem admin), pergunta
+   qual é a pasta da sua campanha e conduz até a revisão no navegador.
+
+**A2 · Qoder ou Claude (skill — copiar uma pasta):**
+
+1. Baixe o kit para o seu computador (uma vez só):
+   ```
+   git clone https://github.com/dannowk/creative-kit-generator ~/Documents/creative-kit-generator
+   ```
+2. Copie a pasta do skill para a pasta de skills do seu agente:
+   - **Qoder:**
+     ```
+     cp -R ~/Documents/creative-kit-generator/skills/campaign-kit ~/.qoder/skills/
+     ```
+   - **Claude:**
+     ```
+     cp -R ~/Documents/creative-kit-generator/skills/campaign-kit ~/.claude/skills/
+     ```
+3. Abra (ou reinicie) o agente e peça para usar o skill **campaign-kit** — no Qoder
+   ele aparece na lista de skills. O fluxo é o mesmo do A1: Python gerenciado →
+   wizard → campanha → revisão no navegador.
 
 **B. Duplo clique (sem agente ainda):** `Instalar.command` no Mac, `Instalar.bat` no
 Windows, `./install.sh` no Linux. Ele pergunta só a pasta da campanha e abre o wizard.
