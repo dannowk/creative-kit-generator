@@ -1,0 +1,50 @@
+id: poster
+name: Pôster
+description: Moldura de filme — barras pretas, logo no topo, título centralizado, linha de campus espaçada.
+needs_photo: true
+
+variants:
+  portrait:
+    vars:
+      bar_t: "max(top, round(h * 0.09), round(logo_h * 1.45))"
+      text_h: "(h - bottom) + round(scale * 0.27)"
+      p_h: "h - bar_t - text_h"
+      y0: "h - text_h"
+      foot: "bottom"
+      base: "foot - round(scale * 0.065)"
+    layers:
+      - {op: canvas, color: black}
+      - {op: photo, fit: closeup, size: [w, p_h], zoom: 0.72, face_at: 0.36}
+      - {op: grade, target: photo}
+      - {op: light_leak, target: photo, corner: tl, strength: 0.28}
+      - {op: paste, at: [0, bar_t]}
+      - {op: film_texture, dust: 1.4}
+      - {op: logo, at: ["(w - logo_w) // 2", "(bar_t - logo_h) // 2 + round(m * 0.1)"]}
+      - {op: kicker, ref: copy.kicker, at: ["w / 2", "y0 + round(scale * 0.05)"],
+         size: "round(scale * 0.022)", color: [200, 200, 200], anchor: m, dot: false}
+      - {op: text, ref: copy.hook, at: [m, base], width: "w - 2*m",
+         max_h: "base - (y0 + round(scale * 0.09))", size: "round(scale * 0.1)",
+         color: white, align: center}
+      - {op: tracked, ref: campus, at: ["w / 2", foot], size: "round(scale * 0.02)",
+         color: [150, 150, 150], track: "scale * 0.004", anchor: m}
+
+  wide:
+    vars:
+      pw: "round(w * 0.56)"
+      x: "pw + m"
+      col: "w - pw - 2*m"
+      mid: "x + col / 2"
+    layers:
+      - {op: canvas, color: black}
+      - {op: photo, fit: closeup, size: [pw, h], zoom: 0.7, face_at: 0.4}
+      - {op: grade, target: photo}
+      - {op: light_leak, target: photo, corner: tl, strength: 0.28}
+      - {op: paste, at: [0, 0]}
+      - {op: film_texture, dust: 1.4}
+      - {op: kicker, ref: copy.kicker, at: [mid, "m + round(h * 0.05)"],
+         size: "round(h * 0.03)", color: [200, 200, 200], anchor: m, dot: false}
+      - {op: text, ref: copy.hook, at: [x, "h * 0.58"], width: col, max_h: "h * 0.34",
+         size: "round(h * 0.13)", color: white, align: center}
+      - {op: tracked, ref: campus, at: [mid, "h * 0.7"], size: "round(h * 0.026)",
+         color: [160, 160, 160], track: "h * 0.005", anchor: m}
+      - {op: logo, at: ["round(mid - logo_w / 2)", "bottom - logo_h"]}

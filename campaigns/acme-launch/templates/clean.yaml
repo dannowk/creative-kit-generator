@@ -1,0 +1,45 @@
+id: clean
+name: Clean SaaS
+description: Direção de arte editorial-clara — papel, foto em bloco sem tratamento de filme,
+  tipografia sóbria sem sublinhado. Autorada para o briefing da Acme, não herdada do CDI.
+needs_photo: true
+
+variants:
+  portrait:
+    vars:
+      ph: "round(h * 0.40)"
+    layers:
+      - {op: paper, color: paper}
+      - {op: photo, fit: cover, size: [w, ph], at: [0, 0]}
+      - {op: rule, y: ph, thickness: "max(3, round(h*0.004))", color: accent}
+      - {op: kicker, ref: program, at: [m, "ph + round(scale*0.05)"],
+         size: "round(scale*0.024)", color: ink, dot: false}
+      - {op: text, ref: copy.hook, at: [m, "bottom - logo_h - round(scale*0.06)"],
+         width: "w - 2*m", max_h: "h*0.26", size: "round(scale*0.075)", color: ink,
+         underline: false, accent_upper: false, accent_scale: 1.0}
+      - {op: cta, ref: cta, at: [m, "bottom - round(scale*0.04)"],
+         size: "round(scale*0.030)", color: ink, arrow: "", underline: false}
+      - {op: logo, ink: ink, at: ["w - m - logo_w", "bottom - logo_h"], scale: 0.22}
+
+  wide:
+    vars:
+      pw: "round(w * 0.42)"
+      px: "w - pw"
+      col: "px - 2*m"
+    layers:
+      - {op: paper, color: paper}
+      - {op: photo, fit: cover, size: [pw, h], at: [px, 0]}
+      - {op: kicker, ref: program, at: [m, "m + round(h*0.07)"],
+         size: "round(h*0.030)", color: ink, dot: false}
+      - {op: text, ref: copy.hook, at: [m, "h*0.62"], width: col, max_h: "h*0.40",
+         size: "round(h*0.10)", color: ink, underline: false, accent_upper: false, accent_scale: 1.0}
+      - {op: cta, ref: cta, at: [m, "bottom"], size: "round(h*0.036)", color: ink, arrow: "", underline: false}
+      - {op: logo, ink: ink, at: ["w - m - logo_w", "bottom - logo_h"], scale: 0.20}
+
+  tight:
+    layers:
+      - {op: paper, color: paper}
+      - {op: text, ref: copy.hook, at: [m, "h/2 + round(scale*0.05)"],
+         width: "w - 2*m - logo_w - m", max_h: "h*0.7", size: "round(h*0.30)",
+         color: ink, max_lines: 2, underline: false, accent_upper: false, accent_scale: 1.0}
+      - {op: logo, ink: ink, at: ["w - m - logo_w", "round((h - logo_h)/2)"], scale: 0.14}

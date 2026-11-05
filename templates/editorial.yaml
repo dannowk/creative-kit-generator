@@ -1,0 +1,45 @@
+id: editorial
+name: Editorial
+description: Foto fechada sobre bloco de papel off-white com tinta escura e logo recolorido. Claro e moderno.
+needs_photo: true
+
+variants:
+  portrait:
+    vars:
+      p_h: "round(h * (0.5 if ratio < 1.6 else 0.42))"
+      rule_t: "max(4, round(h * 0.006))"
+      hw: "round(w * 0.5)"
+      hh: "round((h - p_h) * 0.8)"
+      y: "p_h + round(m * 0.9) + round(scale * 0.026)"
+      top_text: "y + round(m * 0.45)"
+      bot_text: "bottom - logo_h - round(m * 0.5)"
+    layers:
+      - {op: paper, color: paper}
+      - {op: photo, fit: closeup, size: [w, p_h], zoom: 0.7, face_at: 0.36}
+      - {op: grade, target: photo, vignette: 0.3, grain: 5}
+      - {op: paste, at: [0, 0]}
+      - {op: rule, y: p_h, thickness: rule_t, color: accent}
+      - {op: halftone, corner: tr, size: [hw, hh], at: ["w - hw", "p_h + rule_t"], opacity: 0.32}
+      - {op: kicker, ref: program, at: [m, y], size: "round(scale * 0.026)", color: ink}
+      - {op: logo, ink: ink, at: ["w - m - logo_w", "bottom - logo_h"]}
+      - {op: cta, ref: cta, at: [m, "bottom - round(logo_h * 0.25)"],
+         size: "round(scale * 0.034)", color: ink}
+      - {op: text, ref: copy.hook, at: [m, bot_text], width: "w - 2*m",
+         max_h: "bot_text - top_text", size: "round(scale * 0.105)", color: ink}
+
+  wide:
+    vars:
+      pw: "round(w * 0.55)"
+      x: "pw + m"
+      col: "w - pw - 2*m"
+    layers:
+      - {op: paper, color: paper}
+      - {op: photo, fit: closeup, size: [pw, h], zoom: 0.7, face_at: 0.4}
+      - {op: grade, target: photo, vignette: 0.3, grain: 5}
+      - {op: paste, at: [0, 0]}
+      - {op: halftone, corner: tr, size: ["w - pw", "round(h * 0.45)"], at: [pw, 0], opacity: 0.32}
+      - {op: kicker, ref: program, at: [x, "m + round(h * 0.04)"], size: "round(h * 0.03)", color: ink}
+      - {op: text, ref: copy.hook, at: [x, "h * 0.66"], width: col, max_h: "h * 0.44",
+         size: "round(h * 0.13)", color: ink}
+      - {op: cta, ref: cta, at: [x, "bottom - round(h * 0.02)"], size: "round(h * 0.04)", color: ink}
+      - {op: logo, ink: ink, at: ["w - m - logo_w", "bottom - logo_h"]}

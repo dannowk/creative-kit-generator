@@ -1,0 +1,48 @@
+id: cinema
+name: Cinema
+description: Foto fechada que escurece num preto-petróleo, chamada embaixo, logo longe do rosto.
+needs_photo: true
+
+variants:
+  portrait:
+    vars:
+      p_h: "round(h * (0.7 if ratio < 1.6 else 0.64))"
+      hw: "round(w * 0.55)"
+      hh: "round(h * 0.26)"
+      cta_size: "round(scale * 0.034)"
+      kick_y: "bottom - logo_h - round(m * 0.7)"
+    layers:
+      - {op: canvas, color: dark}
+      - {op: photo, fit: closeup, size: [w, p_h], zoom: 0.74, face_at: 0.34}
+      - {op: grade, target: photo}
+      - {op: light_leak, target: photo, corner: tl, strength: 0.3}
+      - {op: paste, at: [0, 0]}
+      - {op: fade_to, color: dark, start: 0.5, end: 0.74}
+      - {op: film_texture}
+      - {op: halftone, corner: br, size: [hw, hh], at: ["w - hw", "h - hh"], opacity: 0.4}
+      - {op: logo, at: ["w - m - logo_w", "bottom - logo_h"]}
+      - {op: cta, ref: cta, at: [m, "bottom - round((logo_h - cta_size * 0.8) / 2)"], size: cta_size}
+      - {op: kicker, ref: program, at: [m, kick_y], size: "round(scale * 0.026)"}
+      - {op: text, ref: copy.hook, at: [m, "kick_y - round(m * 1.0)"],
+         width: "w - 2*m", max_h: "h * 0.2", size: "round(scale * 0.105)", color: white}
+
+  wide:
+    vars:
+      pw: "round(w * 0.7)"
+      hw: "round(w * 0.34)"
+      hh: "round(h * 0.5)"
+      col: "round(w * 0.4) - m"
+    layers:
+      - {op: canvas, color: dark}
+      - {op: photo, fit: closeup, size: [pw, h], zoom: 0.66, face_at: 0.4, fx_at: 0.64}
+      - {op: grade, target: photo}
+      - {op: fade_to, target: photo, color: dark, start: 0.42, end: 0.8, horizontal: true, flip: true}
+      - {op: light_leak, target: photo, corner: tr, strength: 0.3}
+      - {op: paste, at: ["w - pw", 0]}
+      - {op: film_texture}
+      - {op: halftone, corner: bl, size: [hw, hh], at: [0, "h - hh"], opacity: 0.4}
+      - {op: logo, at: [m, m]}
+      - {op: kicker, ref: program, at: [m, "bottom - round(h * 0.2)"], size: "round(h * 0.034)"}
+      - {op: text, ref: copy.hook, at: [m, "bottom - round(h * 0.28)"],
+         width: col, max_h: "h * 0.46", size: "round(h * 0.13)", color: white}
+      - {op: cta, ref: cta, at: [m, "bottom"], size: "round(h * 0.04)"}

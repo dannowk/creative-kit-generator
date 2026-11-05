@@ -1,0 +1,39 @@
+id: typographic
+name: Tipográfico
+description: Sem foto — só tipo, cor e logo. Serve para banners minúsculos e para campanha sem acervo fotográfico.
+needs_photo: false
+
+variants:
+  tight:
+    layers:
+      - {op: canvas, color: primary}
+      - {op: halftone, corner: br, size: [w, h], opacity: 0.25}
+      - {op: text, ref: copy.hook, at: [m, "h / 2 + round(scale * 0.06)"],
+         width: "w - 2*m - logo_w - m", max_h: "h * 0.7", size: "round(h * 0.34)",
+         color: white, max_lines: 2}
+      - {op: logo, at: ["w - m - logo_w", "round((h - logo_h) / 2)"], scale: 0.16}
+
+  portrait:
+    layers:
+      - {op: canvas, color: primary}
+      - {op: halftone, corner: br, size: ["round(w * 0.7)", "round(h * 0.4)"], opacity: 0.35}
+      - {op: film_texture, grain: 4, dust: 0.6}
+      - {op: kicker, ref: program, at: [m, "top + round(scale * 0.05)"],
+         size: "round(scale * 0.026)", color: white}
+      - {op: text, ref: copy.hook, at: [m, "h * 0.62"], width: "w - 2*m",
+         max_h: "h * 0.36", size: "round(scale * 0.13)", color: white}
+      - {op: cta, ref: cta, at: [m, "bottom - round(scale * 0.05)"],
+         size: "round(scale * 0.034)", color: white}
+      - {op: logo, at: ["w - m - logo_w", "bottom - logo_h"]}
+
+  wide:
+    layers:
+      - {op: canvas, color: primary}
+      - {op: halftone, corner: br, size: ["round(w * 0.45)", h], opacity: 0.35}
+      - {op: film_texture, grain: 4, dust: 0.6}
+      - {op: kicker, ref: program, at: [m, "m + round(h * 0.08)"],
+         size: "round(h * 0.034)", color: white}
+      - {op: text, ref: copy.hook, at: [m, "h * 0.68"], width: "w * 0.6",
+         max_h: "h * 0.46", size: "round(h * 0.15)", color: white}
+      - {op: cta, ref: cta, at: [m, "bottom"], size: "round(h * 0.04)", color: white}
+      - {op: logo, at: ["w - m - logo_w", "bottom - logo_h"]}
