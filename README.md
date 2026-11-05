@@ -148,32 +148,46 @@ livre). Na tela: aprovar / rejeitar por peça; **refazer** enfileira seu motivo 
 - Peças aprovadas: `campaigns/<campanha>/out/<conceito>/` (png/mp4 por formato) +
   contact sheet `review/sheet_<conceito>.png`.
 
-### 5. Conecte o seu MCP de assets (só p/ o que faltar)
+### 5. Gerar imagem/vídeo com IA (opcional — só p/ o que faltar)
 
-O kit **não guarda conexão MCP**: quem tem o MCP instalado é o **seu agente**.
+**Precisa disso?** Só se quiser que a IA **crie** imagem ou vídeo que está faltando.
+Se o seu inbox já tem `photos/` e `videos/`, o kit renderiza a partir deles e você
+**pula este passo**.
 
-1. **No agente**, instale o MCP do provider como qualquer outro: Claude Code
-   (`claude mcp add …` conforme a doc do provider), Qoder (Settings → MCP),
-   Codex (`~/.codex/config.toml`). Ex.: Magnific MCP. O kit nunca vê suas credenciais.
-2. **No briefing**, declare o contrato e o custo do aviso:
+**Quem faz?** O **agente**, sozinho — você não edita YAML nem roda comando duas vezes.
+Seu único trabalho é ter o MCP do provider instalado no agente (ex.: Magnific):
+Claude Code (`claude mcp add …`), Qoder (Settings → MCP), Codex (`~/.codex/config.toml`).
+Aí diga ao agente: *"gere os assets que faltam"*. Ele mostra o aviso de ≈ créditos
+antes de gerar (é aviso, não porteiro) e cuida do resto.
 
-   ```yaml
-   provider:
-     nome: magnific-mcp        # manual | magnific-mcp | http
-     creditos_imagem: 4        # alimenta o aviso "≈ X créditos"
-     creditos_video: 20
-     drop_dir: ~/Downloads     # onde o agente solta os arquivos gerados
-   ```
+**Por que o agente e não o kit?** O kit é Python local e **não guarda conexão MCP** —
+de propósito, ele nunca vê suas credenciais. Quem tem o MCP é o agente; por isso é ele
+quem gera, e o kit só coleta os arquivos prontos.
 
-3. `assets` prepara `campaigns/<campanha>/assets/jobs.json` e para (`NeedsAgent`).
-4. O agente cumpre cada job pelo **MCP dele** (imagem ou vídeo) e salva no `drop_dir`
-   com o **prefixo do id do job** (ex.: `acme-hero_….png`).
-5. Rode `assets` de novo: o kit coleta do `drop_dir`, copia para `assets/` da campanha
-   e grava `manifest.json` (tipo + créditos).
+<details>
+<summary>Por baixo do capô (avançado / manual)</summary>
 
-Alternativas: `manual` (sem MCP — você mesmo dropa os arquivos no `drop_dir`) e
-`http` (API genérica: `api_url` + `api_key_env`, ex. `MAGNIFIC_API_KEY`; **a chave fica
-em variável de ambiente, nunca no briefing**). Custo é aviso, não porteiro.
+O contrato vive na seção `provider` do briefing:
+
+```yaml
+provider:
+  nome: magnific-mcp        # manual | magnific-mcp | http
+  creditos_imagem: 4        # alimenta o aviso "≈ X créditos"
+  creditos_video: 20
+  drop_dir: ~/Downloads     # onde o agente solta os arquivos gerados
+```
+
+1. `assets` prepara `campaigns/<campanha>/assets/jobs.json` e para (`NeedsAgent`).
+2. O agente cumpre cada job pelo MCP dele e salva no `drop_dir` com o **prefixo do id
+   do job** (ex.: `acme-hero_….png`).
+3. `assets` de novo coleta do `drop_dir`, copia para `assets/` da campanha e grava
+   `manifest.json` (tipo + créditos).
+
+Alternativas: `manual` (sem MCP — você mesmo dropa os arquivos no `drop_dir`) e `http`
+(API genérica: `api_url` + `api_key_env`, ex. `MAGNIFIC_API_KEY`; **a chave fica em
+variável de ambiente, nunca no briefing**).
+
+</details>
 
 ### 6. Campanha nova
 
