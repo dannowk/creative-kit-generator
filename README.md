@@ -7,96 +7,75 @@ seus.
 
 ## Comece aqui (passo a passo)
 
-### 1. Instale — escolha uma porta
+### 1. Comece — sem terminal
 
-> Preciso baixar os arquivos antes? **A1 não** — o próprio agente busca do GitHub.
-> **A2, B e C sim**: você precisa da pasta do kit no seu computador primeiro
-> (cada uma mostra como abaixo).
+**Você não precisa abrir terminal nem digitar comando.** O agente faz tudo por você:
+cria a pasta da campanha, instala o Python sozinho (sem admin), abre o onboarding no
+navegador e conduz até a revisão. Você só **conversa com ele no chat** e **usa o
+navegador**. Escolha como colocar o agente para rodar:
 
-**A. Como extensão do seu agente (recomendado — roda junto com ele):**
+**Porta 1 · Claude Code (plugin — sem baixar nada):**
 
-Escolha o seu agente abaixo e siga os passos na ordem. O **A1 não precisa de terminal
-nem de clone**: você cola comandos dentro do próprio Claude Code.
-
-**A1 · Claude Code (plugin — o caminho mais fácil):**
-
-1. Abra o Claude Code (digite `claude` no terminal, em qualquer pasta).
-2. Cole o comando abaixo e dê Enter — ele registra a "loja" do kit:
+1. Abra o Claude Code.
+2. Cole no chat e Enter — registra a "loja" do kit:
    ```
    /plugin marketplace add dannowk/creative-kit-generator
    ```
-3. Cole o próximo e dê Enter — ele instala o plugin:
+3. Cole e Enter — instala o plugin:
    ```
    /plugin install campaign-kit@creative-kit-generator
    ```
-4. Para começar uma campanha, digite:
+4. Para começar, digite:
    ```
    /campaign-kit:start
    ```
-   A partir daí o agente faz tudo: instala o Python sozinho (sem admin), pergunta
-   qual é a pasta da sua campanha e conduz até a revisão no navegador.
 
-**A2 · Qoder ou Claude (skill — copiar uma pasta):**
+**Porta 2 · Qoder ou Claude Code (pela pasta):**
 
-1. Baixe o kit para o seu computador (uma vez só):
-   ```
-   git clone https://github.com/dannowk/creative-kit-generator ~/Documents/creative-kit-generator
-   ```
-2. Copie a pasta do skill para a pasta de skills do seu agente:
-   - **Qoder:**
-     ```
-     cp -R ~/Documents/creative-kit-generator/skills/campaign-kit ~/.qoder/skills/
-     ```
-   - **Claude:**
-     ```
-     cp -R ~/Documents/creative-kit-generator/skills/campaign-kit ~/.claude/skills/
-     ```
-   - **Windows:** não tem `cp` — copie a pasta `skills\campaign-kit` pelo Explorer para
-     `%USERPROFILE%\.qoder\skills\` (Qoder) ou `%USERPROFILE%\.claude\skills\` (Claude).
-3. Abra (ou reinicie) o agente e peça para usar o skill **campaign-kit** — no Qoder
-   ele aparece na lista de skills. O fluxo é o mesmo do A1: Python gerenciado →
-   wizard → campanha → revisão no navegador.
+1. Baixe o kit **pelo navegador**: abra
+   `https://github.com/dannowk/creative-kit-generator`, clique no botão verde
+   **Code → Download ZIP** e descompacte (ex.: em `~/Documents/`).
+2. Abra a pasta descompactada no **Qoder** (ou no Claude Code).
+3. Diga no chat: **"leia o AGENTS.md e execute"** (ou peça o skill `campaign-kit`).
 
-**B. Duplo clique (sem agente ainda):**
+> Preciso baixar antes? **Porta 1 não** (o agente busca do GitHub). **Porta 2 sim**
+> (o ZIP pelo navegador — sem terminal).
 
-1. Baixe a pasta do kit para o seu computador:
-   - Abra `https://github.com/dannowk/creative-kit-generator` no navegador, clique no
-     botão verde **Code → Download ZIP** e descompacte (ex.: em `~/Documents/`).
-   - Ou, se você tem git:
-     ```
-     git clone https://github.com/dannowk/creative-kit-generator ~/Documents/creative-kit-generator
-     ```
-2. Entre na pasta e dê duplo clique no instalador do seu sistema:
-   - **Mac:** `Instalar.command` — se avisar "desenvolvedor não identificado",
-     clique com o botão direito → **Abrir** → **Abrir**.
-   - **Windows:** `Instalar.bat`.
-   - **Linux:** rode `./install.sh` no terminal, dentro da pasta.
-3. Ele pergunta só a pasta da sua campanha (Enter = `~/Desktop/minha-campanha`),
-   instala o Python sozinho e abre o wizard no navegador.
+**Em qualquer porta, o agente então:**
 
-**C. Terminal manual:** baixe a pasta (clone, como no passo B1) e siga o
-[Início rápido](#início-rápido-manual) — venv + `pip install` + comandos `kit.cli`.
+- **cria a pasta da campanha automaticamente** (ex.: `~/Desktop/minha-campanha`) —
+  você não cria pasta nem digita caminho;
+- instala o **Python 3.12 gerenciado dentro do kit** (via `uv`, sem admin, sem tocar
+  no Python do sistema; só precisa de internet na primeira vez);
+- **abre o onboarding no navegador** com a estrutura `logo/ photos/ videos/ refs/
+  fonts/ briefing.md` — você sobe os arquivos e preenche o briefing na tela;
+- segue o pipeline e **abre a revisão no navegador** para aprovar / rejeitar / refazer.
 
-Nas portas A e B o **Python vem junto**: o instalador baixa o `uv` para `.tools/` e o uv
-cria um **Python 3.12 gerenciado dentro da pasta do kit** — sem admin, sem instalar nada
-no sistema, sem tocar no Python que já existir. Só precisa de internet na primeira vez.
+O ffmpeg vem embutido (`imageio-ffmpeg`). O código do kit fica na pasta que você
+baixou/abriu (ou na pasta de plugins, na Porta 1); tudo que ele gerar nasce dentro
+dela: `brands/<marca>/` e `campaigns/<campanha>/`.
 
-O código fica na pasta onde você clonou (ex.: `~/Documents/creative-kit-generator`) ou
-na pasta de plugins do seu agente, no caso da porta A. Essa pasta **é o kit**: motor
-(`kit/`), specs (`templates/`), exemplo (`brands/acme` + `campaigns/acme-launch`).
-Tudo que ele gerar nasce **dentro dela**: `brands/<marca>/` e `campaigns/<campanha>/`.
-O ffmpeg vem embutido (`imageio-ffmpeg`).
+<details>
+<summary>Alternativas com terminal (opcional)</summary>
+
+- **Duplo clique:** `Instalar.command` (Mac) / `Instalar.bat` (Windows) / `./install.sh`
+  (Linux) — instala o Python e abre o wizard. No Mac, se avisar "desenvolvedor não
+  identificado": botão direito → **Abrir** → **Abrir**.
+- **Manual:** clone + venv + `pip install`, como no [Início rápido](#início-rápido-manual).
+- **Skill copiável:** a pasta `skills/campaign-kit/` pode ir para `~/.qoder/skills/`
+  ou `~/.claude/skills/` — mas o próprio agente faz essa cópia se você pedir; não
+  precisa fazer na mão.
+
+</details>
 
 ### 2. Preencha a SUA pasta (o inbox da campanha)
 
-Sua pasta fica em qualquer lugar **fora do kit** — ex.: `~/Desktop/minha-marca`. Ela é
-separada do código de propósito: o kit é a ferramenta; o inbox é o seu material.
+Sua pasta fica **fora do kit** (ex.: `~/Desktop/minha-campanha`) — o kit é a
+ferramenta; o inbox é o seu material. **O agente cria essa pasta e abre o wizard no
+navegador para você.** É nele que você prepara tudo, sem digitar comando: suba ou
+arraste os arquivos em cada slot e preencha o briefing na tela.
 
-**Se você veio pela porta A ou B, use o wizard no navegador** — na porta B ele abre
-sozinho; na porta A o agente te passa o link. É nele que você prepara tudo, sem digitar
-comando: suba ou arraste os arquivos em cada slot e preencha o briefing na tela.
-
-O wizard cria exatamente esta estrutura dentro da pasta que você escolheu:
+O wizard cria exatamente esta estrutura dentro da pasta que o agente criou:
 
 ```
 minha-marca/
@@ -121,12 +100,12 @@ Python que o instalador deixou (não o `python3` do sistema, que não tem as dep
 .venv\Scripts\python -m kit.cli onboard ~/Desktop/minha-marca   # Windows
 ```
 
-(Quem instalou pela porta C manual usa `python3` com o venv ativado.)
+(No fluxo manual do [Início rápido](#início-rápido-manual), use `python3` com o venv ativado.)
 
 ### 3. Entregue ao agente
 
-> **Porta A:** o agente já está conduzindo (você deu `/campaign-kit:start` ou chamou o
-> skill) — este passo é só para quem preparou a pasta na mão (portas B/C).
+> **No fluxo sem terminal (Portas 1 e 2)** o agente já está conduzindo — este passo é
+> só para quem preparou a pasta na mão (alternativas com terminal).
 
 Abra a **pasta do kit** no seu agente — Claude Code (`claude` no terminal dentro dela),
 Qoder (abrir a pasta no app), Codex (`codex`) — e diga:
@@ -204,8 +183,8 @@ variável de ambiente, nunca no briefing**).
 
 | O quê | Onde |
 | --- | --- |
-| código do kit | onde você clonou (ex.: `~/Documents/creative-kit-generator`) |
-| seus arquivos | inbox que você escolheu (ex.: `~/Desktop/minha-marca`) |
+| código do kit | onde você baixou/abriu (ex.: `~/Documents/creative-kit-generator`) |
+| seus arquivos | inbox que o agente criou (ex.: `~/Desktop/minha-campanha`) |
 | marca derivada | `<kit>/brands/<id>/` |
 | peças finais | `<kit>/campaigns/<id>-<slug>/out/<conceito>/` |
 | revisão | navegador `127.0.0.1:8765+` · atalho `ABRIR-REVISAO.html` |

@@ -23,6 +23,16 @@ pip install -r requirements.txt
 Dependências: **Pillow, numpy, PyYAML, imageio-ffmpeg, faster-whisper**. Python 3.9+.
 Rode todos os comandos da raiz como `python3 -m kit.cli ...`.
 
+**Fluxo sem terminal (padrão):** o usuário não abre terminal nem digita comando — você
+roda tudo. Em vez do venv manual acima, use `./install.sh <inbox>` em background (sem
+`--no-open`): ele baixa `uv` + Python 3.12 gerenciado **sem admin**, instala as deps e
+**abre o wizard de onboarding no navegador**. **Crie a pasta `<inbox>` automaticamente**
+(default `~/Desktop/minha-campanha`, ou `~/Desktop/<marca>`), sem perguntar caminho ao
+usuário; o `onboard` faz o scaffold (`logo/ photos/ videos/ refs/ fonts/ briefing.md`).
+Avise no chat que o onboarding abriu, espere o "pronto" e siga o pipeline. Os comandos
+`python3` abaixo são o equivalente manual (porta C); no fluxo gerenciado use
+`.venv/bin/python -m kit.cli ...` (Mac/Linux) ou `.venv\Scripts\python ...` (Windows).
+
 **ffmpeg / codecs:** não instale ffmpeg de sistema nem codecs. O `imageio-ffmpeg` embute
 o binário ffmpeg (usado pelo módulo de vídeo para trim/reframe/overlay/concat/legenda).
 O `faster-whisper` só é importado/baixado (modelo) quando você pede legenda **automática**;
