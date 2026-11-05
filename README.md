@@ -51,6 +51,8 @@ nem de clone**: você cola comandos dentro do próprio Claude Code.
      ```
      cp -R ~/Documents/creative-kit-generator/skills/campaign-kit ~/.claude/skills/
      ```
+   - **Windows:** não tem `cp` — copie a pasta `skills\campaign-kit` pelo Explorer para
+     `%USERPROFILE%\.qoder\skills\` (Qoder) ou `%USERPROFILE%\.claude\skills\` (Claude).
 3. Abra (ou reinicie) o agente e peça para usar o skill **campaign-kit** — no Qoder
    ele aparece na lista de skills. O fluxo é o mesmo do A1: Python gerenciado →
    wizard → campanha → revisão no navegador.
@@ -85,14 +87,16 @@ na pasta de plugins do seu agente, no caso da porta A. Essa pasta **é o kit**: 
 Tudo que ele gerar nasce **dentro dela**: `brands/<marca>/` e `campaigns/<campanha>/`.
 O ffmpeg vem embutido (`imageio-ffmpeg`).
 
-### 2. Onde fica a SUA pasta (o inbox da campanha)
+### 2. Preencha a SUA pasta (o inbox da campanha)
 
-Em qualquer lugar **fora do kit** — ex.: `~/Desktop/minha-marca`. Dois caminhos:
+Sua pasta fica em qualquer lugar **fora do kit** — ex.: `~/Desktop/minha-marca`. Ela é
+separada do código de propósito: o kit é a ferramenta; o inbox é o seu material.
 
-- **Wizard:** dentro da pasta do kit, rode
-  `python3 -m kit.cli onboard ~/Desktop/minha-marca` — o navegador abre com o checklist;
-  você sobe ou arrasta os arquivos em cada slot e preenche o briefing na tela.
-- **Na mão:** crie a pasta com esta estrutura (o wizard cria exatamente ela):
+**Se você veio pela porta A ou B, use o wizard no navegador** — na porta B ele abre
+sozinho; na porta A o agente te passa o link. É nele que você prepara tudo, sem digitar
+comando: suba ou arraste os arquivos em cada slot e preencha o briefing na tela.
+
+O wizard cria exatamente esta estrutura dentro da pasta que você escolheu:
 
 ```
 minha-marca/
@@ -101,10 +105,23 @@ minha-marca/
   videos/      ← clipes fonte
   refs/        ← 2–6 referências do look desejado
   fonts/       ← .ttf / .otf da marca (opcional; há substitutas)
-  briefing.md  ← modelo preenchido (python3 -m kit.cli brief --template)
+  briefing.md  ← o briefing que você preencheu na tela (ou editado à mão)
 ```
 
+**Prefere criar na mão, ou reabrir o wizard depois?** Dentro da pasta do kit, use o
+Python que o instalador deixou (não o `python3` do sistema, que não tem as dependências):
+
+```
+.venv/bin/python -m kit.cli onboard ~/Desktop/minha-marca       # Mac / Linux
+.venv\Scripts\python -m kit.cli onboard ~/Desktop/minha-marca   # Windows
+```
+
+(Quem instalou pela porta C manual usa `python3` com o venv ativado.)
+
 ### 3. Entregue ao agente
+
+> **Porta A:** o agente já está conduzindo (você deu `/campaign-kit:start` ou chamou o
+> skill) — este passo é só para quem preparou a pasta na mão (portas B/C).
 
 Abra a **pasta do kit** no seu agente — Claude Code (`claude` no terminal dentro dela),
 Qoder (abrir a pasta no app), Codex (`codex`) — e diga:
@@ -184,8 +201,9 @@ pip install -r requirements.txt
 
 python3 -m kit.cli onboard ~/inbox/acme        # prepara a pasta; wizard abre no navegador
 python3 -m kit.cli intake  ~/inbox/acme acme   # deriva a marca
-#  ou, pelo modelo canônico de briefing:
-python3 -m kit.cli brief --template           # modelo markdown gerado do schema
+#  ou, pelo modelo canônico de briefing (avançado):
+python3 -m kit.cli brief --template           # só IMPRIME um checklist markdown (não salva arquivo)
+#  preencha um briefing.yaml/.json com esses campos e então:
 python3 -m kit.cli brief ~/inbox/briefing.yaml --apply   # valida e escreve marca + campanha
 python3 -m kit.cli plan    campaigns/acme-launch
 python3 -m kit.cli assets  campaigns/acme-launch
