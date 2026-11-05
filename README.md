@@ -7,22 +7,29 @@ seus.
 
 ## Comece aqui (passo a passo)
 
-### 1. Onde instala o código
+### 1. Instale — escolha uma porta
 
-Escolha uma pasta fixa para o kit — ex.: `~/Documents/creative-kit-generator`:
+**A. Como extensão do seu agente (recomendado):**
 
-```bash
-cd ~/Documents
-git clone https://github.com/dannowk/creative-kit-generator.git
-cd creative-kit-generator
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-```
+- **Claude Code:** `/plugin marketplace add dannowk/creative-kit-generator` e depois
+  `/plugin install campaign-kit@creative-kit-generator`. Use `/campaign-kit:start`.
+- **Qoder / Claude (skill):** copie a pasta `skills/campaign-kit/` para
+  `~/.qoder/skills/` (ou `~/.claude/skills/`) e chame o skill `campaign-kit`.
 
-- Essa pasta **é o kit**: motor (`kit/`), specs (`templates/`), exemplo (`brands/acme` +
-  `campaigns/acme-launch`).
-- Tudo que ele gerar nasce **dentro dela**: `brands/<marca>/` e `campaigns/<campanha>/`.
-- O ffmpeg vem embutido (`imageio-ffmpeg`); não instala nada no sistema.
+**B. Duplo clique (sem agente ainda):** `Instalar.command` no Mac, `Instalar.bat` no
+Windows, `./install.sh` no Linux. Ele pergunta só a pasta da campanha e abre o wizard.
+
+**C. Terminal manual:** clone + venv, como no [Início rápido](#início-rápido-manual).
+
+Nas portas A e B o **Python vem junto**: o instalador baixa o `uv` para `.tools/` e o uv
+cria um **Python 3.12 gerenciado dentro da pasta do kit** — sem admin, sem instalar nada
+no sistema, sem tocar no Python que já existir. Só precisa de internet na primeira vez.
+
+O código fica na pasta onde você clonou (ex.: `~/Documents/creative-kit-generator`) ou
+na pasta de plugins do seu agente, no caso da porta A. Essa pasta **é o kit**: motor
+(`kit/`), specs (`templates/`), exemplo (`brands/acme` + `campaigns/acme-launch`).
+Tudo que ele gerar nasce **dentro dela**: `brands/<marca>/` e `campaigns/<campanha>/`.
+O ffmpeg vem embutido (`imageio-ffmpeg`).
 
 ### 2. Onde fica a SUA pasta (o inbox da campanha)
 

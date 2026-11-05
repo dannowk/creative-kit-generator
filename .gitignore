@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+.tools/
 .env
 .DS_Store
 *.zip
@@ -17,6 +18,8 @@ campaigns/lumen-clinic-launch/
 brands/*/intake.json
 brands/*/answers.json
 campaigns/*/state.json
+campaigns/*/requests.json
+campaigns/*/ABRIR-*.html
 campaigns/*/assets/
 campaigns/*/out/
 campaigns/*/review/

@@ -222,7 +222,7 @@ function draw(){
       .map(f=>`<li class="${f.level==="fail"?"fail":"warn"}">${f.level==="fail"?"Bloqueio: ":"Atenção: "}${f.message}</li>`).join("");
     const isVid=p.kind==="video";
     const media=isVid
-      ? `<video controls preload="metadata" poster="/img?path=${encodeURIComponent("review/thumbs/"+p.path.replace(/\.\w+$/,".video.png"))}"
+      ? `<video controls preload="metadata" poster="/img?path=${encodeURIComponent("review/thumbs/"+p.path.replace(/\\.\\w+$/,".video.png"))}"
            src="/img?path=${encodeURIComponent("out/"+p.path)}"></video>`
       : `<img loading="lazy" src="/img?path=${encodeURIComponent("review/thumbs/"+p.path)}"
            onclick="zoom('${encodeURIComponent(p.path)}')" alt="${p.id}">`;
@@ -287,7 +287,10 @@ ONBOARD_PAGE = _head("onboarding") + """
 <span class="meta"><code>plan</code> direção de arte a partir do briefing + refs →
 <code>assets</code> gera imagem/vídeo com aviso de ≈ custo →
 <code>render</code> monta as peças →
-<code>review</code> você aprova / rejeita / refaz (etapa 5).</span></div>
+<code>review</code> você aprova / rejeita / refaz (etapa 5).</span>
+<p class="desc" style="margin-top:10px">Cole isto no seu agente (Claude, Codex, Qoder…) aberto na pasta do kit:</p>
+<div class="row"><input type="text" id="agentline" readonly>
+<button class="btn primary" onclick="copyAgent()">copiar frase</button></div></div>
 </div>
 """ + _MODAL + _JS_UTIL + """
 <script>
@@ -296,6 +299,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 const fmt=n=>n>1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB";
 async function load(){
   S = await (await fetch("/state")).json();
+  document.getElementById("agentline").value = "leia o AGENTS.md e rode a campanha de " + S.inbox;
   document.getElementById("meta").textContent = S.inbox;
   const slotsOk=Object.values(S.slots).filter(s=>s.ok).length;
   const secOk=S.briefing.sections.filter(x=>x.filled).length;
@@ -341,6 +345,10 @@ async function upload(slot,files){
 async function saveBrief(){
   await fetch("/briefing",{method:"POST",body:JSON.stringify({text:document.getElementById("brief").value})});
   await load();
+}
+async function copyAgent(){
+  await navigator.clipboard.writeText(document.getElementById("agentline").value);
+  notify("Frase copiada — cole no agente aberto na pasta do kit.");
 }
 async function derivar(){
   const id=document.getElementById("bid").value.trim();

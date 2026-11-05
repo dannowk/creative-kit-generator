@@ -1,0 +1,6 @@
+{
+  "name": "campaign-kit",
+  "description": "Gera campanhas completas (imagem + vídeo) a partir de uma pasta com logo, referências e briefing. Roda local, com revisão no navegador.",
+  "version": "1.0.0",
+  "author": {"name": "Dann Owczarzak"}
+}

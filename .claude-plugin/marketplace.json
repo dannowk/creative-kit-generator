@@ -1,0 +1,11 @@
+{
+  "name": "creative-kit-generator",
+  "owner": {"name": "Dann Owczarzak"},
+  "plugins": [
+    {
+      "name": "campaign-kit",
+      "source": "./",
+      "description": "Campanhas locais a partir de pasta com logo + refs + briefing; instalador autocontido e revisão no navegador."
+    }
+  ]
+}
