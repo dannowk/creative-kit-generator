@@ -17,56 +17,17 @@ navegador**. Escolha como colocar o agente para rodar:
 **Porta 1 · Claude Code (plugin — sem baixar nada):**
 
 1. Abra o Claude Code.
-2. Cole no chat e Enter — registra a "loja" do kit:
+2. Peça para ele isntalar o repositorio - https://github.com/dannowk/creative-kit-generator
    ```
    /plugin marketplace add dannowk/creative-kit-generator
    ```
-3. Cole e Enter — instala o plugin:
    ```
    /plugin install campaign-kit@creative-kit-generator
    ```
-4. Para começar, digite:
+3. Para começar, digite:
    ```
    /campaign-kit:start
    ```
-
-**Porta 2 · Qoder ou Claude Code (pela pasta):**
-
-1. Baixe o kit **pelo navegador**: abra
-   `https://github.com/dannowk/creative-kit-generator`, clique no botão verde
-   **Code → Download ZIP** e descompacte (ex.: em `~/Documents/`).
-2. Abra a pasta descompactada no **Qoder** (ou no Claude Code).
-3. Diga no chat: **"leia o AGENTS.md e execute"** (ou peça o skill `campaign-kit`).
-
-> Preciso baixar antes? **Porta 1 não** (o agente busca do GitHub). **Porta 2 sim**
-> (o ZIP pelo navegador — sem terminal).
-
-**Em qualquer porta, o agente então:**
-
-- **cria a pasta da campanha automaticamente** (ex.: `~/Desktop/minha-campanha`) —
-  você não cria pasta nem digita caminho;
-- instala o **Python 3.12 gerenciado dentro do kit** (via `uv`, sem admin, sem tocar
-  no Python do sistema; só precisa de internet na primeira vez);
-- **abre o onboarding no navegador** com a estrutura `logo/ photos/ videos/ refs/
-  fonts/ briefing.md` — você sobe os arquivos e preenche o briefing na tela;
-- segue o pipeline e **abre a revisão no navegador** para aprovar / rejeitar / refazer.
-
-O ffmpeg vem embutido (`imageio-ffmpeg`). O código do kit fica na pasta que você
-baixou/abriu (ou na pasta de plugins, na Porta 1); tudo que ele gerar nasce dentro
-dela: `brands/<marca>/` e `campaigns/<campanha>/`.
-
-<details>
-<summary>Alternativas com terminal (opcional)</summary>
-
-- **Duplo clique:** `Instalar.command` (Mac) / `Instalar.bat` (Windows) / `./install.sh`
-  (Linux) — instala o Python e abre o wizard. No Mac, se avisar "desenvolvedor não
-  identificado": botão direito → **Abrir** → **Abrir**.
-- **Manual:** clone + venv + `pip install`, como no [Início rápido](#início-rápido-manual).
-- **Skill copiável:** a pasta `skills/campaign-kit/` pode ir para `~/.qoder/skills/`
-  ou `~/.claude/skills/` — mas o próprio agente faz essa cópia se você pedir; não
-  precisa fazer na mão.
-
-</details>
 
 ### 2. Preencha a SUA pasta (o inbox da campanha)
 
