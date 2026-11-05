@@ -53,6 +53,37 @@ motivo. Aprovadas saem em `campaigns/<id>/out/<conceito>/` + contact sheet por c
 - **Mesma marca:** só um briefing novo (objetivo, oferta, CTA, canais, conceitos, copy);
   o agente reusa `brands/<id>` e cria `campaigns/<id>-<slug>`.
 
+## Seu provider de geração (MCP de assets)
+
+O kit **não guarda conexão MCP**: quem tem o MCP instalado é o **seu agente**
+(Claude, Codex, Qoder…). Conectar o seu provider são dois lugares:
+
+**1. No agente** — instale o MCP do provider como qualquer outro (ex.: Magnific MCP na
+config de MCPs do seu agente). O kit nunca vê suas credenciais.
+
+**2. No briefing** — seção `provider`, declarando o contrato e o custo do aviso:
+
+```yaml
+provider:
+  nome: magnific-mcp        # manual | magnific-mcp | http
+  creditos_imagem: 4        # alimenta o aviso "≈ X créditos"
+  creditos_video: 20
+  drop_dir: ~/Downloads     # onde o agente solta os arquivos gerados
+```
+
+Fluxo mediado pelo agente:
+
+1. `assets` prepara `campaigns/<slug>/assets/jobs.json` e para (`NeedsAgent`);
+2. o agente cumpre cada job pelo **MCP dele** (imagem ou vídeo) e salva no `drop_dir`
+   com o prefixo do id do job;
+3. roda `assets` de novo: o kit coleta, grava `manifest.json` (tipo + créditos) e segue.
+
+Alternativas: `manual` (sem MCP — você mesmo dropa os arquivos no `drop_dir`) e
+`http` (API genérica: `api_url` + `api_key_env`, ex. `MAGNIFIC_API_KEY`; **a chave fica
+em variável de ambiente, nunca no briefing**).
+
+Custo é **aviso, não porteiro**: antes de qualquer job o kit mostra ≈ créditos e segue.
+
 ## Início rápido (manual)
 
 ```bash
