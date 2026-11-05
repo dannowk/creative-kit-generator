@@ -46,6 +46,7 @@ def main(argv=None):
     p = sub.add_parser("review", help="UI local de aprovação")
     p.add_argument("campaign")
     p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--no-open", action="store_true", help="não abre o navegador (headless)")
 
     p = sub.add_parser("plan", help="direção de arte a partir do briefing + referências")
     p.add_argument("campaign")
@@ -54,6 +55,7 @@ def main(argv=None):
     p.add_argument("inbox")
     p.add_argument("--port", type=int, default=8766)
     p.add_argument("--no-ui", action="store_true", help="só scaffold + checklist, sem servidor")
+    p.add_argument("--no-open", action="store_true", help="não abre o navegador (headless)")
 
     args = ap.parse_args(argv)
 
@@ -73,7 +75,8 @@ def main(argv=None):
                 print(str(e), file=sys.stderr)
                 return 1
             print(json.dumps(summary, indent=2, ensure_ascii=False))
-            print(f"\npróximos passos: plan campaigns/{summary['campaign']} → render → review")
+            print(f"\npróximos passos: plan campaigns/{summary['campaign']} → render → review"
+                  "  (review abre o navegador sozinho)")
             if summary["palette_proposed"]:
                 print("paleta derivada do logo é PROPOSTA — confirme com o designer antes de veicular.")
             return 0
@@ -100,8 +103,9 @@ def main(argv=None):
         print(f"  briefing: {brief} · {len(st['briefing']['missing'])} seção(ões) obrigatória(s) em branco")
         if args.no_ui:
             return 0
-        server, url = ui.serve_onboard(inbox, os.path.join(ROOT, "brands"), args.port)
-        print(f"onboarding em {url}  (Ctrl+C para fechar)")
+        server, url = ui.serve_onboard(inbox, os.path.join(ROOT, "brands"), args.port,
+                                       open_browser=not args.no_open)
+        print("  Ctrl+C para fechar o servidor")
         try:
             server.serve_forever()
         except KeyboardInterrupt:
@@ -145,6 +149,8 @@ def main(argv=None):
                     print(f"  BLOQUEADA {p['id']}: {f['message']}")
         if state["font_warnings"]["substituted"]:
             print("  fontes substitutas:", state["font_warnings"]["substituted"])
+        if not args.dry:
+            print(f"  próximo passo: python3 -m kit.cli review {args.campaign}  (abre o navegador)")
         return 0
 
     if args.cmd == "video":
@@ -158,6 +164,7 @@ def main(argv=None):
             for f in p["findings"]:
                 if f["level"] == "fail":
                     print(f"  BLOQUEADA {p['id']}: {f['message']}")
+        print(f"  próximo passo: python3 -m kit.cli review {args.campaign}  (abre o navegador)")
         return 0
 
     if args.cmd == "plan":
@@ -199,8 +206,8 @@ def main(argv=None):
         return 0
 
     if args.cmd == "review":
-        server, url = ui.serve(camp["_root"], args.port)
-        print(f"revisão em {url}  (Ctrl+C para fechar)")
+        server, url = ui.serve(camp["_root"], args.port, open_browser=not args.no_open)
+        print("  Ctrl+C para fechar o servidor")
         try:
             server.serve_forever()
         except KeyboardInterrupt:

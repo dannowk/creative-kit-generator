@@ -9,6 +9,7 @@ import json
 import os
 import re
 import threading
+import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -175,7 +176,8 @@ PAGE = _head("revisão") + """
 </div>
 <div class="wrap">
 <div class="panel"><h2><span class="n">5</span>Revisar peças</h2>
-<p class="desc">Clique numa peça para ampliar. Aprove, rejeite ou peça refazer; bloqueios de compliance aparecem no card.</p>
+<p class="desc">Clique numa peça para ampliar. Aprove, rejeite ou peça refazer; bloqueios de compliance aparecem no card.
+Perdeu o endereço? Ele fica no topo desta tela e no arquivo <b>ABRIR-REVISAO.html</b> da pasta da campanha.</p>
 <div class="filters" id="filters"></div>
 <div class="row" style="align-items:center"><span class="meta">Conceito:</span><div class="filters" id="cfilters"></div></div>
 <div class="rgrid" id="grid"></div></div>
@@ -189,7 +191,7 @@ const SING={pending:"Pendente",approved:"Aprovada",rejected:"Rejeitada",blocked:
 async function load(){
   state = await (await fetch("/state")).json();
   document.getElementById("title").textContent = state.campaign + " · " + state.brand;
-  document.getElementById("meta").textContent = "etapa 5 de 5 · revisar";
+  document.getElementById("meta").textContent = "etapa 5 de 5 · revisar · " + location.origin;
   const c=s=>state.pieces.filter(p=>p.status===s).length;
   document.getElementById("stats").innerHTML =
     `<span class="stat"><b>${state.pieces.length}</b> peças</span>`+
@@ -488,22 +490,47 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, {"error": "not found"})
 
 
-def serve(campaign_root, port=8765):
+def _serve(root, port, open_browser=True, shortcut_name="ABRIR-REVISAO.html"):
+    """Sobe a UI em 127.0.0.1, grava atalho clicável na pasta e abre o navegador.
+
+    Porta ocupada → tenta as próximas: cada campanha ganha a sua, sem conflito.
+    """
+    server = None
+    for p in range(port, port + 20):
+        try:
+            server = ThreadingHTTPServer(("127.0.0.1", p), Handler)
+            break
+        except OSError:
+            continue
+    if server is None:
+        raise OSError(f"nenhuma porta livre em {port}..{port + 19}")
+    url = f"http://127.0.0.1:{server.server_address[1]}"
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    shortcut = os.path.join(root, shortcut_name)
+    with open(shortcut, "w", encoding="utf-8") as f:
+        f.write('<!doctype html><html lang="pt"><head><meta charset="utf-8">'
+                f'<meta http-equiv="refresh" content="0;url={url}">'
+                '<title>abrir revisão</title></head>'
+                '<body style="font-family:system-ui,sans-serif;padding:40px">'
+                f'<p>Abrindo <a href="{url}">{url}</a> …</p>'
+                '<p>Se o navegador não abrir sozinho, clique no link.</p>'
+                '</body></html>\n')
+    print(f"\n  ➜  {url}\n  (atalho: {shortcut_name} na pasta da campanha)\n", flush=True)
+    if open_browser:
+        webbrowser.open(url)
+    return server, url
+
+
+def serve(campaign_root, port=8765, open_browser=True):
     Handler.mode = "review"
     Handler.root = os.path.abspath(campaign_root)
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    return server, f"http://127.0.0.1:{port}"
+    return _serve(os.path.abspath(campaign_root), port, open_browser)
 
 
-def serve_onboard(inbox, brands_dir, port=8766):
+def serve_onboard(inbox, brands_dir, port=8766, open_browser=True):
     inbox = os.path.abspath(os.path.expanduser(inbox))
     onboard.scaffold(inbox)
     Handler.mode = "onboard"
     Handler.root = inbox
     Handler.brands = os.path.abspath(brands_dir)
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    return server, f"http://127.0.0.1:{port}"
+    return _serve(inbox, port, open_browser, shortcut_name="ABRIR-ONBOARDING.html")

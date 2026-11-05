@@ -74,7 +74,9 @@ python3 -m kit.cli render campaigns/acme-launch
 # 5b. Editar vídeo: trim, reframe por sujeito, overlay de marca, concat, legenda
 python3 -m kit.cli video campaigns/acme-launch
 
-# 6. Revisão local (UI em 127.0.0.1:8765): aprovar / rejeitar / refazer por peça
+# 6. Revisão local (127.0.0.1, porta livre a partir de 8765): aprovar / rejeitar / refazer por peça.
+#    Abre o navegador sozinho e grava ABRIR-REVISAO.html na pasta da campanha (atalho clicável).
+#    --no-open para headless. A URL também aparece no topo da tela e no fim de render/video.
 python3 -m kit.cli review campaigns/acme-launch
 ```
 
