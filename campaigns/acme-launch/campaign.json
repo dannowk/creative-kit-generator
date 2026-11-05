@@ -1,0 +1,52 @@
+{
+  "brand": "acme",
+  "slug": "launch",
+  "channels": [
+    "meta",
+    "linkedin"
+  ],
+  "concepts": [
+    "clean",
+    "cinema",
+    "editorial",
+    "typographic"
+  ],
+  "axes": {
+    "product": [
+      "Agenda"
+    ]
+  },
+  "cta": "Book a demo",
+  "campus": "",
+  "assets": {
+    "Agenda": "assets/ref-02.png"
+  },
+  "copy": {
+    "Agenda": {
+      "program": "Acme Agenda",
+      "kicker": "Scheduling for clinics",
+      "cinema": {
+        "hook": "Your front desk, [finally] quiet."
+      },
+      "editorial": {
+        "hook": "Bookings that [run] themselves."
+      },
+      "typographic": {
+        "hook": "Less phone tag. More [care]."
+      },
+      "hook": "Less phone tag. More [care]."
+    }
+  },
+  "provider": {
+    "name": "manual",
+    "drop_dir": "/tmp/drop"
+  },
+  "asset_jobs": [
+    {
+      "id": "acme-hero",
+      "prompt": "clinic owner at front desk, calm, natural light",
+      "aspect": "1:1",
+      "n": 1
+    }
+  ]
+}

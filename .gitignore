@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.DS_Store
+*.zip
+
+# Fixtures privadas desta máquina (symlinks / paths absolutos) — não distribuir
+brands/cdi/
+brands/onboard-test/
+brands/lumen-clinic/
+campaigns/v3-fixture/
+campaigns/lumen-clinic-launch/
+
+# Artefatos derivados (regenerados pelo pipeline; carregam paths absolutos)
+brands/*/intake.json
+brands/*/answers.json
+campaigns/*/state.json
+campaigns/*/assets/
+campaigns/*/out/
+campaigns/*/review/

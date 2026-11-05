@@ -1,0 +1,32 @@
+id: acme
+name: Acme
+locale_default: en
+locales:
+- en
+palette:
+  primary: '#0C846C'
+  accent: '#FC6C54'
+  ink: '#0C846C'
+  paper: '#F4EFE6'
+  dark: '#040D0B'
+  forbidden: []
+type: {}
+logo:
+  file: assets/logo.png
+  scale: 0.3
+voice:
+  tone: ''
+  highlight: '[ ]'
+  language: en
+axes: []
+naming: '{slug}_{concept}_{size}'
+compliance:
+- check: subject_safe
+  tolerance: 0.02
+- check: min_font_size
+  scale: 0.018
+- check: contrast_min
+  ratio: 3.0
+- check: palette_forbidden
+  tolerance: 40
+  min_area: 0.005

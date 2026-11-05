@@ -1,0 +1,221 @@
+# Modelo canônico de briefing do campaign-kit.
+# Fonte única: kit/briefing.py valida e aplica este schema, e o template markdown
+# é gerado daqui — os dois nunca divergem. Caminhos são relativos ao arquivo de briefing.
+versao: 1
+
+secoes:
+  marca:
+    titulo: "Marca"
+    campos:
+      nome:
+        tipo: texto
+        obrigatorio: true
+        pergunta: "Qual o nome da marca?"
+        porque: "Vira o id da pasta brands/, a assinatura nas peças e o naming dos arquivos."
+      logo:
+        tipo: arquivo
+        obrigatorio: true
+        pergunta: "Qual arquivo é o logo? (PNG com fundo transparente de preferência)"
+        porque: "Sem logo não há paleta derivada nem assinatura nas peças."
+      paleta:
+        tipo: mapa_hex
+        obrigatorio: false
+        perguntar_se_ausente: true
+        pergunta: "Quais as cores da marca (primary, accent, ink, paper, dark em #RRGGBB)?"
+        porque: "Sem paleta declarada, derivo uma proposta dos pixels do logo — o designer confirma."
+        chaves: [primary, accent, ink, paper, dark]
+      fontes:
+        tipo: mapa_arquivos
+        obrigatorio: false
+        perguntar_se_ausente: true
+        pergunta: "Quais arquivos de fonte são o título (display), o destaque (accent) e o texto (text)?"
+        porque: "Fonte da marca não é inferível de imagens; sem os arquivos uso substituta do sistema e aviso."
+        chaves: [display, accent, text]
+      voz.tom:
+        tipo: texto
+        obrigatorio: true
+        pergunta: "Qual o tom de voz da marca? (ex.: direto e caloroso, técnico e sóbrio)"
+        porque: "Voz vem do briefing, não dos pixels — guia todo o copy gerado."
+      voz.nunca_prometer:
+        tipo: lista
+        obrigatorio: false
+        perguntar_se_ausente: true
+        pergunta: "O que a marca nunca pode prometer no copy? (ex.: garantia de emprego, cura, resultado financeiro)"
+        porque: "Restrição de copy é regra de compliance da marca, não decisão do renderer."
+      idiomas:
+        tipo: lista
+        obrigatorio: false
+        padrao: [en]
+        pergunta: "Em quais idiomas a campanha roda? (ex.: en, pt-BR, fr-CA)"
+        porque: "Define locale do copy e o idioma da transcrição automática de vídeo."
+
+  campanha:
+    titulo: "Campanha"
+    campos:
+      objetivo:
+        tipo: texto
+        obrigatorio: true
+        pergunta: "Qual o objetivo da campanha em uma frase? (ex.: lançar o produto X para clínicas)"
+        porque: "Dá o slug da campanha e o norte do copy e da direção de arte."
+      slug:
+        tipo: texto
+        obrigatorio: false
+        pergunta: "Nome curto da campanha para pastas e arquivos? (opcional; derivo do objetivo)"
+        porque: "Controla o nome de campaigns/<marca>-<slug>/ e do naming das peças."
+      oferta:
+        tipo: texto
+        obrigatorio: false
+        pergunta: "Qual a oferta ou mensagem central? (ex.: 30 dias grátis, matrícula aberta)"
+        porque: "Vira o kicker das peças; sem oferta o copy fica só no hook."
+      cta:
+        tipo: texto
+        obrigatorio: true
+        pergunta: "Qual o call-to-action? (ex.: Book a demo, Matricule-se)"
+        porque: "Todo template tem botão/CTA; sem texto declarado não há o que desenhar."
+      canais:
+        tipo: lista
+        obrigatorio: true
+        pergunta: "Onde a campanha veicula? (meta, google, linkedin, x, tiktok, youtube, print, email, web — ou formatos exatos como meta_story)"
+        porque: "Canal expande no bundle de aspect ratios; as safe zones dependem dele."
+        valores: [meta, google, linkedin, x, tiktok, youtube, print, email, web, social_paid]
+      eixos:
+        tipo: mapa_listas
+        obrigatorio: false
+        pergunta: "A campanha varia por eixos? (ex.: produto: [A, B], regiao: [SP, RJ], publico: [junior, senior])"
+        porque: "O produto cartesiano dos eixos multiplica as peças; cada combo pode ter foto e copy próprios."
+      conceitos:
+        tipo: lista
+        obrigatorio: true
+        pergunta: "Quantas direções visuais (conceitos) você quer? Liste os nomes — ex.: clean, editorial, cinema."
+        porque: "Cada conceito vira um template, uma pasta de entrega e um filtro na revisão."
+      copy:
+        tipo: copy_por_conceito
+        obrigatorio: true
+        pergunta: "Qual o hook (chamada) de cada conceito? Pode incluir kicker. (ex.: clean: {hook: Less phone tag. More [care].})"
+        porque: "Sem copy.hook por conceito o render pula o conceito — o texto é decisão de marca, não do motor."
+
+  video:
+    titulo: "Vídeo (opcional — só se a campanha tem peças em vídeo)"
+    campos:
+      fonte:
+        tipo: arquivo
+        obrigatorio: false
+        pergunta: "Qual o vídeo-fonte para editar? (caminho do arquivo; concat lista vários)"
+        porque: "Trim, reframe por sujeito e overlay de marca saem deste arquivo local."
+      concat:
+        tipo: lista_arquivos
+        obrigatorio: false
+        pergunta: "Vários clipes para emendar em um master? Liste na ordem."
+        porque: "O concat local vira a fonte única antes do corte por formato."
+      duracoes:
+        tipo: mapa_duracoes
+        obrigatorio: false
+        pergunta: "Duração por formato em segundos? (ex.: meta_story: 15, default: 6)"
+        porque: "Cada praça tem seu tempo; sem declaração uso o default do kit."
+      legendas:
+        tipo: enum
+        obrigatorio: false
+        padrao: "off"
+        valores: [auto, manual, off]
+        pergunta: "Legendas queimadas: auto (transcrevo localmente), manual (você fornece os segmentos) ou off?"
+        porque: "Auto baixa o modelo whisper na primeira uso; manual exige segmentos com start/end/text."
+      segmentos:
+        tipo: lista_segmentos
+        obrigatorio: false
+        pergunta: "Se legendas=manual, quais os segmentos? ({start: s, end: s, text: ...})"
+        porque: "Legenda manual precisa das janelas de tempo; não invento texto falado."
+      formatos:
+        tipo: lista
+        obrigatorio: false
+        pergunta: "Quais formatos de vídeo? (opcional; default: story, feed e thumbnail das praças principais)"
+        porque: "Restringe a matriz de vídeo sem mexer nos formatos de imagem."
+
+  assets:
+    titulo: "Assets"
+    campos:
+      fotos:
+        tipo: lista_arquivos
+        obrigatorio: false
+        perguntar_se_ausente: true
+        pergunta: "Tem fotos próprias para as peças? Liste os arquivos."
+        porque: "Foto própria evita geração paga; sem ela a imagem sai do provider (mostro ≈ créditos antes)."
+      videos:
+        tipo: lista_arquivos
+        obrigatorio: false
+        pergunta: "Tem clipes de vídeo próprios? Liste os arquivos."
+        porque: "Clipes locais são editados pelo kit (trim/reframe/overlay/legenda) sem custo de geração."
+      refs:
+        tipo: lista_arquivos
+        obrigatorio: false
+        perguntar_se_ausente: true
+        pergunta: "Quais imagens são referência de direção de arte? (não vão para a peça, guiam o plan)"
+        porque: "O design segue o briefing e as referências desta campanha, não o acervo de outra marca."
+      direitos_uso:
+        tipo: texto
+        obrigatorio: false
+        pergunta: "Qual o direito de uso dos assets? (ex.: banco pago, foto própria, geração do provider)"
+        porque: "Registro de procedência para o cliente final; o kit não verifica licença sozinho."
+
+  compliance:
+    titulo: "Compliance"
+    campos:
+      disclaimer:
+        tipo: texto
+        obrigatorio: false
+        pergunta: "Há disclaimer obrigatório em toda peça? (texto exato)"
+        porque: "Vira check executável: peça sem o texto é bloqueada antes da revisão."
+      cores_proibidas:
+        tipo: lista_hex
+        obrigatorio: false
+        pergunta: "Há cores proibidas? (#RRGGBB)"
+        porque: "Vira check de área mínima por cor proibida no render."
+      nobreak:
+        tipo: lista
+        obrigatorio: false
+        pergunta: "Há termos que não podem quebrar linha? (ex.: nome do produto, 'CDI College')"
+        porque: "O renderer protege o termo; o check confirma presença no copy."
+      tolerancia_rosto:
+        tipo: numero
+        obrigatorio: false
+        padrao: 0.02
+        pergunta: "Tolerância de sobreposição texto/logo no rosto (0–1)? (default 0.02)"
+        porque: "Regra inviolável: nunca cobrir rostos; a tolerância calibra o bloqueio."
+
+  provider:
+    titulo: "Provider de geração (imagem/vídeo por IA)"
+    campos:
+      nome:
+        tipo: enum
+        obrigatorio: false
+        padrao: manual
+        valores: [manual, magnific-mcp, http]
+        pergunta: "Como gerar assets que faltam? manual (você dropa os arquivos), magnific-mcp (agente via MCP) ou http (API)?"
+        porque: "Define o contrato de geração; o aviso de ≈ créditos aparece antes de qualquer job."
+      creditos_imagem:
+        tipo: numero
+        obrigatorio: false
+        padrao: 0
+        pergunta: "Quantos créditos por imagem gerada? (para o aviso de custo)"
+        porque: "O aviso é informativo, não bloqueante — mas precisa do número certo."
+      creditos_video:
+        tipo: numero
+        obrigatorio: false
+        padrao: 0
+        pergunta: "Quantos créditos por vídeo gerado?"
+        porque: "Vídeo é job de provider, não render local; o custo é por clipe."
+      drop_dir:
+        tipo: texto
+        obrigatorio: false
+        padrao: "~/Downloads"
+        pergunta: "Onde você dropa os arquivos gerados (manual/MCP)? (default ~/Downloads)"
+        porque: "O kit casa o arquivo pelo prefixo do job nesta pasta."
+      api_url:
+        tipo: texto
+        obrigatorio: false
+        pergunta: "Se provider=http, qual a URL da API?"
+        porque: "Sem URL não há contrato HTTP; a chave fica em variável de ambiente, nunca no arquivo."
+      api_key_env:
+        tipo: texto
+        obrigatorio: false
+        pergunta: "Se provider=http, qual variável de ambiente guarda a chave? (ex.: MAGNIFIC_API_KEY)"
+        porque: "Segredo nunca entra no briefing nem no brand.yaml."
