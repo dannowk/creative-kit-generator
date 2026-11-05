@@ -271,7 +271,10 @@ ONBOARD_PAGE = _head("onboarding") + """
 <span class="meta" id="slotprog"></span>
 <div class="grid" id="slots"></div></div>
 <div class="panel"><h2><span class="n">2</span>Briefing</h2>
-<p class="desc">Preencha o que souber. O que ficar em branco vira uma pergunta única na etapa 3.</p>
+<p class="desc">Suba um arquivo de briefing (.md, .txt, .rtf, .pdf, .docx) ou escreva/cole abaixo. O que ficar em branco vira uma pergunta única na etapa 3.</p>
+<div class="row"><label class="btn">+ subir arquivo de briefing<input type="file"
+  accept=".md,.txt,.rtf,.pdf,.docx" hidden onchange="uploadBrief(this.files)"></label>
+<span class="meta" id="brieffile">PDF/Word: o agente normaliza o arquivo para o modelo.</span></div>
 <div class="chips" id="sections"></div>
 <div class="chips" id="concepts"></div>
 <textarea id="brief"></textarea>
@@ -344,6 +347,22 @@ async function upload(slot,files){
 }
 async function saveBrief(){
   await fetch("/briefing",{method:"POST",body:JSON.stringify({text:document.getElementById("brief").value})});
+  await load();
+}
+async function uploadBrief(files){
+  for(const f of files){
+    const r=await fetch(`/briefing-file?name=${encodeURIComponent(f.name)}`,{method:"POST",body:f});
+    const j=await r.json();
+    if(!r.ok){await tell(j.error);continue;}
+    const note=document.getElementById("brieffile");
+    if(j.kind==="binary"){
+      note.textContent="✓ "+j.name+" salvo na pasta — o agente normaliza (visão/Word) na etapa seguinte.";
+      notify("Briefing "+j.name+" salvo. O agente normaliza para o modelo.");
+    }else{
+      note.textContent="✓ "+f.name+" carregado no editor abaixo.";
+      notify("Briefing carregado no editor.");
+    }
+  }
   await load();
 }
 async function copyAgent(){
@@ -425,6 +444,22 @@ class Handler(BaseHTTPRequestHandler):
             with open(os.path.join(d, name), "wb") as f:
                 f.write(data)
             return self._send(200, {"ok": True})
+        if url.path == "/briefing-file":
+            q = parse_qs(url.query)
+            name = os.path.basename(q.get("name", [""])[0])
+            if not name or name.startswith(".") or not name.lower().endswith(intake.BRIEF_EXT):
+                return self._send(400, {"error": "briefing aceita .md, .txt, .rtf, .pdf, .docx"})
+            if length > 20 * 1024 * 1024:
+                return self._send(413, {"error": "briefing > 20 MB: solte direto na pasta"})
+            data = self.rfile.read(length)
+            if name.lower().endswith((".md", ".txt", ".rtf")):
+                text = data.decode("utf-8", errors="replace")
+                with open(os.path.join(self.root, "briefing.md"), "w", encoding="utf-8") as f:
+                    f.write(text)
+                return self._send(200, {"ok": True, "kind": "text", "text": text})
+            with open(os.path.join(self.root, name), "wb") as f:
+                f.write(data)
+            return self._send(200, {"ok": True, "kind": "binary", "name": name})
         payload = json.loads(self.rfile.read(length) or b"{}")
         if url.path == "/briefing":
             with open(os.path.join(self.root, "briefing.md"), "w", encoding="utf-8") as f:
