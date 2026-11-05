@@ -9,6 +9,10 @@ seus.
 
 ### 1. Instale — escolha uma porta
 
+> Preciso baixar os arquivos antes? **A1 não** — o próprio agente busca do GitHub.
+> **A2, B e C sim**: você precisa da pasta do kit no seu computador primeiro
+> (cada uma mostra como abaixo).
+
 **A. Como extensão do seu agente (recomendado — roda junto com ele):**
 
 Escolha o seu agente abaixo e siga os passos na ordem. O **A1 não precisa de terminal
@@ -51,10 +55,25 @@ nem de clone**: você cola comandos dentro do próprio Claude Code.
    ele aparece na lista de skills. O fluxo é o mesmo do A1: Python gerenciado →
    wizard → campanha → revisão no navegador.
 
-**B. Duplo clique (sem agente ainda):** `Instalar.command` no Mac, `Instalar.bat` no
-Windows, `./install.sh` no Linux. Ele pergunta só a pasta da campanha e abre o wizard.
+**B. Duplo clique (sem agente ainda):**
 
-**C. Terminal manual:** clone + venv, como no [Início rápido](#início-rápido-manual).
+1. Baixe a pasta do kit para o seu computador:
+   - Abra `https://github.com/dannowk/creative-kit-generator` no navegador, clique no
+     botão verde **Code → Download ZIP** e descompacte (ex.: em `~/Documents/`).
+   - Ou, se você tem git:
+     ```
+     git clone https://github.com/dannowk/creative-kit-generator ~/Documents/creative-kit-generator
+     ```
+2. Entre na pasta e dê duplo clique no instalador do seu sistema:
+   - **Mac:** `Instalar.command` — se avisar "desenvolvedor não identificado",
+     clique com o botão direito → **Abrir** → **Abrir**.
+   - **Windows:** `Instalar.bat`.
+   - **Linux:** rode `./install.sh` no terminal, dentro da pasta.
+3. Ele pergunta só a pasta da sua campanha (Enter = `~/Desktop/minha-campanha`),
+   instala o Python sozinho e abre o wizard no navegador.
+
+**C. Terminal manual:** baixe a pasta (clone, como no passo B1) e siga o
+[Início rápido](#início-rápido-manual) — venv + `pip install` + comandos `kit.cli`.
 
 Nas portas A e B o **Python vem junto**: o instalador baixa o `uv` para `.tools/` e o uv
 cria um **Python 3.12 gerenciado dentro da pasta do kit** — sem admin, sem instalar nada
