@@ -21,6 +21,8 @@ vídeo editado com ffmpeg embutido e revisão no navegador com aprovar/rejeitar/
    (`onboard`) cria a estrutura `logo/ photos/ videos/ refs/ fonts/ briefing.md`.
 3. **Siga o `AGENTS.md` da raiz**: `intake (ou brief --apply) → plan → assets →
    render → video`. A direção de arte vem do briefing + refs, não de outro cliente.
+   Briefing livre (prosa/PDF/docx)? `brief --normalize <fonte>` → leia a fonte (visão
+   p/ PDF), preencha o skeleton sem chutar o que falta → `brief <out> --apply`.
 4. **Custo é aviso**: mostre ≈ créditos antes de jobs de provider e siga.
 5. **Revisão**: suba `review` (abre o navegador sozinho; atalho
    `ABRIR-REVISAO.html` na pasta da campanha). Conduza aprovar/rejeitar/refazer;

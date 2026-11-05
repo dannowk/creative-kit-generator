@@ -11,6 +11,8 @@ Conduza o processo completo do campaign-kit nesta ordem:
    (default `~/Desktop/minha-campanha`).
 3. Leia `AGENTS.md` na raiz do kit e siga o pipeline:
    `intake (ou brief --apply) → plan → assets → render → video`.
+   Briefing livre (prosa/PDF/docx)? `brief --normalize <fonte>` → preencha o
+   skeleton (visão p/ PDF; o que faltar fica vazio, vira gap) → `brief <out> --apply`.
 4. Avise o custo aproximado antes de jobs de provider (é aviso, não porteiro).
 5. Suba `review` para o usuário (abre o navegador sozinho) e conduza
    aprovar / rejeitar / refazer; pedidos de refazer chegam em `requests.json`.

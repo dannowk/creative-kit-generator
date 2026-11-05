@@ -29,6 +29,8 @@ def main(argv=None):
     p.add_argument("file", nargs="?", help="briefing preenchido (.yaml/.json)")
     p.add_argument("--apply", action="store_true", help="aplica o briefing (escreve marca + campanha)")
     p.add_argument("--template", action="store_true", help="imprime o template markdown gerado do schema")
+    p.add_argument("--normalize", metavar="ARQUIVO", help="prepara normalizar um briefing livre (prosa/PDF/docx) para o schema")
+    p.add_argument("--out", help="alvo do --normalize (default: <pasta-da-fonte>/briefing.yaml)")
 
     p = sub.add_parser("assets", help="aviso de custo + geração de assets de IA (imagem e vídeo)")
     p.add_argument("campaign")
@@ -60,6 +62,20 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     if args.cmd == "brief":
+        if args.normalize:
+            src = os.path.expanduser(args.normalize)
+            out = args.out or os.path.join(os.path.dirname(os.path.abspath(src)), "briefing.yaml")
+            try:
+                summary = briefing.normalize_prepare(src, out, ROOT)
+            except ValueError as e:
+                print(str(e), file=sys.stderr)
+                return 1
+            print(json.dumps(summary, indent=2, ensure_ascii=False))
+            extract = " (extraia a fonte com visão/docx)" if summary["needs_extraction"] else ""
+            print(f"\nNORMALIZE MEDIADO PELO AGENTE: leia {summary['contract']}, preencha "
+                  f"{summary['skeleton']}{extract}; o que não souber fica vazio (vira gap). "
+                  f"Depois: brief {summary['skeleton']} --apply")
+            return 0
         if args.template:
             print(briefing.template_md())
             return 0

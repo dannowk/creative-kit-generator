@@ -382,3 +382,117 @@ def template_md():
             lines.append(f"  - resposta: _preencher_")
         lines.append("")
     return "\n".join(lines)
+
+
+TEXT_EXT = (".md", ".txt", ".rtf")
+_MAP_TYPES = ("mapa_hex", "mapa_arquivos", "mapa_listas", "mapa_duracoes", "copy_por_conceito")
+_LIST_TYPES = ("lista", "lista_hex", "lista_arquivos", "lista_segmentos")
+
+
+def _placeholder(tipo):
+    if tipo in _LIST_TYPES:
+        return []
+    if tipo in _MAP_TYPES:
+        return {}
+    return None
+
+
+def _yaml_val(v):
+    if v is None:
+        return "null"
+    if v == []:
+        return "[]"
+    return "{}"
+
+
+def skeleton_yaml():
+    """YAML do schema com valores vazios e a pergunta de cada campo em comentário.
+
+    Vazio de propósito: o que o agente não souber preencher fica null/[]/{} e vira
+    gap na rodada única do validate — nunca um chute silencioso.
+    """
+    schema = load_schema()
+    lines = ["# Briefing canônico — skeleton gerado do schema (normalize).",
+             "# O agente preenche a partir do briefing-fonte; o que não souber fica vazio",
+             "# (vira pergunta na rodada única do validate). Nunca chute.",
+             "# Caminhos de arquivo são relativos a este arquivo.", ""]
+    for sec, body in schema["secoes"].items():
+        lines.append(f"{sec}:  # {body['titulo']}")
+        opened = set()
+        for field, meta in body["campos"].items():
+            req = "obrigatório" if meta.get("obrigatorio") else "opcional"
+            comment = f"# [{req}] {meta['pergunta']}"
+            val = _yaml_val(_placeholder(meta["tipo"]))
+            parts = field.split(".")
+            if len(parts) == 1:
+                lines.append(f"  {comment}")
+                lines.append(f"  {field}: {val}")
+            else:
+                top, sub = parts
+                if top not in opened:
+                    lines.append(f"  {top}:")
+                    opened.add(top)
+                lines.append(f"    {comment}")
+                lines.append(f"    {sub}: {val}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def normalize_prepare(source, out_path, root=ROOT):
+    """Prepara a normalização de um briefing livre para o schema canônico.
+
+    O Python só emite o skeleton + o contrato; quem lê a prosa (ou extrai PDF/docx
+    com visão) e preenche o YAML é o AGENTE. A garantia determinística continua
+    sendo validate (rodada única de gaps) + apply. Devolve o resumo do handoff.
+    """
+    source = os.path.abspath(os.path.expanduser(source))
+    out_path = os.path.abspath(os.path.expanduser(out_path))
+    if not os.path.isfile(source):
+        raise ValueError(f"briefing-fonte não encontrado: {source}")
+    if os.path.exists(out_path):
+        raise ValueError(f"já existe {out_path} — escolha outro --out para não sobrescrever")
+
+    low = source.lower()
+    is_text = low.endswith(TEXT_EXT)
+    raw = ""
+    if is_text:
+        try:
+            with open(source, encoding="utf-8") as f:
+                raw = f.read()
+        except (OSError, UnicodeDecodeError):
+            is_text = False
+
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(skeleton_yaml())
+
+    contract = out_path + ".normalize.md"
+    base_dir = os.path.dirname(out_path)
+    lines = [f"# Normalizar briefing → schema canônico",
+             "",
+             f"- **fonte:** `{source}`",
+             f"- **alvo (preencha este YAML):** `{out_path}`",
+             f"- **base dos caminhos de arquivo:** `{base_dir}` (paths no YAML são relativos a ele)",
+             ""]
+    if is_text and raw.strip():
+        lines += ["## Conteúdo da fonte (texto)", "", "```", raw.rstrip(), "```", ""]
+    else:
+        lines += ["## Extração (arquivo binário)", "",
+                  "A fonte é PDF/docx/imagem: **extraia o conteúdo com a sua ferramenta**",
+                  "(visão para PDF/imagem, leitor de docx) antes de mapear para os campos.", ""]
+    lines += ["## Regras (invioláveis)", "",
+              "1. Mapeie a prosa para os campos do skeleton; cada comentário é a pergunta do campo.",
+              "2. **Não souber → deixe vazio** (null/[]/{}). Vazio vira pergunta na rodada única",
+              "   do `validate`; nunca invente valor, cor, canal, conceito ou copy.",
+              "3. Respeite os enums e as chaves de mapa indicadas no schema (briefing.schema.yaml).",
+              "4. `campanha.conceitos` + um `campanha.copy.<conceito>.hook` por conceito.",
+              "5. Caminhos de logo/fontes/fotos/vídeos/refs relativos à base acima.",
+              "", "## Depois de preencher", "",
+              f"```bash\npython3 -m kit.cli brief {out_path}          # valida (gaps + erros)\n"
+              f"python3 -m kit.cli brief {out_path} --apply   # escreve brand.yaml + campaign.json\n```", ""]
+    with open(contract, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+    return {"source": source, "kind": "text" if is_text else "binary",
+            "needs_extraction": not is_text, "skeleton": out_path,
+            "contract": contract, "base_dir": base_dir}

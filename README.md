@@ -108,6 +108,11 @@ minha-marca/
   briefing.md  ← o briefing que você preencheu na tela (ou editado à mão)
 ```
 
+**Já tem um briefing pronto em qualquer formato** (Word, PDF, texto, e-mail)? Não
+precisa reescrever nada: o agente **normaliza** para o modelo do kit e te pergunta só
+o que faltar (uma rodada única). É só dizer: *"normalize este briefing"* e apontar o
+arquivo. Quem preenche o modelo na tela (acima) já está no formato certo.
+
 **Prefere criar na mão, ou reabrir o wizard depois?** Dentro da pasta do kit, use o
 Python que o instalador deixou (não o `python3` do sistema, que não tem as dependências):
 
@@ -219,6 +224,8 @@ python3 -m kit.cli intake  ~/inbox/acme acme   # deriva a marca
 python3 -m kit.cli brief --template           # só IMPRIME um checklist markdown (não salva arquivo)
 #  preencha um briefing.yaml/.json com esses campos e então:
 python3 -m kit.cli brief ~/inbox/briefing.yaml --apply   # valida e escreve marca + campanha
+#  ou normalize um briefing livre (prosa/PDF/docx) — emite skeleton + contrato p/ o agente:
+python3 -m kit.cli brief --normalize ~/inbox/briefing.pdf   # agente preenche → brief <out> --apply
 python3 -m kit.cli plan    campaigns/acme-launch
 python3 -m kit.cli assets  campaigns/acme-launch
 python3 -m kit.cli render  campaigns/acme-launch

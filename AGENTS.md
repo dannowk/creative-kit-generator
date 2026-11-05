@@ -55,7 +55,14 @@ python3 -m kit.cli brief ~/inbox/briefing.yaml --apply  # escreve brand.yaml + c
 #    apply é determinístico: copia logo/fontes/fotos/vídeos/refs, mapeia canais→formatos,
 #    conceitos→concepts+copy, compliance→checks, provider→créditos, e o bloco video.
 #    Sem paleta declarada, deriva proposta do logo (palette_proposed=true → confirme).
-#    Ainda não há ingestão de arquivo livre (normalize); o modelo é o contrato.
+
+# 2-alt-normalize. Briefing LIVRE (prosa .md/.txt, PDF, docx) → schema canônico:
+python3 -m kit.cli brief --normalize ~/inbox/briefing.pdf   # [--out ~/inbox/briefing.yaml]
+#    Emite um skeleton YAML do schema (campos vazios + a pergunta de cada um) e um
+#    contrato <out>.normalize.md. SEU TRABALHO: ler a fonte (visão p/ PDF/docx),
+#    mapear a prosa nos campos e preencher o skeleton. O que não souber fica VAZIO
+#    (vira gap na rodada única) — nunca chute valor, cor, canal, conceito ou copy.
+#    Depois: brief <out> --apply. A garantia determinística é o validate, não a leitura.
 
 # 3. Direção de arte a partir do briefing + referências  ← SEU TRABALHO CRIATIVO
 python3 -m kit.cli plan campaigns/acme-launch
@@ -174,9 +181,27 @@ frame composto (overlay + frame do meio), igual às imagens.
 
 `estimate()` é obrigatório em todo provider e retorna o aviso informativo.
 
+## Normalize (briefing livre → schema, mediado pelo agente)
+
+Mesma lógica dos providers: o Python prepara, o agente cumpre, o Python valida.
+`brief --normalize <fonte>` emite um **skeleton YAML** do schema (campos vazios, a
+pergunta de cada um em comentário) + um contrato `<out>.normalize.md` com a fonte
+(o texto, se `.md/.txt/.rtf`; senão a instrução de extrair).
+
+Seu trabalho como agente:
+1. Ler a fonte — **visão** para PDF/imagem, leitor de docx para `.docx`.
+2. Mapear a prosa nos campos do skeleton, respeitando enums e chaves de mapa.
+3. **Não souber → deixe vazio** (`null/[]/{}`). Vazio vira pergunta na rodada única
+   do `validate`; nunca invente valor, cor, canal, conceito, copy ou caminho.
+4. Paths de arquivo relativos à base do contrato (a pasta do `--out`).
+5. `brief <out>` (valida) → `brief <out> --apply` (escreve marca + campanha).
+
+A garantia determinística é o **validate + apply**, não a sua leitura da prosa.
+
 ## Limites honestos
 
 O motor renderiza specs deterministicamente (PIL). A criatividade — autorais de
 templates, copy, análise das refs, escolha de provider — é do agente. O kit não
 "adivinha" a marca sozinho: `intake` deriva o que dá (paleta, logo) e o resto vem do
-briefing + da sua direção de arte no `plan`.
+briefing + da sua direção de arte no `plan`. No `normalize`, você adapta a prosa ao
+schema, mas o que falta continua virando pergunta — nunca chute silencioso.
