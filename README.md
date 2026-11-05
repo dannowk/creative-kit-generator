@@ -17,7 +17,7 @@ navegador**. Escolha como colocar o agente para rodar:
 **Porta 1 · Claude Code (plugin — sem baixar nada):**
 
 1. Abra o Claude Code.
-2. Peça para ele isntalar o repositorio - https://github.com/dannowk/creative-kit-generator
+2. Peça para ele instalar o repositorio - https://github.com/dannowk/creative-kit-generator
    ```
    /plugin marketplace add dannowk/creative-kit-generator
    ```
