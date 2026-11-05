@@ -5,84 +5,115 @@ Roda na **sua máquina**, com o **seu agente de IA** (Claude, Codex, Qoder…). 
 serviço hospedado: nada de nuvem, login ou URL pública — os arquivos e o controle são
 seus.
 
-## Comece aqui
+## Comece aqui (passo a passo)
 
-**1. Instale** (uma vez por máquina):
+### 1. Onde instala o código
+
+Escolha uma pasta fixa para o kit — ex.: `~/Documents/creative-kit-generator`:
 
 ```bash
+cd ~/Documents
 git clone https://github.com/dannowk/creative-kit-generator.git
 cd creative-kit-generator
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-O vídeo usa ffmpeg embutido (`imageio-ffmpeg`) — não precisa instalar nada no sistema.
+- Essa pasta **é o kit**: motor (`kit/`), specs (`templates/`), exemplo (`brands/acme` +
+  `campaigns/acme-launch`).
+- Tudo que ele gerar nasce **dentro dela**: `brands/<marca>/` e `campaigns/<campanha>/`.
+- O ffmpeg vem embutido (`imageio-ffmpeg`); não instala nada no sistema.
 
-**2. Abra esta pasta no seu agente** (Claude, Codex, Qoder…) e diga:
+### 2. Onde fica a SUA pasta (o inbox da campanha)
 
-> "leia o AGENTS.md e rode a campanha da minha pasta `~/inbox/minha-marca`"
+Em qualquer lugar **fora do kit** — ex.: `~/Desktop/minha-marca`. Dois caminhos:
 
-Ainda não tem pasta? Diga **"começar onboarding"**: o wizard **abre no navegador** e
-mostra o checklist do que falta. O que entrar na pasta:
+- **Wizard:** dentro da pasta do kit, rode
+  `python3 -m kit.cli onboard ~/Desktop/minha-marca` — o navegador abre com o checklist;
+  você sobe ou arrasta os arquivos em cada slot e preenche o briefing na tela.
+- **Na mão:** crie a pasta com esta estrutura (o wizard cria exatamente ela):
 
-| Item | Obrigatório? |
-| --- | --- |
-| logo (png/svg) | sim |
-| fotos e/ou vídeos do assunto | sim, em campanha com foto |
-| referências visuais | recomendado |
-| fontes (.ttf/.otf) | opcional (há substitutas) |
-| briefing (wizard ou `brief --template`) | sim |
-
-**3. O agente conduz o pipeline**
-`intake (ou brief --apply) → plan → assets → render → video`, avisa o custo aproximado
-antes de gerar e abre a **revisão no navegador**.
-
-**4. Você aprova**: aprovar / rejeitar / refazer por peça. "Refazer" volta ao agente com o
-motivo. Aprovadas saem em `campaigns/<id>/out/<conceito>/` + contact sheet por conceito.
-
-### Nunca perca o link da revisão
-
-- O navegador **abre sozinho** no `review` e no `onboard` (`--no-open` para headless).
-- Atalho clicável **`ABRIR-REVISAO.html`** dentro da pasta da campanha.
-- O endereço fica **no topo da tela** e é impresso no fim de `render` / `video`.
-- Porta ocupada → próxima livre: cada campanha tem o seu endereço, sem conflito.
-
-### Campanha nova
-
-- **Marca nova:** repita do passo 2 com outra pasta.
-- **Mesma marca:** só um briefing novo (objetivo, oferta, CTA, canais, conceitos, copy);
-  o agente reusa `brands/<id>` e cria `campaigns/<id>-<slug>`.
-
-## Seu provider de geração (MCP de assets)
-
-O kit **não guarda conexão MCP**: quem tem o MCP instalado é o **seu agente**
-(Claude, Codex, Qoder…). Conectar o seu provider são dois lugares:
-
-**1. No agente** — instale o MCP do provider como qualquer outro (ex.: Magnific MCP na
-config de MCPs do seu agente). O kit nunca vê suas credenciais.
-
-**2. No briefing** — seção `provider`, declarando o contrato e o custo do aviso:
-
-```yaml
-provider:
-  nome: magnific-mcp        # manual | magnific-mcp | http
-  creditos_imagem: 4        # alimenta o aviso "≈ X créditos"
-  creditos_video: 20
-  drop_dir: ~/Downloads     # onde o agente solta os arquivos gerados
+```
+minha-marca/
+  logo/        ← logo png, de preferência fundo transparente (obrigatório)
+  photos/      ← fotos que podem virar peça
+  videos/      ← clipes fonte
+  refs/        ← 2–6 referências do look desejado
+  fonts/       ← .ttf / .otf da marca (opcional; há substitutas)
+  briefing.md  ← modelo preenchido (python3 -m kit.cli brief --template)
 ```
 
-Fluxo mediado pelo agente:
+### 3. Entregue ao agente
 
-1. `assets` prepara `campaigns/<slug>/assets/jobs.json` e para (`NeedsAgent`);
-2. o agente cumpre cada job pelo **MCP dele** (imagem ou vídeo) e salva no `drop_dir`
-   com o prefixo do id do job;
-3. roda `assets` de novo: o kit coleta, grava `manifest.json` (tipo + créditos) e segue.
+Abra a **pasta do kit** no seu agente — Claude Code (`claude` no terminal dentro dela),
+Qoder (abrir a pasta no app), Codex (`codex`) — e diga:
+
+> "leia o AGENTS.md e rode a campanha de `~/Desktop/minha-marca`"
+
+O agente conduz `intake (ou brief --apply) → plan → assets → render → video` e cria:
+
+- `brands/minha-marca/` — `brand.yaml` (paleta, fontes, voz), `assets/logo.png`;
+- `campaigns/minha-marca-<slug>/` — `campaign.json`, `templates/` (direção de arte),
+  `assets/`, `out/`, `review/`.
+
+Faltou informação? Vira **uma rodada única** de perguntas (no wizard ou no terminal).
+Antes de gerar qualquer asset pago, o agente mostra o aviso de ≈ créditos.
+
+### 4. Aprove no navegador
+
+O `review` **abre o navegador sozinho** em `http://127.0.0.1:8765` (ou a próxima porta
+livre). Na tela: aprovar / rejeitar por peça; **refazer** enfileira seu motivo em
+`requests.json` e o agente executa.
+
+- Perdeu o link? Atalho clicável **`ABRIR-REVISAO.html`** dentro da pasta da campanha;
+  o endereço também fica no topo da tela e no fim de `render` / `video` no terminal.
+- Peças aprovadas: `campaigns/<campanha>/out/<conceito>/` (png/mp4 por formato) +
+  contact sheet `review/sheet_<conceito>.png`.
+
+### 5. Conecte o seu MCP de assets (só p/ o que faltar)
+
+O kit **não guarda conexão MCP**: quem tem o MCP instalado é o **seu agente**.
+
+1. **No agente**, instale o MCP do provider como qualquer outro: Claude Code
+   (`claude mcp add …` conforme a doc do provider), Qoder (Settings → MCP),
+   Codex (`~/.codex/config.toml`). Ex.: Magnific MCP. O kit nunca vê suas credenciais.
+2. **No briefing**, declare o contrato e o custo do aviso:
+
+   ```yaml
+   provider:
+     nome: magnific-mcp        # manual | magnific-mcp | http
+     creditos_imagem: 4        # alimenta o aviso "≈ X créditos"
+     creditos_video: 20
+     drop_dir: ~/Downloads     # onde o agente solta os arquivos gerados
+   ```
+
+3. `assets` prepara `campaigns/<campanha>/assets/jobs.json` e para (`NeedsAgent`).
+4. O agente cumpre cada job pelo **MCP dele** (imagem ou vídeo) e salva no `drop_dir`
+   com o **prefixo do id do job** (ex.: `acme-hero_….png`).
+5. Rode `assets` de novo: o kit coleta do `drop_dir`, copia para `assets/` da campanha
+   e grava `manifest.json` (tipo + créditos).
 
 Alternativas: `manual` (sem MCP — você mesmo dropa os arquivos no `drop_dir`) e
 `http` (API genérica: `api_url` + `api_key_env`, ex. `MAGNIFIC_API_KEY`; **a chave fica
-em variável de ambiente, nunca no briefing**).
+em variável de ambiente, nunca no briefing**). Custo é aviso, não porteiro.
 
-Custo é **aviso, não porteiro**: antes de qualquer job o kit mostra ≈ créditos e segue.
+### 6. Campanha nova
+
+- **Mesma marca:** só um briefing novo (objetivo, oferta, CTA, canais, conceitos, copy);
+  o agente reusa `brands/<id>` e cria `campaigns/<id>-<novo-slug>/`.
+- **Marca nova:** novo inbox (passo 2) e repita do passo 3.
+
+### Onde cada coisa fica
+
+| O quê | Onde |
+| --- | --- |
+| código do kit | onde você clonou (ex.: `~/Documents/creative-kit-generator`) |
+| seus arquivos | inbox que você escolheu (ex.: `~/Desktop/minha-marca`) |
+| marca derivada | `<kit>/brands/<id>/` |
+| peças finais | `<kit>/campaigns/<id>-<slug>/out/<conceito>/` |
+| revisão | navegador `127.0.0.1:8765+` · atalho `ABRIR-REVISAO.html` |
+| pedidos de refazer | `<kit>/campaigns/<id>-<slug>/requests.json` |
+| gerados pelo MCP | `drop_dir` (ex.: `~/Downloads`) → coletados p/ `assets/` da campanha |
 
 ## Início rápido (manual)
 
