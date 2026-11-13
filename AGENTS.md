@@ -87,14 +87,21 @@ python3 -m kit.cli assets campaigns/acme-launch
 # 5. Renderizar a matriz de peças (conceitos × formatos × eixos)
 python3 -m kit.cli render campaigns/acme-launch
 #    --concepts clean cinema --formats Meta-Feed --limit 4 --dry
+#    --ids <id> ...  re-renderiza SÓ essas peças (etapa 6: recriar/refazer) sem perder as decisões
 
 # 5b. Editar vídeo: trim, reframe por sujeito, overlay de marca, concat, legenda
 python3 -m kit.cli video campaigns/acme-launch
 
 # 6. Revisão local (127.0.0.1, porta livre a partir de 8765): aprovar / rejeitar / refazer por peça.
+#    Cada clique só MARCA a peça (intenção); nada executa até o botão "Continuar" (etapa 6 da UI).
 #    Abre o navegador sozinho e grava ABRIR-REVISAO.html na pasta da campanha (atalho clicável).
 #    --no-open para headless. A URL também aparece no topo da tela e no fim de render/video.
 python3 -m kit.cli review campaigns/acme-launch
+
+# 7. Entrega — equivalent headless do "Continuar". Exporta as aprovadas para delivery/<conceito>/
+#    e enfileira rejeitadas (recriar) + refazer (com a nota) em requests.json. A regeneração é
+#    SUA (agente): cumpra o lote e rode `render --ids`. Ver "Etapa 6 — Entrega e regeneração".
+python3 -m kit.cli deliver campaigns/acme-launch
 ```
 
 `campaign` é sempre um **caminho** (ex.: `campaigns/acme-launch`), não um slug.
@@ -109,7 +116,8 @@ python3 -m kit.cli review campaigns/acme-launch
 - `brands/<id>/` — `brand.yaml` (paleta, papéis tipográficos com fallback de SO, voz,
   eixos, naming, compliance, safe zones, locales) + `assets/logo.png` + `intake.json`.
 - `campaigns/<slug>/` — `campaign.json` (brand, channels, concepts, axes, cta, copy,
-  provider, asset_jobs) + `assets/` + `out/<concept>/` + `review/`.
+  provider, asset_jobs) + `assets/` + `out/<concept>/` + `review/` + `delivery/<concept>/`
+  (aprovadas exportadas pelo Continuar) + `state.json` (decisões) + `requests.json` (lote de regeneração).
 - `brands/acme` + `campaigns/acme-launch` — exemplo genérico que acompanha o repo.
 
 ## Specs de template (declarativo)
@@ -171,8 +179,11 @@ frame composto (overlay + frame do meio), igual às imagens.
 3. **Vídeo é job de provider** (`kind:"video"`), gerado via MCP do usuário (ex.:
    Magnific) — não há render local de vídeo. `credits_per_video` é separado de
    `credits_per_image`.
-4. **Revisão por peça:** aprovar / rejeitar / refazer, com filtros de status e achados
-   de compliance no card. Mantenha esse formato.
+4. **Revisão por peça, em lote:** aprovar / rejeitar / refazer apenas **marcam** a peça
+   (intenção no `state.json`); nada executa até o **Continuar** (etapa 6). Filtros de status
+   e achados de compliance no card. As **aprovadas ficam só na lista de aprovadas** (saem da
+   grade de trabalho); rejeitadas/refazer atualizam **na mesma página** após a regeneração.
+   Mantenha esse formato.
 5. **Arquivos e controle locais.** Nada de criar URL pública, remote ou deploy sem
    pedir explicitamente ao usuário.
 6. **Design segue o briefing/refs.** `plan` te dá a matéria-prima; a direção de arte é
@@ -207,6 +218,39 @@ Seu trabalho como agente:
 5. `brief <out>` (valida) → `brief <out> --apply` (escreve marca + campanha).
 
 A garantia determinística é o **validate + apply**, não a sua leitura da prosa.
+
+## Etapa 6 — Entrega (Continuar) e regeneração
+
+Mesma lógica dos providers/normalize: o Python prepara e exporta, o agente regenera, o
+Python re-renderiza e a UI atualiza. A revisão é **em lote** — decidir não executa nada.
+
+**O que cada clique faz (só marca, no `state.json`):**
+- **Aprovar** → `status:"approved"`. A peça sai da grade de trabalho e fica **só na lista
+  de aprovadas**, marcada para ir para a pasta de entrega.
+- **Rejeitar** → `status:"rejected"`. Marcada para **recriar** (sem nota).
+- **Refazer** → `status:"redo"` + `note` (o que ajustar). Marcada para **refazer com a nota**.
+
+**O botão "Continuar" (ou `kit.cli deliver`) executa o lote:**
+1. **Exporta** as aprovadas de `out/` para `delivery/<conceito>/` (cópia local, imediata) e
+   marca `delivered:true` + `delivery_path`.
+2. **Enfileira** rejeitadas + refazer em `requests.json` — um lote com
+   `{id, concept, format, axes, path, kind, asset, reason:"rejected"|"redo", note}`.
+3. A UI avisa o que foi exportado/enfileirado e avança o stepper para a etapa 6 (Entregar).
+
+**SEU TRABALHO como agente — cumprir o lote `requests.json`:**
+1. Para cada peça: `reason:"redo"` → aplique a `note` (ajuste o template/copy/asset);
+   `reason:"rejected"` → **recrie** (nova direção, asset novo via MCP, ou variação de layout).
+   O render é **determinístico**: re-renderizar o mesmo spec dá a mesma imagem — para mudar
+   o resultado você **precisa** mudar um insumo (template, asset, copy ou fx).
+2. Rode `render <campaign> --ids <id1> <id2> ...` para re-renderizar **só** essas peças.
+   O `run` faz **merge** com o `state.json` anterior: aprovadas/entregues são preservadas,
+   as peças re-renderizadas voltam a `pending` (sem `note`/`queued`) para nova revisão, e as
+   demais ficam intactas. **Nunca** re-renderize a matriz inteira depois de aprovar — use `--ids`.
+3. A revisão **atualiza sozinha** (poll de 4 s no `state.json`): as rejeitadas/refazer
+   reaparecem como pendentes com a imagem nova, na mesma página; as aprovadas seguem só na
+   lista de aprovadas. O usuário revisa de novo e clica Continuar outra vez até fechar.
+
+`delivery/` é a pasta de entrega final (aprovadas). `out/` continua sendo o render de trabalho.
 
 ## Idioma (PT/EN)
 

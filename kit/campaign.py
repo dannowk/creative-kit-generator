@@ -8,6 +8,7 @@ import itertools
 import json
 import os
 import glob
+import shutil
 
 from PIL import Image
 
@@ -114,8 +115,14 @@ def _spec_path(campaign, concept):
     return local if os.path.isfile(local) else os.path.join(TEMPLATES_DIR, f"{concept}.yaml")
 
 
-def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None, dry=False):
-    """Renderiza a matriz inteira. Devolve o estado que a UI local consome."""
+def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None, dry=False,
+        only_ids=None):
+    """Renderiza a matriz inteira. Devolve o estado que a UI local consome.
+
+    `only_ids` restringe a peça(s) exata(s) — usado na etapa 6 para o agente recriar só
+    as rejeitadas/refazer. As decisões anteriores (aprovadas/entregues) são preservadas
+    no merge; peças re-renderizadas voltam a `pending` para nova revisão.
+    """
     brand = brand or brand_for(campaign)
     root = campaign["_root"]
     out_dir = os.path.join(root, "out")
@@ -132,7 +139,7 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
     logo = Image.open(brand.logo_path).convert("RGBA") if brand.logo_path else None
     copy_map = campaign.get("copy") or {}
 
-    pieces, blocked = [], []
+    pieces = []
     for combo in combos:
         photo, fx, asset_path = resolve_asset(campaign, combo, overrides)
         copy = lookup(copy_map, combo) or {}
@@ -152,6 +159,9 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
                 print(f"  sem copy.hook para {concept} em {combo or 'campanha'} — conceito pulado")
                 continue
             for fmt in names:
+                name = piece_name(brand, campaign, combo, concept, fmt)
+                if only_ids and name not in only_ids:
+                    continue
                 geo = formats.geometry(fmt, brand)
                 if geo["tight"] and spec.get("needs_photo") and "tight" not in (spec.get("variants") or {}):
                     continue
@@ -159,14 +169,11 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
                 img = render.render(spec, brand, geo, photo=photo, fx=fx, logo=logo,
                                     copy=merged, extra=extra, trace=trace)
                 findings = compliance.run(img, trace, brand)
-                name = piece_name(brand, campaign, combo, concept, fmt)
                 rel = os.path.join(concept, f"{name}.png")
                 entry = {"id": name, "path": rel, "concept": concept, "format": fmt,
                          "axes": combo, "asset": os.path.basename(asset_path) if asset_path else None,
                          "subject_fx": round(fx, 4), "findings": findings,
                          "status": "blocked" if compliance.blocked(findings) else "pending"}
-                if entry["status"] == "blocked":
-                    blocked.append(entry)
                 if not dry:
                     dest = os.path.join(out_dir, rel)
                     os.makedirs(os.path.dirname(dest), exist_ok=True)
@@ -184,15 +191,81 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
             break
 
     if not dry:
+        pieces = _merge_prior(root, pieces)
         _sheets(root, out_dir, pieces)
     state = {"campaign": campaign.get("slug"), "brand": brand.id, "root": root,
              "formats": names, "concepts": concepts, "pieces": pieces,
-             "blocked_count": len(blocked),
+             "blocked_count": sum(1 for p in pieces if p.get("status") == "blocked"),
              "font_warnings": {"missing": brand.fonts.missing, "substituted": brand.fonts.substituted}}
     if not dry:
         with open(os.path.join(root, "state.json"), "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
     return state
+
+
+def _merge_prior(root, pieces):
+    """Preserva as decisões da revisão ao re-renderizar (etapa 6).
+
+    Aprovadas/entregues continuam aprovadas; peças fora do conjunto re-renderizado são
+    mantidas intactas; as re-renderizadas (rejeitadas/refazer recriadas) voltam a pending
+    sem `note`/`queued`, para nova revisão na mesma página.
+    """
+    prior_path = os.path.join(root, "state.json")
+    if not os.path.isfile(prior_path):
+        return pieces
+    with open(prior_path, encoding="utf-8") as f:
+        prior = {p["id"]: p for p in json.load(f).get("pieces", [])}
+    rendered = {p["id"] for p in pieces}
+    for p in pieces:
+        old = prior.get(p["id"])
+        if old and old.get("status") == "approved":
+            p["status"] = "approved"
+            if old.get("delivered"):
+                p["delivered"] = True
+            if old.get("delivery_path"):
+                p["delivery_path"] = old["delivery_path"]
+    for pid, old in prior.items():
+        if pid not in rendered:
+            pieces.append(old)
+    return pieces
+
+
+def deliver(root):
+    """Etapa 6 — o botão Continuar: exporta as aprovadas e enfileira a recriação/refazer.
+
+    Local e imediato: copia as aprovadas de `out/` para `delivery/<conceito>/` e marca
+    `delivered`. As rejeitadas (recriar) e refazer (com a nota) viram um lote em
+    `requests.json` — a regeneração é do agente (o render é determinístico; a UI não
+    chama MCP). O agente recria/refaz, roda `render --ids` e a revisão atualiza sozinha.
+    """
+    with open(os.path.join(root, "state.json"), encoding="utf-8") as f:
+        state = json.load(f)
+    delivery = os.path.join(root, "delivery")
+    exported, batch = [], []
+    for p in state["pieces"]:
+        st = p.get("status")
+        if st == "approved":
+            src = os.path.join(root, "out", p["path"])
+            if os.path.isfile(src):
+                dest = os.path.join(delivery, p["concept"], os.path.basename(p["path"]))
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                shutil.copy2(src, dest)
+                p["delivered"] = True
+                p["delivery_path"] = os.path.relpath(dest, root)
+                exported.append(p["id"])
+        elif st in ("rejected", "redo"):
+            p["queued"] = True
+            batch.append({"id": p["id"], "concept": p["concept"], "format": p["format"],
+                          "axes": p.get("axes", {}), "path": p["path"],
+                          "kind": p.get("kind", "image"), "asset": p.get("asset"),
+                          "reason": "redo" if st == "redo" else "rejected",
+                          "note": p.get("note", "")})
+    with open(os.path.join(root, "state.json"), "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2, ensure_ascii=False)
+    with open(os.path.join(root, "requests.json"), "w", encoding="utf-8") as f:
+        json.dump(batch, f, indent=2, ensure_ascii=False)
+    return {"exported": len(exported), "regen": len(batch), "exported_ids": exported,
+            "delivery_dir": "delivery", "requests_path": "requests.json", "batch": batch}
 
 
 def _sheets(root, out_dir, pieces):

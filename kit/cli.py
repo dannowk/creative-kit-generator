@@ -1,10 +1,11 @@
-"""CLI do campaign-kit: onboard -> intake -> assets -> render -> review.
+"""CLI do campaign-kit: onboard -> intake -> assets -> render -> review -> deliver.
 
   python3 -m kit.cli onboard ~/inbox/acme
   python3 -m kit.cli intake ~/inbox/acme acme
   python3 -m kit.cli assets campaigns/acme-launch
   python3 -m kit.cli render campaigns/acme-launch
   python3 -m kit.cli review campaigns/acme-launch
+  python3 -m kit.cli deliver campaigns/acme-launch   # etapa 6: o Continuar da revisão
 """
 
 import argparse
@@ -41,6 +42,7 @@ def main(argv=None):
     p.add_argument("campaign")
     p.add_argument("--concepts", nargs="*")
     p.add_argument("--formats", nargs="*")
+    p.add_argument("--ids", nargs="*", help="re-renderiza só estas peças (etapa 6: recriar/refazer)")
     p.add_argument("--limit", type=int)
     p.add_argument("--dry", action="store_true")
 
@@ -51,6 +53,9 @@ def main(argv=None):
     p.add_argument("campaign")
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--no-open", action="store_true", help="não abre o navegador (headless)")
+
+    p = sub.add_parser("deliver", help="etapa 6: exporta aprovadas + enfileira recriação/refazer (o Continuar da revisão)")
+    p.add_argument("campaign")
 
     p = sub.add_parser("plan", help="direção de arte a partir do briefing + referências")
     p.add_argument("campaign")
@@ -161,7 +166,7 @@ def main(argv=None):
 
     if args.cmd == "render":
         state = campaign.run(camp, only_concepts=args.concepts, only_formats=args.formats,
-                             limit=args.limit, dry=args.dry)
+                             limit=args.limit, dry=args.dry, only_ids=args.ids)
         print(i18n.t("cli.render.summary", lang, n=len(state["pieces"]),
                      blocked=state["blocked_count"], concepts=", ".join(state["concepts"])))
         for p in state["pieces"]:
@@ -226,6 +231,19 @@ def main(argv=None):
         print("\n  Limite honesto: estes ops cobrem direções fotográficas/tipográficas.")
         print("  Look radicalmente diferente (ilustração flat, 3D, colagem) pede imagem")
         print("  gerada pelo provider ou ops novos — não sai destes specs por mágica.")
+        return 0
+
+    if args.cmd == "deliver":
+        if not os.path.isfile(os.path.join(camp["_root"], "state.json")):
+            print(i18n.t("cli.deliver.nostate", lang), file=sys.stderr)
+            return 1
+        result = campaign.deliver(camp["_root"])
+        if result["exported"] == 0 and result["regen"] == 0:
+            print(i18n.t("cli.deliver.empty", lang))
+            return 0
+        print(i18n.t("cli.deliver.summary", lang, exported=result["exported"],
+                     dir=result["delivery_dir"], regen=result["regen"], req=result["requests_path"]))
+        print("  " + i18n.t("cli.deliver.next", lang, req=result["requests_path"]))
         return 0
 
     if args.cmd == "review":

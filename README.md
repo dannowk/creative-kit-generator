@@ -84,16 +84,26 @@ O agente conduz `intake (ou brief --apply) → plan → assets → render → vi
 Faltou informação? Vira **uma rodada única** de perguntas (no wizard ou no terminal).
 Antes de gerar qualquer asset pago, o agente mostra o aviso de ≈ créditos.
 
-### 4. Aprove no navegador
+### 4. Aprove no navegador — e clique Continuar para entregar
 
 O `review` **abre o navegador sozinho** em `http://127.0.0.1:8765` (ou a próxima porta
-livre). Na tela: aprovar / rejeitar por peça; **refazer** enfileira seu motivo em
-`requests.json` e o agente executa.
+livre). Na tela você decide peça por peça — **cada clique só marca, nada executa na hora**:
+
+- **✓ aprovar** → a peça fica marcada para ir para a pasta de entrega e sai da grade de
+  trabalho (vai só para a lista **Aprovadas**).
+- **✕ rejeitar** → marcada para o sistema **recriar** outra automaticamente.
+- **↻ refazer** → você escreve o que ajustar; a nota fica guardada.
+
+Quando terminar de marcar, clique no botão **Continuar** (etapa 6). Aí sim tudo executa de
+uma vez: as aprovadas são **exportadas para a pasta de entrega** e as rejeitadas/refazer
+entram na fila de regeneração. O **agente recria/refaz** essas peças e elas **atualizam
+nesta mesma página** sozinhas, prontas para revisar de novo. As aprovadas continuam só na
+lista de aprovadas. Repita até fechar a campanha.
 
 - Perdeu o link? Atalho clicável **`ABRIR-REVISAO.html`** dentro da pasta da campanha;
   o endereço também fica no topo da tela e no fim de `render` / `video` no terminal.
-- Peças aprovadas: `campaigns/<campanha>/out/<conceito>/` (png/mp4 por formato) +
-  contact sheet `review/sheet_<conceito>.png`.
+- Peças entregues (aprovadas): `campaigns/<campanha>/delivery/<conceito>/` (png/mp4). O
+  render de trabalho fica em `out/<conceito>/` + contact sheet `review/sheet_<conceito>.png`.
 - **Idioma da interface:** o wizard e a revisão têm toggle **PT | EN** no topo (fica
   gravado no navegador). No terminal, `--lang en` ou `KIT_LANG=en` traduz as mensagens.
 
@@ -151,9 +161,10 @@ variável de ambiente, nunca no briefing**).
 | código do kit | onde você baixou/abriu (ex.: `~/Documents/creative-kit-generator`) |
 | seus arquivos | inbox que o agente criou (ex.: `~/Desktop/minha-campanha`) |
 | marca derivada | `<kit>/brands/<id>/` |
-| peças finais | `<kit>/campaigns/<id>-<slug>/out/<conceito>/` |
+| peças entregues (aprovadas) | `<kit>/campaigns/<id>-<slug>/delivery/<conceito>/` |
+| render de trabalho | `<kit>/campaigns/<id>-<slug>/out/<conceito>/` + `review/sheet_<conceito>.png` |
 | revisão | navegador `127.0.0.1:8765+` · atalho `ABRIR-REVISAO.html` |
-| pedidos de refazer | `<kit>/campaigns/<id>-<slug>/requests.json` |
+| lote de regeneração | `<kit>/campaigns/<id>-<slug>/requests.json` (rejeitadas + refazer) |
 | gerados pelo MCP | `drop_dir` (ex.: `~/Downloads`) → coletados p/ `assets/` da campanha |
 
 ## Início rápido (manual)
@@ -175,6 +186,9 @@ python3 -m kit.cli assets  campaigns/acme-launch
 python3 -m kit.cli render  campaigns/acme-launch
 python3 -m kit.cli video   campaigns/acme-launch   # trim/reframe/overlay/concat/legenda
 python3 -m kit.cli review  campaigns/acme-launch   # abre o navegador sozinho; atalho ABRIR-REVISAO.html na pasta
+python3 -m kit.cli deliver campaigns/acme-launch   # etapa 6: o "Continuar" — exporta aprovadas + enfileira recriação/refazer
+#  o agente cumpre requests.json e re-renderiza só as peças do lote (preserva as aprovadas):
+python3 -m kit.cli render  campaigns/acme-launch --ids <id1> <id2>
 ```
 
 ## O que vem no repo

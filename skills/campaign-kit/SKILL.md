@@ -28,9 +28,12 @@ e o navegador.**
    livre (prosa/PDF/docx)? `brief --normalize <fonte>` → preencha o skeleton (visão
    p/ PDF; o que faltar fica vazio, vira gap) → `brief <out> --apply`.
 6. **Custo é aviso**: mostre ≈ créditos antes de jobs de provider e siga.
-7. **Revisão**: suba `review` (abre o navegador sozinho; atalho `ABRIR-REVISAO.html`
-   na pasta da campanha). Conduza aprovar/rejeitar/refazer; refazer chega em
-   `requests.json` com o motivo do usuário.
+7. **Revisão + entrega (etapa 6)**: suba `review` (abre o navegador sozinho; atalho
+   `ABRIR-REVISAO.html` na pasta da campanha). Aprovar/rejeitar/refazer só **marcam** a peça;
+   o usuário clica **Continuar** (ou você roda `deliver`) para exportar as aprovadas em
+   `delivery/` e enfileirar rejeitadas (recriar) + refazer (com a nota) em `requests.json`.
+   **Cumpra o lote**: ajuste template/asset/copy (recrie de fato — o render é determinístico),
+   rode `render --ids <ids>` (preserva as aprovadas) e a revisão atualiza sozinha. Repita até fechar.
 
 Provider de assets (MCP do usuário, ex. Magnific) vive no agente, não no kit:
 seção `provider` do briefing + `assets/jobs.json` → MCP → `drop_dir` → coleta.

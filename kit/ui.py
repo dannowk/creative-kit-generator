@@ -17,7 +17,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
-from . import i18n, intake, onboard
+from . import campaign, i18n, intake, onboard
 
 _STYLE = """<style>
 :root{color-scheme:light;
@@ -73,6 +73,7 @@ a.btn{text-decoration:none}
  background:var(--pend-bg);color:var(--pend);display:inline-flex;align-items:center;gap:6px}
 .tag.approved{background:var(--ok-bg);border-color:var(--ok-line);color:var(--ok)}
 .tag.rejected{background:var(--bad-bg);border-color:var(--bad-line);color:var(--bad)}
+.tag.redo{background:#e7f0fb;border-color:#bcd6f2;color:var(--accent)}
 .tag.blocked{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn)}
 .tag .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
 .hint{color:var(--mut);font-size:13px;margin:0}
@@ -116,8 +117,8 @@ dialog .msgbody p{margin:0;font-size:14px}
 </style>"""
 
 _STEPS = {
-    "pt": ["Arquivos", "Briefing", "Marca", "Gerar", "Revisar"],
-    "en": ["Files", "Briefing", "Brand", "Generate", "Review"],
+    "pt": ["Arquivos", "Briefing", "Marca", "Gerar", "Revisar", "Entregar"],
+    "en": ["Files", "Briefing", "Brand", "Generate", "Review", "Deliver"],
 }
 
 
@@ -133,7 +134,7 @@ def _stepper(current, done, lang):
     for i, label in enumerate(steps, 1):
         cls = "done" if i <= done else ("current" if i == current else "")
         mark = "✓" if i <= done else str(i)
-        out.append(f'<span class="step {cls}"><span class="n">{mark}</span>{label}</span>')
+        out.append(f'<span class="step {cls}" data-step="{i}"><span class="n">{mark}</span>{label}</span>')
         if i < len(steps):
             out.append('<span class="bar"></span>')
     out.append("</div>")
@@ -192,6 +193,7 @@ def review_page(lang):
 <header><span class="brand">campaign-kit</span><h1 id="title">{i18n.t('rv.title', lang)}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
 {_lang_toggle(lang)}
+<button class="btn primary" onclick="continuar()">{i18n.t('rv.js.continue', lang)}</button>
 <button onclick="load()">{i18n.t('btn.refresh', lang)}</button></header>
 <div class="banner">
 """ + _stepper(5, 4, lang) + f"""
@@ -200,6 +202,7 @@ def review_page(lang):
 <span class="tag approved"><span class="dot"></span>{i18n.t('rv.legend.approved', lang)}</span>
 <span class="tag"><span class="dot"></span>{i18n.t('rv.legend.pending', lang)}</span>
 <span class="tag rejected"><span class="dot"></span>{i18n.t('rv.legend.rejected', lang)}</span>
+<span class="tag redo"><span class="dot"></span>{i18n.t('rv.legend.redo', lang)}</span>
 <span class="tag blocked"><span class="dot"></span>{i18n.t('rv.legend.blocked', lang)}</span></div>
 </div>
 <div class="wrap">
@@ -208,38 +211,53 @@ def review_page(lang):
 <div class="filters" id="filters"></div>
 <div class="row" style="align-items:center"><span class="meta">{i18n.t('rv.concept', lang)}</span><div class="filters" id="cfilters"></div></div>
 <div class="rgrid" id="grid"></div></div>
+<div class="panel"><h2><span class="n">6</span>{i18n.t('rv.p6.title', lang)}</h2>
+<p class="desc">{i18n.t('rv.p6.desc', lang)}</p>
+<div class="stats" id="deliver-summary"></div>
+<div class="row" style="align-items:center"><button class="btn primary" onclick="continuar()">{i18n.t('rv.js.continue', lang)}</button>
+<span class="meta">{i18n.t('rv.p6.hint', lang)}</span></div>
+<div id="deliver-result"></div></div>
 </div>
 <dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
 """ + _modal(lang) + _JS_UTIL + _inject(lang, "rv.js") + """
 <script>
-let state=null, filter="all", cfilter="all";
-const LBL={all:T["lbl.all"],pending:T["lbl.pending"],approved:T["lbl.approved"],rejected:T["lbl.rejected"],blocked:T["lbl.blocked"]};
-const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],blocked:T["sing.blocked"]};
+let state=null, filter="working", cfilter="all", lastState="";
+const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"],blocked:T["lbl.blocked"]};
+const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"],blocked:T["sing.blocked"]};
 const fmsg=f=>(LANG==="en"&&f.message_en)?f.message_en:f.message;
-async function load(){
-  state = await (await fetch("/state")).json();
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fill=(s,o)=>s.replace(/\\{(\\w+)\\}/g,(m,k)=>(k in o?o[k]:m));
+async function load(){applyState(await (await fetch("/state")).json());}
+function applyState(s){
+  state=s; lastState=JSON.stringify(s);
   document.getElementById("title").textContent = state.campaign + " · " + state.brand;
   document.getElementById("meta").textContent = T.meta.replace("{origin}",location.origin);
-  const c=s=>state.pieces.filter(p=>p.status===s).length;
-  document.getElementById("stats").innerHTML = T.stats
-    .replace("{total}",state.pieces.length).replace("{approved}",c("approved"))
-    .replace("{pending}",c("pending")).replace("{blocked}",state.blocked_count);
-  const counts={all:state.pieces.length};
-  for(const s of ["pending","approved","rejected","blocked"]) counts[s]=c(s);
+  const c=st=>state.pieces.filter(p=>p.status===st).length;
+  const working=state.pieces.filter(p=>p.status!=="approved").length;
+  const delivered=state.pieces.filter(p=>p.delivered).length;
+  document.getElementById("stats").innerHTML = fill(T.stats,
+    {total:state.pieces.length,approved:c("approved"),pending:c("pending"),blocked:state.blocked_count,delivered});
+  const counts={working,approved:c("approved"),pending:c("pending"),rejected:c("rejected"),redo:c("redo"),blocked:c("blocked")};
   document.getElementById("filters").innerHTML = Object.entries(counts)
     .map(([k,v])=>`<button class="${k===filter?'on':''}" onclick="setFilter('${k}')">${LBL[k]} (${v})</button>`).join("");
   const cc={}; for(const p of state.pieces) cc[p.concept]=(cc[p.concept]||0)+1;
   const concepts=(state.concepts&&state.concepts.length?state.concepts:Object.keys(cc));
   document.getElementById("cfilters").innerHTML =
-    `<button class="${cfilter==='all'?'on':''}" onclick="setConcept('all')">${T.allconcepts.replace("{n}",state.pieces.length)}</button>`+
+    `<button class="${cfilter==='all'?'on':''}" onclick="setConcept('all')">${fill(T.allconcepts,{n:state.pieces.length})}</button>`+
     concepts.map(k=>`<button class="${cfilter===k?'on':''}" onclick="setConcept('${k}')">${k} (${cc[k]||0})</button>`).join("");
+  document.getElementById("deliver-summary").innerHTML = fill(T["deliver.summary"],
+    {approved:c("approved"),regen:c("rejected")+c("redo")});
+  if(delivered>0) setStep(6);
   draw();
 }
-function setFilter(f){filter=f;load();}
-function setConcept(k){cfilter=k;load();}
+function setFilter(f){filter=f;draw();}
+function setConcept(k){cfilter=k;draw();}
+function setStep(n){document.querySelectorAll(".stepper .step").forEach(el=>{
+  const i=+el.dataset.step;el.classList.toggle("done",i<n);el.classList.toggle("current",i===n);
+  const d=el.querySelector(".n");if(d)d.textContent=i<n?"✓":String(i);});}
 function draw(){
   const items=state.pieces
-    .filter(p=>(filter==="all"||p.status===filter)&&(cfilter==="all"||p.concept===cfilter))
+    .filter(p=>(filter==="working"?p.status!=="approved":p.status===filter)&&(cfilter==="all"||p.concept===cfilter))
     .sort((a,b)=>a.concept.localeCompare(b.concept)||a.format.localeCompare(b.format));
   const g=document.getElementById("grid");
   if(!items.length){g.innerHTML=`<div class="empty">${T.empty}</div>`;return;}
@@ -252,12 +270,16 @@ function draw(){
            src="/img?path=${encodeURIComponent("out/"+p.path)}"></video>`
       : `<img loading="lazy" src="/img?path=${encodeURIComponent("review/thumbs/"+p.path)}"
            onclick="zoom('${encodeURIComponent(p.path)}')" alt="${p.id}">`;
+    const badges=(p.delivered?`<span class="tag approved"><span class="dot"></span>${T.delivered}</span>`:"")
+      +(p.queued?`<span class="tag"><span class="dot"></span>${T.queued}</span>`:"");
+    const note=(p.status==="redo"&&p.note)?`<p class="hint">↻ ${esc(p.note)}</p>`:"";
     return `<div class="card rcard">
       ${media}
       <div class="body">
         <div class="row"><span class="tag ${p.status}"><span class="dot"></span>${SING[p.status]}</span>
-          ${isVid?`<span class="tag">${T.video}</span>`:""}</div>
+          ${isVid?`<span class="tag">${T.video}</span>`:""}${badges}</div>
         <div class="name">${p.concept} · ${p.format}${isVid?" · "+Math.round(p.duration||0)+"s":""}</div>
+        ${note}
         <div class="row">
           <button class="btn ok" onclick="decide('${p.id}','approved')">${T.approve}</button>
           <button class="btn no" onclick="decide('${p.id}','rejected')">${T.reject}</button>
@@ -271,14 +293,33 @@ function zoom(path){document.getElementById("zoomimg").src="/img?path="+path;
 async function decide(id,status){
   await fetch("/decision",{method:"POST",body:JSON.stringify({id,status})});
   await load();
+  notify(status==="approved"?T.approvetoast:T.rejecttoast);
 }
 async function regen(id){
   const note=await ask(T.regenask);
   if(note===null||note.trim()==="") return;
   await fetch("/regen",{method:"POST",body:JSON.stringify({id,note})});
+  await load();
   notify(T.regentoast);
 }
+async function continuar(){
+  const r=await fetch("/continue",{method:"POST",body:"{}"});
+  const j=await r.json();
+  if(!r.ok){await tell(j.error||"erro");return;}
+  await load();
+  const box=document.getElementById("deliver-result");
+  if(j.exported===0&&j.regen===0){box.innerHTML="";notify(T["continue.empty"]);return;}
+  box.innerHTML=`<div class="callout ok">${fill(T["continue.done"],{n:j.exported,dir:j.delivery_dir,m:j.regen,req:j.requests_path})}</div>`;
+  notify(fill(T["continue.toast"],{n:j.exported,m:j.regen}));
+  setStep(6);
+}
+async function poll(){
+  if(document.querySelector("dialog[open]")) return;
+  const s=await (await fetch("/state")).json();
+  if(JSON.stringify(s)!==lastState) applyState(s);
+}
 load();
+setInterval(poll,4000);
 </script></body></html>"""
 
 
@@ -560,25 +601,28 @@ class Handler(BaseHTTPRequestHandler):
             return self._onboard_post(length)
         payload = json.loads(self.rfile.read(length) or b"{}")
         state_path = os.path.join(self.root, "state.json")
-        if self.path == "/decision":
+        if self.path in ("/decision", "/regen"):
             with open(state_path, encoding="utf-8") as f:
                 state = json.load(f)
+            redo = self.path == "/regen"
             for p in state["pieces"]:
                 if p["id"] == payload.get("id"):
-                    p["status"] = payload.get("status", "pending")
+                    p["status"] = "redo" if redo else payload.get("status", "pending")
+                    if redo:
+                        p["note"] = payload.get("note", "")
+                    else:
+                        p.pop("note", None)
+                    if p["status"] != "approved":
+                        p.pop("delivered", None)
+                        p.pop("delivery_path", None)
+                    p.pop("queued", None)
             with open(state_path, "w", encoding="utf-8") as f:
                 json.dump(state, f, indent=2, ensure_ascii=False)
             self._send(200, {"ok": True})
-        elif self.path == "/regen":
-            req_path = os.path.join(self.root, "requests.json")
-            reqs = []
-            if os.path.isfile(req_path):
-                with open(req_path, encoding="utf-8") as f:
-                    reqs = json.load(f)
-            reqs.append(payload)
-            with open(req_path, "w", encoding="utf-8") as f:
-                json.dump(reqs, f, indent=2, ensure_ascii=False)
-            self._send(200, {"ok": True, "queued": len(reqs)})
+        elif self.path == "/continue":
+            if not os.path.isfile(state_path):
+                return self._send(400, {"error": i18n.t("rv.err.nostate", self._lang())})
+            self._send(200, campaign.deliver(self.root))
         else:
             self._send(404, {"error": "not found"})
 

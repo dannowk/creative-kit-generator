@@ -19,7 +19,9 @@ conversa com você no chat e usa o navegador. Conduza nesta ordem:
    render → video`. Briefing livre (prosa/PDF/docx)? `brief --normalize <fonte>` →
    preencha o skeleton (visão p/ PDF; o que faltar fica vazio, vira gap) → `brief --apply`.
 6. Avise o ≈ custo antes de jobs de provider (é aviso, não porteiro).
-7. Suba `review` (abre o navegador sozinho) e conduza aprovar / rejeitar / refazer;
-   pedidos de refazer chegam em `requests.json`.
+7. Suba `review` (abre o navegador sozinho). Aprovar/rejeitar/refazer só **marcam**; o usuário
+   clica **Continuar** (etapa 6) — ou você roda `deliver` — para exportar as aprovadas em
+   `delivery/` e enfileirar rejeitadas/refazer em `requests.json`. Cumpra o lote (recrie/refaça
+   de fato, mudando template/asset/copy), rode `render --ids <ids>` e a revisão atualiza sozinha.
 
 Não pule o compliance (nunca cobrir rostos) e não hardcode visual de marca.
