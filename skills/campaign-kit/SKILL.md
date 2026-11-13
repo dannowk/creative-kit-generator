@@ -19,12 +19,14 @@ e o navegador.**
    (ou `~/Desktop/<marca>` se ele já disse o nome no chat). Sem perguntar caminho.
 3. **Bootstrap + onboarding num comando só**, em background: `./install.sh <inbox>`
    (sem `--no-open`). Baixa `uv` + Python 3.12 gerenciado sem admin, instala as deps
-   e **abre o wizard no navegador**, criando `logo/ photos/ videos/ refs/ fonts/
-   briefing.md`. `.venv/` já existe → só reabre o wizard.
+   e **abre o wizard no navegador**, criando `logo/ refs/ brandbook/ fonts/ photos/
+   videos/ briefing.md`. Cada slot aceita botão + arrastar-e-soltar (o briefing também).
+   `.venv/` já existe → só reabre o wizard.
 4. **Avise no chat** que o onboarding abriu; peça o logo (obrigatório) + fotos/refs +
-   briefing e espere o "pronto" do usuário.
+   briefing (brandbook é opcional) e espere o "pronto" do usuário.
 5. **Siga o `AGENTS.md`**: `intake (ou brief --apply) → plan → assets → render →
-   video`. A direção de arte vem do briefing + refs, não de outro cliente. Briefing
+   video`. A direção de arte vem do briefing + refs + brandbook (se houver), não de
+   outro cliente. Briefing
    livre (prosa/PDF/docx)? `brief --normalize <fonte>` → preencha o skeleton (visão
    p/ PDF; o que faltar fica vazio, vira gap) → `brief <out> --apply`.
 6. **Custo é aviso**: mostre ≈ créditos antes de jobs de provider e siga.

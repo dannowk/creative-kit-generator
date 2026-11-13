@@ -215,6 +215,12 @@ def main(argv=None):
         print("  referências (OLHE com visão, não só os pixels):")
         for r in info.get("refs") or []:
             print("   -", r)
+        brandbook = info.get("brandbook") or []
+        if brandbook:
+            print("  brandbook (LEIA — visão p/ PDF/imagem: cores, tipografia, uso do logo, voz):")
+            for b in brandbook:
+                print("   -", b)
+            print("   → as regras do brandbook prevalecem sobre a paleta proposta; conflite com o briefing vira pergunta.")
         print("  preencha reference_analysis:", ", ".join((info.get("reference_analysis") or {}).keys()))
         concepts_req = info.get("concepts_requested") or []
         if concepts_req:

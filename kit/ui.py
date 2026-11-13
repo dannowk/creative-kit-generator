@@ -67,6 +67,9 @@ a.btn{text-decoration:none}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;display:flex;
  flex-direction:column;box-shadow:0 1px 2px rgba(16,24,32,.05);overflow:hidden}
 .card.drag{border-color:var(--accent);box-shadow:0 0 0 3px rgba(11,107,203,.15)}
+.dropzone{border:1.5px dashed var(--line);border-radius:12px;padding:12px 14px;display:flex;
+ flex-wrap:wrap;gap:10px;align-items:center;background:#fbfcfd}
+.dropzone.drag{border-color:var(--accent);box-shadow:0 0 0 3px rgba(11,107,203,.15)}
 .card .body{padding:14px 16px;display:flex;flex-direction:column;gap:10px;flex:1}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .tag{font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid var(--pend-line);
@@ -341,8 +344,10 @@ def onboard_page(lang):
 <div class="grid" id="slots"></div></div>
 <div class="panel"><h2><span class="n">2</span>{i18n.t('ob.p2.title', lang)}</h2>
 <p class="desc">{i18n.t('ob.p2.desc', lang)}</p>
-<div class="row"><label class="btn">{i18n.t('ob.p2.upload', lang)}<input type="file"
+<div class="dropzone" id="briefdrop">
+<label class="btn">{i18n.t('ob.p2.upload', lang)}<input type="file"
   accept=".md,.txt,.rtf,.pdf,.docx" hidden onchange="uploadBrief(this.files)"></label>
+<span class="meta">{i18n.t('ob.p2.drop', lang)}</span>
 <span class="meta" id="brieffile">{i18n.t('ob.p2.filenote', lang)}</span></div>
 <div class="chips" id="sections"></div>
 <div class="chips" id="concepts"></div>
@@ -463,6 +468,10 @@ async function saveAnswers(){
   await fetch("/answers",{method:"POST",body:JSON.stringify({brand_id:INT.summary.brand,answers})});
   notify(fill(T.saved,{brand:INT.summary.brand}));
 }
+const bd=document.getElementById("briefdrop");
+bd.addEventListener("dragover",e=>{e.preventDefault();bd.classList.add("drag");});
+bd.addEventListener("dragleave",()=>bd.classList.remove("drag"));
+bd.addEventListener("drop",e=>{e.preventDefault();bd.classList.remove("drag");uploadBrief(e.dataTransfer.files);});
 load();
 </script></body></html>"""
 

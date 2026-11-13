@@ -45,10 +45,16 @@ minha-marca/
   logo/        ← logo png, de preferência fundo transparente (obrigatório)
   photos/      ← fotos que podem virar peça
   videos/      ← clipes fonte
-  refs/        ← 2–6 referências do look desejado
+  refs/        ← 2–6 referências de anúncios/posts do look desejado
+  brandbook/   ← manual da marca em PDF/imagens/docx (opcional)
   fonts/       ← .ttf / .otf da marca (opcional; há substitutas)
   briefing.md  ← o briefing que você preencheu na tela (ou editado à mão)
 ```
+
+Cada slot aceita **botão ou arrastar-e-soltar** — e o briefing também: arraste um
+`.md/.txt/.rtf/.pdf/.docx` para a área de briefing, ou escreva/cole na tela. Se você
+anexar um **brandbook**, o agente lê as regras da marca (cores, tipografia, uso do logo,
+voz) e as segue junto com o briefing e as referências.
 
 **Já tem um briefing pronto em qualquer formato** (Word, PDF, texto, e-mail)? Não
 precisa reescrever nada: o agente **normaliza** para o modelo do kit e te pergunta só

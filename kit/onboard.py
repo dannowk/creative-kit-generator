@@ -10,6 +10,7 @@ import re
 IMG_EXT = (".png", ".jpg", ".jpeg", ".webp")
 FONT_EXT = (".otf", ".ttf", ".ttc")
 VID_EXT = (".mp4", ".mov", ".webm", ".m4v")
+DOC_EXT = (".pdf", ".docx", ".md", ".txt", ".rtf")
 
 SLOTS = [
     {"key": "logo", "dir": "logo", "label": "Logo", "ext": IMG_EXT, "multiple": False,
@@ -17,7 +18,10 @@ SLOTS = [
      "hint": "PNG com fundo transparente, de preferência. É dele que sai a paleta proposta."},
     {"key": "refs", "dir": "refs", "label": "Referências de look", "ext": IMG_EXT, "multiple": True,
      "required": False,
-     "hint": "2 a 6 imagens do look desejado. O agente olha com visão e escreve a direção de arte a partir delas."},
+     "hint": "2 a 6 imagens de anúncios/posts do look desejado. O agente olha com visão e cruza com o briefing para escrever a direção de arte."},
+    {"key": "brandbook", "dir": "brandbook", "label": "Brandbook (manual da marca)",
+     "ext": DOC_EXT + IMG_EXT, "multiple": True, "required": False,
+     "hint": "Opcional. PDF, imagens ou docx com as regras da marca (cores, tipografia, uso do logo, voz). O agente lê com visão e segue junto com o briefing e as referências."},
     {"key": "fonts", "dir": "fonts", "label": "Fontes da marca", "ext": FONT_EXT, "multiple": True,
      "required": False,
      "hint": ".otf / .ttf. Sem elas, uso substitutas do sistema e aviso exatamente quais."},

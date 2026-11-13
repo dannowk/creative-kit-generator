@@ -23,7 +23,7 @@ BRIEF_EXT = (".md", ".txt", ".docx", ".pdf", ".rtf")
 
 def inventory(inbox):
     found = {"logo": None, "refs": [], "fonts": [], "briefs": [],
-             "photos": [], "videos": [], "other": []}
+             "photos": [], "videos": [], "brandbook": [], "other": []}
     for root, _, files in os.walk(inbox):
         for f in sorted(files):
             if f.startswith("."):
@@ -32,6 +32,9 @@ def inventory(inbox):
             low = f.lower()
             rel = os.path.relpath(p, inbox)
             top = rel.split(os.sep)[0].lower() if os.sep in rel else ""
+            if top == "brandbook":
+                found["brandbook"].append(p)
+                continue
             if low.endswith(VID_EXT):
                 found["videos"].append(p)
             elif low.endswith(FONT_EXT):
@@ -211,7 +214,8 @@ def run(inbox, brand_id, brands_dir, lang="pt"):
                "refs": inv["refs"], "ref_count": len(inv["refs"]),
                "photos": inv["photos"], "videos": inv["videos"],
                "fonts": len(inv["fonts"]),
-               "briefs": inv["briefs"], "subjects": subjects, "gaps": gaps,
+               "briefs": inv["briefs"], "brandbook": inv["brandbook"],
+               "subjects": subjects, "gaps": gaps,
                "concepts_requested": concepts_req,
                "reference_analysis": {"composition": "", "mood": "", "type": "",
                                       "texture": "", "layout": "", "must_avoid": ""}}

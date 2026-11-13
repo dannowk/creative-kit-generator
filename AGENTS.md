@@ -28,7 +28,7 @@ roda tudo. Em vez do venv manual acima, use `./install.sh <inbox>` em background
 `--no-open`): ele baixa `uv` + Python 3.12 gerenciado **sem admin**, instala as deps e
 **abre o wizard de onboarding no navegador**. **Crie a pasta `<inbox>` automaticamente**
 (default `~/Desktop/minha-campanha`, ou `~/Desktop/<marca>`), sem perguntar caminho ao
-usuário; o `onboard` faz o scaffold (`logo/ photos/ videos/ refs/ fonts/ briefing.md`).
+usuário; o `onboard` faz o scaffold (`logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing.md`).
 Avise no chat que o onboarding abriu, espere o "pronto" e siga o pipeline. Os comandos
 `python3` abaixo são o equivalente manual (porta C); no fluxo gerenciado use
 `.venv/bin/python -m kit.cli ...` (Mac/Linux) ou `.venv\Scripts\python ...` (Windows).
@@ -49,7 +49,9 @@ nem fallback de sistema (raro).
 ```bash
 # 1. Preparar a pasta da campanha (scaffold + UI guiada em 127.0.0.1:8766)
 python3 -m kit.cli onboard ~/inbox/acme
-#    cria logo/ refs/ fonts/ photos/ videos/ + briefing.md; o usuário preenche.
+#    cria logo/ refs/ brandbook/ fonts/ photos/ videos/ + briefing.md; o usuário preenche.
+#    No wizard, cada slot aceita botão + arrastar-e-soltar; o briefing também (arraste
+#    .md/.txt/.rtf/.pdf/.docx). brandbook/ é opcional (manual da marca em PDF/imagens/docx).
 #    --no-ui = só scaffold + checklist, sem servidor.
 
 # 2. Derivar a marca da pasta jogada (paleta, logo, análise das refs, gaps)
@@ -76,9 +78,11 @@ python3 -m kit.cli brief --normalize ~/inbox/briefing.pdf   # [--out ~/inbox/bri
 
 # 3. Direção de arte a partir do briefing + referências  ← SEU TRABALHO CRIATIVO
 python3 -m kit.cli plan campaigns/acme-launch
-#    imprime briefing, respostas do onboarding, refs, reference_analysis, os
-#    conceitos pedidos e o vocabulário de OPS. Autorais os templates/<concept>.yaml
-#    a partir DISSO — um por conceito pedido.
+#    imprime briefing, respostas do onboarding, refs, brandbook (se houver),
+#    reference_analysis, os conceitos pedidos e o vocabulário de OPS. Autorais os
+#    templates/<concept>.yaml a partir DISSO — um por conceito pedido. LEIA o brandbook
+#    com visão (PDF/imagem): as regras dele (cores, tipografia, uso do logo, voz)
+#    prevalecem sobre a paleta proposta do logo; conflito com o briefing vira pergunta.
 
 # 4. Assets de IA (imagem e vídeo) — aviso de custo informativo, sem porteiro
 python3 -m kit.cli assets campaigns/acme-launch

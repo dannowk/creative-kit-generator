@@ -44,10 +44,16 @@ my-brand/
   logo/        ← logo png, transparent background preferred (required)
   photos/      ← photos that can become a piece
   videos/      ← source clips
-  refs/        ← 2–6 references of the desired look
+  refs/        ← 2–6 ad/post references of the desired look
+  brandbook/   ← brand manual as PDF/images/docx (optional)
   fonts/       ← brand .ttf / .otf (optional; there are substitutes)
   briefing.md  ← the briefing you filled on screen (or edited by hand)
 ```
+
+Every slot accepts a **button or drag-and-drop** — and so does the briefing: drag a
+`.md/.txt/.rtf/.pdf/.docx` onto the briefing area, or write/paste on screen. If you
+attach a **brandbook**, the agent reads the brand rules (colors, typography, logo usage,
+voice) and follows them alongside the briefing and references.
 
 **Already have a briefing in any format** (Word, PDF, text, email)? No need to rewrite
 anything: the agent **normalizes** it into the kit template and asks you only about what
