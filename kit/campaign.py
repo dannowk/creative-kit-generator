@@ -230,13 +230,15 @@ def _merge_prior(root, pieces):
     return pieces
 
 
-def deliver(root):
+def deliver(root, lang="pt"):
     """Etapa 6 — o botão Continuar: exporta as aprovadas e enfileira a recriação/refazer.
 
     Local e imediato: copia as aprovadas de `out/` para `delivery/<conceito>/` e marca
     `delivered`. As rejeitadas (recriar) e refazer (com a nota) viram um lote em
     `requests.json` — a regeneração é do agente (o render é determinístico; a UI não
     chama MCP). O agente recria/refaz, roda `render --ids` e a revisão atualiza sozinha.
+    Com as aprovadas exportadas, gera também as planilhas de bulk upload de PPC
+    (Meta + Google) em `delivery/ppc/`.
     """
     with open(os.path.join(root, "state.json"), encoding="utf-8") as f:
         state = json.load(f)
@@ -264,8 +266,13 @@ def deliver(root):
         json.dump(state, f, indent=2, ensure_ascii=False)
     with open(os.path.join(root, "requests.json"), "w", encoding="utf-8") as f:
         json.dump(batch, f, indent=2, ensure_ascii=False)
+    ppc_summary = None
+    if exported:
+        from . import ppc
+        ppc_summary = ppc.export(root, lang=lang)
     return {"exported": len(exported), "regen": len(batch), "exported_ids": exported,
-            "delivery_dir": "delivery", "requests_path": "requests.json", "batch": batch}
+            "delivery_dir": "delivery", "requests_path": "requests.json", "batch": batch,
+            "ppc": ppc_summary}
 
 
 def _sheets(root, out_dir, pieces):

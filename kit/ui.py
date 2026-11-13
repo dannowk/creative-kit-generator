@@ -313,6 +313,9 @@ async function continuar(){
   const box=document.getElementById("deliver-result");
   if(j.exported===0&&j.regen===0){box.innerHTML="";notify(T["continue.empty"]);return;}
   box.innerHTML=`<div class="callout ok">${fill(T["continue.done"],{n:j.exported,dir:j.delivery_dir,m:j.regen,req:j.requests_path})}</div>`;
+  if(j.ppc&&j.ppc.files&&j.ppc.files.length){
+    box.innerHTML+=`<div class="callout">${fill(T["continue.ppc"],{dir:j.ppc.dir,n:j.ppc.files.length,meta:j.ppc.meta,display:j.ppc.google_display,rsa:j.ppc.google_rsa})}</div>`;
+  }
   notify(fill(T["continue.toast"],{n:j.exported,m:j.regen}));
   setStep(6);
 }
@@ -631,7 +634,7 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/continue":
             if not os.path.isfile(state_path):
                 return self._send(400, {"error": i18n.t("rv.err.nostate", self._lang())})
-            self._send(200, campaign.deliver(self.root))
+            self._send(200, campaign.deliver(self.root, lang=self._lang()))
         else:
             self._send(404, {"error": "not found"})
 

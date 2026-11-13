@@ -105,7 +105,13 @@ python3 -m kit.cli review campaigns/acme-launch
 # 7. Entrega — equivalent headless do "Continuar". Exporta as aprovadas para delivery/<conceito>/
 #    e enfileira rejeitadas (recriar) + refazer (com a nota) em requests.json. A regeneração é
 #    SUA (agente): cumpra o lote e rode `render --ids`. Ver "Etapa 6 — Entrega e regeneração".
+#    Com as aprovadas exportadas, gera também as planilhas de PPC em delivery/ppc/ (Meta + Google).
 python3 -m kit.cli deliver campaigns/acme-launch
+
+# 8. Planilhas de bulk upload p/ o time de PPC (Meta + Google), CSV + XLSX, em delivery/ppc/.
+#    Determinístico: cada peça aprovada vira linha nas colunas de import de cada plataforma.
+#    --all exporta todas as peças (não só as aprovadas). Ver "Etapa 6b — Planilhas de PPC".
+python3 -m kit.cli ppc campaigns/acme-launch
 ```
 
 `campaign` é sempre um **caminho** (ex.: `campaigns/acme-launch`), não um slug.
@@ -121,7 +127,8 @@ python3 -m kit.cli deliver campaigns/acme-launch
   eixos, naming, compliance, safe zones, locales) + `assets/logo.png` + `intake.json`.
 - `campaigns/<slug>/` — `campaign.json` (brand, channels, concepts, axes, cta, copy,
   provider, asset_jobs) + `assets/` + `out/<concept>/` + `review/` + `delivery/<concept>/`
-  (aprovadas exportadas pelo Continuar) + `state.json` (decisões) + `requests.json` (lote de regeneração).
+  (aprovadas exportadas pelo Continuar) + `delivery/ppc/` (planilhas de bulk upload Meta +
+  Google, CSV + XLSX) + `state.json` (decisões) + `requests.json` (lote de regeneração).
 - `brands/acme` + `campaigns/acme-launch` — exemplo genérico que acompanha o repo.
 
 ## Specs de template (declarativo)
@@ -255,6 +262,40 @@ Python re-renderiza e a UI atualiza. A revisão é **em lote** — decidir não 
    lista de aprovadas. O usuário revisa de novo e clica Continuar outra vez até fechar.
 
 `delivery/` é a pasta de entrega final (aprovadas). `out/` continua sendo o render de trabalho.
+
+## Etapa 6b — Planilhas de PPC (bulk upload Meta + Google)
+
+Quando a demanda é alta, Meta e Google aceitam importar anúncios em lote por planilha. O
+`kit.cli ppc` (e o **Continuar**, que já chama o export) gera essas planilhas em
+`delivery/ppc/`, **uma por plataforma**, em **CSV** (import direto) e **XLSX** (revisão no
+Excel/Sheets). É determinístico: cada peça aprovada (criativo + copy) vira uma linha nas
+colunas de import da plataforma, conforme formato/tamanho/canal.
+
+**Arquivos gerados:**
+- `meta_bulk_import` → Meta Ads Manager → Import/Export → **Import Ads in Bulk**. Uma linha
+  por peça Meta (feed/story/reels), com placements por formato, CTA, copy e nome do criativo.
+- `google_search_rsa` → Google Ads Editor (CSV) ou **Bulk actions → Uploads**. Responsive
+  Search Ads: até 15 headlines (≤30 car.) + 4 descriptions (≤90) derivados do copy por
+  conceito×eixo (não por peça — o RSA é texto, não imagem).
+- `google_display` → Google Ads Editor / Uploads. Responsive Display Ads: texto + **referência
+  ao arquivo de imagem/logo** (o anexo da imagem é feito no Editor, não por CSV puro).
+- `creative_manifest` → referência humana: cada peça com plataforma, formato, tamanho,
+  conceito, eixos, arquivo, caminho de entrega e copy (hook/kicker/program/CTA).
+- `README.txt` → o que já vem preenchido vs. o que o time de PPC completa, e os limites.
+
+**Já preenchido pelo kit:** nomes de campanha/ad set/ad, criativo (nome do arquivo), copy
+(hook/primary text, headline, description), CTA (enum do Meta), placements e tamanho.
+**Fica em branco (coluna rotulada) para o time de PPC:** URL final (`Link`/`Final URL`),
+Display Link, URL Tags (UTM), objetivo, orçamento, optimization goal, billing event,
+países/targeting e IDs (Facebook Page/`Link Object ID`, Instagram Account ID, Pixel). Tudo
+sai **PAUSED/Paused** para revisão antes de ativar.
+
+**SEU TRABALHO como agente:** o export é mecânico e não inventa URL nem orçamento. Se o
+briefing trouxer a landing page, você pode gravar `landing_url` no `campaign.json` para o
+kit pré-preencher `Link`/`Final URL`; caso contrário, deixe em branco e sinalize ao usuário
+que o PPC completa. Não preencha IDs de Page/Pixel/Instagram nem verba — são do time de
+tráfego. O copy do RSA sai do `copy` da campanha; se faltar headline/description, melhore o
+`copy` no briefing e re-renderize/exporte, não hardcode na planilha.
 
 ## Idioma (PT/EN)
 

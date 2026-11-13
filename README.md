@@ -110,6 +110,11 @@ lista de aprovadas. Repita até fechar a campanha.
   o endereço também fica no topo da tela e no fim de `render` / `video` no terminal.
 - Peças entregues (aprovadas): `campaigns/<campanha>/delivery/<conceito>/` (png/mp4). O
   render de trabalho fica em `out/<conceito>/` + contact sheet `review/sheet_<conceito>.png`.
+- **Planilhas p/ o time de PPC (Meta + Google):** o Continuar também gera
+  `campaigns/<campanha>/delivery/ppc/` com o bulk upload de cada plataforma em **CSV + XLSX**
+  (Meta Ads Manager, Google Search RSA e Google Display) + um manifesto dos criativos. Já
+  vem com nomes, copy, CTA, placements e tamanho; o time de tráfego completa URL, orçamento
+  e IDs. Tudo sai pausado para revisão. Veja [Planilhas de PPC](#planilhas-de-ppc-meta--google).
 - **Idioma da interface:** o wizard e a revisão têm toggle **PT | EN** no topo (fica
   gravado no navegador). No terminal, `--lang en` ou `KIT_LANG=en` traduz as mensagens.
 
@@ -195,7 +200,49 @@ python3 -m kit.cli review  campaigns/acme-launch   # abre o navegador sozinho; a
 python3 -m kit.cli deliver campaigns/acme-launch   # etapa 6: o "Continuar" — exporta aprovadas + enfileira recriação/refazer
 #  o agente cumpre requests.json e re-renderiza só as peças do lote (preserva as aprovadas):
 python3 -m kit.cli render  campaigns/acme-launch --ids <id1> <id2>
+python3 -m kit.cli ppc     campaigns/acme-launch   # planilhas de bulk upload (Meta + Google), CSV + XLSX, em delivery/ppc/
+python3 -m kit.cli ppc     campaigns/acme-launch --all   # exporta todas as peças, não só as aprovadas
 ```
+
+## Planilhas de PPC (Meta + Google)
+
+Para campanhas com muitos anúncios, Meta e Google aceitam **importar em lote por planilha**.
+O kit gera essas planilhas sozinho — o **Continuar** já cria, e você também pode rodar
+`python3 -m kit.cli ppc <campanha>` a qualquer momento. Tudo cai em
+`campaigns/<campanha>/delivery/ppc/`, em **CSV** (import direto) e **XLSX** (revisão no
+Excel/Google Sheets):
+
+| Arquivo | Onde importar | O que é |
+|---|---|---|
+| `meta_bulk_import` | Meta Ads Manager → Import/Export → **Import Ads in Bulk** | Uma linha por peça Meta (feed/story/reels), com placements, CTA, copy e nome do criativo. |
+| `google_search_rsa` | Google Ads Editor (CSV) ou **Bulk actions → Uploads** | Responsive Search Ads: até 15 headlines (≤30 car.) + 4 descriptions (≤90) por conceito×eixo. |
+| `google_display` | Google Ads Editor / Uploads | Responsive Display Ads: texto + referência ao arquivo de imagem/logo (o anexo é feito no Editor). |
+| `creative_manifest` | — (referência humana) | Cada peça com plataforma, formato, tamanho, conceito, arquivo e copy. |
+| `README.txt` | — | O que vem preenchido vs. o que o PPC completa, e os limites de caracteres. |
+
+**Já preenchido:** nomes de campanha/ad set/anúncio, criativo (nome do arquivo), copy
+(hook/primary text, headline, description), CTA, placements e tamanho — tudo derivado da
+campanha renderizada, conforme a plataforma e o formato de cada peça.
+
+**O time de PPC completa (colunas em branco):** URL final, Display Link, URL Tags (UTM),
+objetivo, orçamento, targeting e IDs (Facebook Page, Instagram, Pixel). Nada disso é
+inventado pelo kit. Todos os anúncios saem **pausados** para revisão antes de ativar.
+
+<details>
+<summary>Detalhes (avançado)</summary>
+
+- O export é **determinístico**: peça aprovada → linha. Re-renderize/re-aprove e rode `ppc`
+  de novo para atualizar. `--all` inclui peças ainda não aprovadas (útil para rascunho).
+- O copy do Google RSA sai do `copy` da campanha (program/kicker/hook/CTA), truncado nos
+  limites do Google e sem os `[colchetes]` de destaque. Melhore o `copy` no briefing se
+  quiser headlines/descriptions melhores — não edite a planilha na mão.
+- Se o briefing trouxer a landing page, grave `landing_url` no `campaign.json` para o kit
+  pré-preencher `Link`/`Final URL`; senão ficam em branco para o PPC.
+- XLSX exige `openpyxl` (já em `requirements.txt`). Sem ele, o kit exporta só CSV e avisa.
+- Google Display não anexa imagem por CSV puro: a planilha lista `Image file`/`Logo file`
+  para você anexar no Editor. Meta usa o nome do arquivo de criativo já exportado.
+
+</details>
 
 ## O que vem no repo
 

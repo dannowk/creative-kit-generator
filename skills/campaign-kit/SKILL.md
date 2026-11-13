@@ -36,6 +36,11 @@ e o navegador.**
    `delivery/` e enfileirar rejeitadas (recriar) + refazer (com a nota) em `requests.json`.
    **Cumpra o lote**: ajuste template/asset/copy (recrie de fato — o render é determinístico),
    rode `render --ids <ids>` (preserva as aprovadas) e a revisão atualiza sozinha. Repita até fechar.
+8. **Planilhas de PPC (Meta + Google)**: o Continuar/`deliver` já gera `delivery/ppc/` com o
+   bulk upload de cada plataforma em CSV + XLSX (Meta Ads Manager, Google Search RSA, Google
+   Display) + manifesto. Ou rode `ppc <campanha>` (`--all` p/ não-aprovadas). Nomes/copy/CTA/
+   placements/tamanho vêm preenchidos; **URL, orçamento, targeting e IDs ficam em branco para
+   o time de tráfego** — não invente. Tudo sai pausado. Ver "Etapa 6b" no AGENTS.md.
 
 Provider de assets (MCP do usuário, ex. Magnific) vive no agente, não no kit:
 seção `provider` do briefing + `assets/jobs.json` → MCP → `drop_dir` → coleta.

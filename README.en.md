@@ -110,6 +110,11 @@ in the approved list. Repeat until the campaign is done.
   the address is also at the top of the screen and at the end of `render` / `video` in the terminal.
 - Delivered (approved) pieces: `campaigns/<campaign>/delivery/<concept>/` (png/mp4). The
   working render lives in `out/<concept>/` + contact sheet `review/sheet_<concept>.png`.
+- **Sheets for the PPC team (Meta + Google):** Continue also generates
+  `campaigns/<campaign>/delivery/ppc/` with each platform's bulk upload in **CSV + XLSX**
+  (Meta Ads Manager, Google Search RSA and Google Display) + a creative manifest. Names,
+  copy, CTA, placements and size come pre-filled; the traffic team fills URL, budget and
+  IDs. Everything ships paused for review. See [PPC sheets](#ppc-sheets-meta--google).
 - **Interface language:** the wizard and the review have a **PT | EN** toggle at the top
   (it is remembered in the browser). In the terminal, `--lang en` or `KIT_LANG=en`
   translates the messages.
@@ -196,11 +201,54 @@ python3 -m kit.cli review  campaigns/acme-launch   # opens the browser by itself
 python3 -m kit.cli deliver campaigns/acme-launch   # stage 6: the "Continue" — exports approved + queues recreation/redo
 #  the agent fulfils requests.json and re-renders only the batch pieces (preserves the approved):
 python3 -m kit.cli render  campaigns/acme-launch --ids <id1> <id2>
+python3 -m kit.cli ppc     campaigns/acme-launch   # bulk-upload sheets (Meta + Google), CSV + XLSX, in delivery/ppc/
+python3 -m kit.cli ppc     campaigns/acme-launch --all   # export every piece, not just the approved ones
 ```
 
 Add `--lang en` (or set `KIT_LANG=en`) to any command for English messages; the default is
 Portuguese. The `plan` art-direction output stays in Portuguese — it is guidance for the
 agent, like `AGENTS.md`.
+
+## PPC sheets (Meta + Google)
+
+For campaigns with many ads, Meta and Google accept **bulk import via spreadsheet**. The kit
+generates those sheets by itself — **Continue** already creates them, and you can also run
+`python3 -m kit.cli ppc <campaign>` anytime. Everything lands in
+`campaigns/<campaign>/delivery/ppc/`, as **CSV** (direct import) and **XLSX** (review in
+Excel/Google Sheets):
+
+| File | Where to import | What it is |
+|---|---|---|
+| `meta_bulk_import` | Meta Ads Manager → Import/Export → **Import Ads in Bulk** | One row per Meta piece (feed/story/reels), with placements, CTA, copy and creative file name. |
+| `google_search_rsa` | Google Ads Editor (CSV) or **Bulk actions → Uploads** | Responsive Search Ads: up to 15 headlines (≤30 chars) + 4 descriptions (≤90) per concept×axis. |
+| `google_display` | Google Ads Editor / Uploads | Responsive Display Ads: text + image/logo file reference (attachment is done in Editor). |
+| `creative_manifest` | — (human reference) | Each piece with platform, format, size, concept, file and copy. |
+| `README.txt` | — | What is pre-filled vs. what PPC completes, and the character limits. |
+
+**Pre-filled:** campaign/ad set/ad names, creative (file name), copy (hook/primary text,
+headline, description), CTA, placements and size — all derived from the rendered campaign,
+per platform and per piece format.
+
+**The PPC team completes (blank columns):** final URL, Display Link, URL Tags (UTM),
+objective, budget, targeting and IDs (Facebook Page, Instagram, Pixel). None of that is
+invented by the kit. Every ad ships **paused** for review before going live.
+
+<details>
+<summary>Details (advanced)</summary>
+
+- The export is **deterministic**: approved piece → row. Re-render/re-approve and run `ppc`
+  again to refresh. `--all` includes pieces not yet approved (handy for drafts).
+- Google RSA copy comes from the campaign `copy` (program/kicker/hook/CTA), truncated to
+  Google's limits and stripped of the `[bracket]` highlights. Improve the briefing `copy`
+  for better headlines/descriptions — don't hand-edit the sheet.
+- If the briefing has a landing page, set `landing_url` in `campaign.json` so the kit
+  pre-fills `Link`/`Final URL`; otherwise they stay blank for PPC.
+- XLSX needs `openpyxl` (already in `requirements.txt`). Without it the kit exports CSV only
+  and says so.
+- Google Display can't attach images via plain CSV: the sheet lists `Image file`/`Logo file`
+  for you to attach in Editor. Meta uses the already-exported creative file name.
+
+</details>
 
 ## What is in the repo
 

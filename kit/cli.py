@@ -6,6 +6,7 @@
   python3 -m kit.cli render campaigns/acme-launch
   python3 -m kit.cli review campaigns/acme-launch
   python3 -m kit.cli deliver campaigns/acme-launch   # etapa 6: o Continuar da revisão
+  python3 -m kit.cli ppc campaigns/acme-launch        # planilhas de bulk upload (Meta + Google)
 """
 
 import argparse
@@ -56,6 +57,10 @@ def main(argv=None):
 
     p = sub.add_parser("deliver", help="etapa 6: exporta aprovadas + enfileira recriação/refazer (o Continuar da revisão)")
     p.add_argument("campaign")
+
+    p = sub.add_parser("ppc", help="planilhas de bulk upload p/ o time de PPC (Meta + Google), CSV + XLSX")
+    p.add_argument("campaign")
+    p.add_argument("--all", action="store_true", help="exporta todas as peças, não só as aprovadas")
 
     p = sub.add_parser("plan", help="direção de arte a partir do briefing + referências")
     p.add_argument("campaign")
@@ -243,13 +248,32 @@ def main(argv=None):
         if not os.path.isfile(os.path.join(camp["_root"], "state.json")):
             print(i18n.t("cli.deliver.nostate", lang), file=sys.stderr)
             return 1
-        result = campaign.deliver(camp["_root"])
+        result = campaign.deliver(camp["_root"], lang=lang)
         if result["exported"] == 0 and result["regen"] == 0:
             print(i18n.t("cli.deliver.empty", lang))
             return 0
         print(i18n.t("cli.deliver.summary", lang, exported=result["exported"],
                      dir=result["delivery_dir"], regen=result["regen"], req=result["requests_path"]))
         print("  " + i18n.t("cli.deliver.next", lang, req=result["requests_path"]))
+        if result.get("ppc"):
+            print("  " + i18n.t("cli.deliver.ppc", lang, dir=result["ppc"]["dir"],
+                                n=len(result["ppc"]["files"])))
+        return 0
+
+    if args.cmd == "ppc":
+        from . import ppc
+        root = camp["_root"]
+        if not os.path.isfile(os.path.join(root, "state.json")):
+            print(i18n.t("cli.ppc.nostate", lang), file=sys.stderr)
+            return 1
+        s = ppc.export(root, all_pieces=args.all, lang=lang)
+        if not s["meta"] and not s["google_display"] and not s["google_rsa"] and not s["manifest"]:
+            print(i18n.t("cli.ppc.empty", lang))
+            return 0
+        print(i18n.t("cli.ppc.summary", lang, meta=s["meta"], display=s["google_display"],
+                     rsa=s["google_rsa"], manifest=s["manifest"], dir=s["dir"], n=len(s["files"])))
+        if not s["xlsx"]:
+            print("  " + i18n.t("cli.ppc.xlsxoff", lang))
         return 0
 
     if args.cmd == "review":
