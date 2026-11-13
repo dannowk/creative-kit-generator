@@ -226,6 +226,14 @@ def main(argv=None):
             for b in brandbook:
                 print("   -", b)
             print("   → as regras do brandbook prevalecem sobre a paleta proposta; conflite com o briefing vira pergunta.")
+        brief_docs = info.get("brief_docs") or []
+        if brief_docs:
+            print("  documentos de apoio do briefing (LEIA todos — texto/planilha; visão p/ PDF/imagem):")
+            for b in brief_docs:
+                print("   -", b)
+            print("   → copy/conteúdo dos anúncios alimenta campaign.json.copy (hook/kicker/program/CTA por conceito/eixo);")
+            print("     regras de layout, safe areas e segurança do logo viram geometry/safe_zones e compliance no brand.yaml")
+            print("     e nos templates. Conflito com o briefing vira pergunta — não chute.")
         print("  preencha reference_analysis:", ", ".join((info.get("reference_analysis") or {}).keys()))
         concepts_req = info.get("concepts_requested") or []
         if concepts_req:

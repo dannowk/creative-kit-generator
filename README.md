@@ -48,6 +48,7 @@ minha-marca/
   refs/        ← 2–6 referências de anúncios/posts do look desejado
   brandbook/   ← manual da marca em PDF/imagens/docx (opcional)
   fonts/       ← .ttf / .otf da marca (opcional; há substitutas)
+  briefing/    ← documentos de apoio: copy dos anúncios, regras de layout, safe areas, segurança do logo (opcional, vários)
   briefing.md  ← o briefing que você preencheu na tela (ou editado à mão)
 ```
 
@@ -55,6 +56,14 @@ Cada slot aceita **botão ou arrastar-e-soltar** — e o briefing também: arras
 `.md/.txt/.rtf/.pdf/.docx` para a área de briefing, ou escreva/cole na tela. Se você
 anexar um **brandbook**, o agente lê as regras da marca (cores, tipografia, uso do logo,
 voz) e as segue junto com o briefing e as referências.
+
+**Documentos de apoio (vários arquivos):** na área de briefing há uma zona **"Documentos
+de apoio"** para anexar quantos arquivos quiser — o **conteúdo/copy dos anúncios** (quando
+está em arquivos separados), **regras de layout**, **safe areas** e **segurança do logo**
+do brandbook. Aceita texto, PDF/Word, imagens (diagramas) e planilha (`.csv/.xlsx`, ex.:
+tabela de copy). Eles **se somam** (não substituem o briefing) e aparecem numa lista com
+botão de remover. O agente lê tudo no `plan`: o copy vira o texto das peças (e dos anúncios
+de search no PPC), e as regras de layout/safe area/logo viram geometria e compliance.
 
 **Já tem um briefing pronto em qualquer formato** (Word, PDF, texto, e-mail)? Não
 precisa reescrever nada: o agente **normaliza** para o modelo do kit e te pergunta só

@@ -12,11 +12,13 @@ conversa com você no chat e usa o navegador. Conduza nesta ordem:
 3. Rode `./install.sh <inbox>` em **background, sem `--no-open`**. Ele baixa `uv` +
    Python 3.12 gerenciado (sem admin), instala as dependências e **abre o wizard de
    onboarding no navegador** do usuário, criando `logo/ refs/ brandbook/ fonts/
-   photos/ videos/ briefing.md`. Cada slot aceita botão + arrastar-e-soltar (o briefing
+   photos/ videos/ briefing/ briefing.md`. Cada slot aceita botão + arrastar-e-soltar (o briefing
    também). Se `.venv/` já existe, só reabre o wizard.
 4. Diga no chat: *"Abri o onboarding no navegador. Suba o logo (obrigatório), fotos
    e referências, e preencha o briefing; se tiver um brandbook, pode anexar também
-   (opcional). Me avise quando terminar."* Espere o OK.
+   (opcional). Na área de briefing há 'Documentos de apoio' para anexar vários arquivos:
+   copy dos anúncios, regras de layout, safe areas, segurança do logo. Me avise quando terminar."*
+   Espere o OK.
 5. Leia `AGENTS.md` e siga o pipeline: `intake (ou brief --apply) → plan → assets →
    render → video`. Briefing livre (prosa/PDF/docx)? `brief --normalize <fonte>` →
    preencha o skeleton (visão p/ PDF; o que faltar fica vazio, vira gap) → `brief --apply`.

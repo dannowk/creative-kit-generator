@@ -82,6 +82,8 @@ a.btn{text-decoration:none}
 .hint{color:var(--mut);font-size:13px;margin:0}
 .files{margin:0;padding:0;list-style:none;font-size:13px;display:grid;gap:4px}
 .files li{display:flex;justify-content:space-between;gap:8px;background:var(--pend-bg);border-radius:8px;padding:4px 8px}
+.files li .docremove{min-height:22px;padding:0 8px;font-size:12px;line-height:1;border-radius:6px}
+.docsblock{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:12px;margin-top:2px}
 .files .meta{color:var(--mut)}
 textarea{width:100%;min-height:300px;background:#fbfcfd;color:var(--ink);border:1px solid var(--line);
  border-radius:10px;padding:12px;font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
@@ -356,7 +358,16 @@ def onboard_page(lang):
 <div class="chips" id="concepts"></div>
 <textarea id="brief"></textarea>
 <div class="row"><button class="btn primary" onclick="saveBrief()">{i18n.t('ob.p2.save', lang)}</button>
-<span class="meta">{i18n.t('ob.p2.legend', lang)}</span></div></div>
+<span class="meta">{i18n.t('ob.p2.legend', lang)}</span></div>
+<div class="docsblock">
+<p class="desc"><b>{i18n.t('ob.p2.docs.title', lang)}</b> — {i18n.t('ob.p2.docs.desc', lang)}</p>
+<div class="dropzone" id="docsdrop">
+<label class="btn">{i18n.t('ob.p2.docs.upload', lang)}<input type="file"
+  accept="{','.join(onboard.BRIEF_DOC_EXT)}" multiple hidden onchange="uploadDocs(this.files)"></label>
+<span class="meta">{i18n.t('ob.p2.docs.drop', lang)}</span>
+<span class="meta" id="docscount"></span></div>
+<ul class="files" id="docslist"></ul>
+</div></div>
 <div class="panel"><h2><span class="n">3</span>{i18n.t('ob.p3.title', lang)}</h2>
 <p class="desc">{i18n.t('ob.p3.desc', lang)}</p>
 <div class="row"><input type="text" id="bid" placeholder="{i18n.t('ob.p3.idph', lang)}">
@@ -412,6 +423,12 @@ async function load(){
   document.getElementById("concepts").innerHTML = cs.length
     ? `<span class="meta">${T["concepts.ok"]}</span>`+cs.map(c=>`<span class="tag approved">${esc(c)}</span>`).join("")
     : `<span class="meta">${T["concepts.none"]}</span>`;
+  const docs=S.briefing_docs||[];
+  document.getElementById("docscount").textContent = docs.length?fill(T["docs.count"],{n:docs.length}):"";
+  document.getElementById("docslist").innerHTML = docs.length
+    ? docs.map(f=>`<li><span>${esc(f.name)}</span><span class="row"><span class="meta">${fmt(f.size)}</span>
+        <button class="btn docremove" title="${T["docs.remove"]}" onclick="removeDoc('${esc(f.name)}')">✕</button></span></li>`).join("")
+    : `<li><span class="meta">${T["docs.empty"]}</span></li>`;
 }
 async function upload(slot,files){
   for(const f of files){
@@ -439,6 +456,22 @@ async function uploadBrief(files){
     }
   }
   await load();
+}
+async function uploadDocs(files){
+  let n=0;
+  for(const f of files){
+    const r=await fetch(`/brief-docs?name=${encodeURIComponent(f.name)}`,{method:"POST",body:f});
+    if(!r.ok){await tell((await r.json()).error);continue;}
+    n++;
+  }
+  await load();
+  if(n) notify(fill(T["docs.added"],{n}));
+}
+async function removeDoc(name){
+  const r=await fetch(`/brief-docs-delete?name=${encodeURIComponent(name)}`,{method:"POST",body:"{}"});
+  if(!r.ok){await tell((await r.json()).error);return;}
+  await load();
+  notify(fill(T["docs.removed"],{name}));
 }
 async function copyAgent(){
   await navigator.clipboard.writeText(document.getElementById("agentline").value);
@@ -475,6 +508,10 @@ const bd=document.getElementById("briefdrop");
 bd.addEventListener("dragover",e=>{e.preventDefault();bd.classList.add("drag");});
 bd.addEventListener("dragleave",()=>bd.classList.remove("drag"));
 bd.addEventListener("drop",e=>{e.preventDefault();bd.classList.remove("drag");uploadBrief(e.dataTransfer.files);});
+const dd=document.getElementById("docsdrop");
+dd.addEventListener("dragover",e=>{e.preventDefault();dd.classList.add("drag");});
+dd.addEventListener("dragleave",()=>dd.classList.remove("drag"));
+dd.addEventListener("drop",e=>{e.preventDefault();dd.classList.remove("drag");uploadDocs(e.dataTransfer.files);});
 load();
 </script></body></html>"""
 
@@ -552,6 +589,30 @@ class Handler(BaseHTTPRequestHandler):
             with open(os.path.join(self.root, name), "wb") as f:
                 f.write(data)
             return self._send(200, {"ok": True, "kind": "binary", "name": name})
+        if url.path == "/brief-docs":
+            q = parse_qs(url.query)
+            name = os.path.basename(q.get("name", [""])[0])
+            if not name or name.startswith(".") or not name.lower().endswith(onboard.BRIEF_DOC_EXT):
+                return self._send(400, {"error": i18n.t(
+                    "ob.err.docext", lang, exts=", ".join(onboard.BRIEF_DOC_EXT))})
+            if length > 20 * 1024 * 1024:
+                return self._send(413, {"error": i18n.t("ob.err.docbig", lang)})
+            data = self.rfile.read(length)
+            d = os.path.join(self.root, onboard.BRIEF_DOCS_DIR)
+            os.makedirs(d, exist_ok=True)
+            with open(os.path.join(d, name), "wb") as f:
+                f.write(data)
+            return self._send(200, {"ok": True, "name": name})
+        if url.path == "/brief-docs-delete":
+            q = parse_qs(url.query)
+            name = os.path.basename(q.get("name", [""])[0])
+            self.rfile.read(length)
+            if not name or name.startswith("."):
+                return self._send(400, {"error": i18n.t("ob.err.slot", lang)})
+            p = os.path.join(self.root, onboard.BRIEF_DOCS_DIR, name)
+            if os.path.isfile(p):
+                os.remove(p)
+            return self._send(200, {"ok": True})
         payload = json.loads(self.rfile.read(length) or b"{}")
         if url.path == "/briefing":
             with open(os.path.join(self.root, "briefing.md"), "w", encoding="utf-8") as f:

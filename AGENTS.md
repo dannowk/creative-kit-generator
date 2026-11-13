@@ -28,7 +28,7 @@ roda tudo. Em vez do venv manual acima, use `./install.sh <inbox>` em background
 `--no-open`): ele baixa `uv` + Python 3.12 gerenciado **sem admin**, instala as deps e
 **abre o wizard de onboarding no navegador**. **Crie a pasta `<inbox>` automaticamente**
 (default `~/Desktop/minha-campanha`, ou `~/Desktop/<marca>`), sem perguntar caminho ao
-usuário; o `onboard` faz o scaffold (`logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing.md`).
+usuário; o `onboard` faz o scaffold (`logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ briefing.md`).
 Avise no chat que o onboarding abriu, espere o "pronto" e siga o pipeline. Os comandos
 `python3` abaixo são o equivalente manual (porta C); no fluxo gerenciado use
 `.venv/bin/python -m kit.cli ...` (Mac/Linux) ou `.venv\Scripts\python ...` (Windows).
@@ -49,9 +49,11 @@ nem fallback de sistema (raro).
 ```bash
 # 1. Preparar a pasta da campanha (scaffold + UI guiada em 127.0.0.1:8766)
 python3 -m kit.cli onboard ~/inbox/acme
-#    cria logo/ refs/ brandbook/ fonts/ photos/ videos/ + briefing.md; o usuário preenche.
+#    cria logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ + briefing.md; o usuário preenche.
 #    No wizard, cada slot aceita botão + arrastar-e-soltar; o briefing também (arraste
 #    .md/.txt/.rtf/.pdf/.docx). brandbook/ é opcional (manual da marca em PDF/imagens/docx).
+#    briefing/ = documentos de apoio (vários, acumulam): copy dos anúncios, regras de layout,
+#    safe areas, segurança do logo — texto/PDF/Word/imagem/planilha (.csv/.xlsx). O plan lista todos.
 #    --no-ui = só scaffold + checklist, sem servidor.
 
 # 2. Derivar a marca da pasta jogada (paleta, logo, análise das refs, gaps)
@@ -130,6 +132,24 @@ python3 -m kit.cli ppc campaigns/acme-launch
   (aprovadas exportadas pelo Continuar) + `delivery/ppc/` (planilhas de bulk upload Meta +
   Google, CSV + XLSX) + `state.json` (decisões) + `requests.json` (lote de regeneração).
 - `brands/acme` + `campaigns/acme-launch` — exemplo genérico que acompanha o repo.
+
+## Documentos de apoio do briefing (`<inbox>/briefing/`)
+
+Além do `briefing.md` (o texto estruturado) e do `brandbook/` (manual da marca), o usuário
+pode anexar **vários documentos de apoio** na pasta `briefing/` — pelo wizard (botão ou
+arrastar-e-soltar, área "Documentos de apoio") ou soltando os arquivos direto na pasta.
+Eles **acumulam** (não substituem o briefing) e aceitam texto (.md/.txt/.rtf), PDF/Word,
+imagens (.png/.jpg/.webp — diagramas de safe area/logo) e planilha (.csv/.xlsx — tabela de
+copy). Exemplos: conteúdo/copy dos anúncios em arquivos separados, regras de layout, safe
+areas por formato, segurança/clearspace do logo extraída do brandbook.
+
+O `intake` recolhe tudo em `brief_docs` no `intake.json` e o `plan` lista cada arquivo.
+**SEU TRABALHO como agente:** leia todos (visão para PDF/imagem; texto/planilha direto) e
+aplique — o copy/conteúdo dos anúncios alimenta `campaign.json.copy` (hook/kicker/program/
+CTA por conceito×eixo, e o copy do RSA no export de PPC); regras de layout, safe areas e
+segurança do logo viram `geometry`/`safe_zones` e `compliance` no `brand.yaml` e nos
+templates. As regras do brandbook e destes documentos prevalecem sobre a paleta proposta;
+conflito com o briefing vira pergunta — nunca chute silencioso.
 
 ## Specs de template (declarativo)
 

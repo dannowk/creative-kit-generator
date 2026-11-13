@@ -47,6 +47,7 @@ my-brand/
   refs/        ← 2–6 ad/post references of the desired look
   brandbook/   ← brand manual as PDF/images/docx (optional)
   fonts/       ← brand .ttf / .otf (optional; there are substitutes)
+  briefing/    ← supporting documents: ad copy, layout rules, safe areas, logo safety (optional, several)
   briefing.md  ← the briefing you filled on screen (or edited by hand)
 ```
 
@@ -54,6 +55,14 @@ Every slot accepts a **button or drag-and-drop** — and so does the briefing: d
 `.md/.txt/.rtf/.pdf/.docx` onto the briefing area, or write/paste on screen. If you
 attach a **brandbook**, the agent reads the brand rules (colors, typography, logo usage,
 voice) and follows them alongside the briefing and references.
+
+**Supporting documents (several files):** the briefing area has a **"Supporting documents"**
+zone to attach as many files as you like — the **ad content/copy** (when it lives in separate
+files), **layout rules**, **safe areas** and **logo safety** from the brandbook. It accepts
+text, PDF/Word, images (diagrams) and spreadsheets (`.csv/.xlsx`, e.g. a copy table). They
+**add up** (they don't replace the briefing) and show in a list with a remove button. The
+agent reads them all in `plan`: copy becomes the piece text (and the search-ad text in the
+PPC sheets), and layout/safe-area/logo rules become geometry and compliance.
 
 **Already have a briefing in any format** (Word, PDF, text, email)? No need to rewrite
 anything: the agent **normalizes** it into the kit template and asks you only about what

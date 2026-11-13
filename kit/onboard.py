@@ -11,6 +11,10 @@ IMG_EXT = (".png", ".jpg", ".jpeg", ".webp")
 FONT_EXT = (".otf", ".ttf", ".ttc")
 VID_EXT = (".mp4", ".mov", ".webm", ".m4v")
 DOC_EXT = (".pdf", ".docx", ".md", ".txt", ".rtf")
+# Documentos de apoio do briefing: copy dos anúncios, regras de layout, safe areas,
+# segurança do logo — em texto, PDF/Word, imagem (diagramas) ou planilha (tabela de copy).
+BRIEF_DOC_EXT = DOC_EXT + IMG_EXT + (".csv", ".xlsx")
+BRIEF_DOCS_DIR = "briefing"
 
 SLOTS = [
     {"key": "logo", "dir": "logo", "label": "Logo", "ext": IMG_EXT, "multiple": False,
@@ -76,6 +80,7 @@ def scaffold(inbox):
     os.makedirs(inbox, exist_ok=True)
     for s in SLOTS:
         os.makedirs(os.path.join(inbox, s["dir"]), exist_ok=True)
+    os.makedirs(os.path.join(inbox, BRIEF_DOCS_DIR), exist_ok=True)
     brief = os.path.join(inbox, "briefing.md")
     if not os.path.isfile(brief):
         with open(brief, "w", encoding="utf-8") as f:
@@ -148,7 +153,17 @@ def status(inbox, lang="pt"):
     sections = _sections(text)
     missing = [x["title"] for x in sections
                if not x["filled"] and x["title"].startswith(REQUIRED_SECTIONS)]
+    docs_dir = os.path.join(inbox, BRIEF_DOCS_DIR)
+    docs = []
+    if os.path.isdir(docs_dir):
+        for f in sorted(os.listdir(docs_dir)):
+            if f.startswith(".") or not f.lower().endswith(BRIEF_DOC_EXT):
+                continue
+            p = os.path.join(docs_dir, f)
+            docs.append({"name": f, "size": os.path.getsize(p),
+                         "rel": os.path.join(BRIEF_DOCS_DIR, f)})
     return {"inbox": os.path.abspath(inbox), "slots": slots,
             "briefing": {"text": text, "sections": sections, "missing": missing,
                          "concepts": requested_concepts(text)},
+            "briefing_docs": docs,
             "ready": slots["logo"]["ok"] and not missing}

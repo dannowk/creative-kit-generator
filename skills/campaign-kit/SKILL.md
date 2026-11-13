@@ -20,10 +20,13 @@ e o navegador.**
 3. **Bootstrap + onboarding num comando só**, em background: `./install.sh <inbox>`
    (sem `--no-open`). Baixa `uv` + Python 3.12 gerenciado sem admin, instala as deps
    e **abre o wizard no navegador**, criando `logo/ refs/ brandbook/ fonts/ photos/
-   videos/ briefing.md`. Cada slot aceita botão + arrastar-e-soltar (o briefing também).
+   videos/ briefing/ briefing.md`. Cada slot aceita botão + arrastar-e-soltar (o briefing também).
    `.venv/` já existe → só reabre o wizard.
 4. **Avise no chat** que o onboarding abriu; peça o logo (obrigatório) + fotos/refs +
-   briefing (brandbook é opcional) e espere o "pronto" do usuário.
+   briefing (brandbook é opcional) e espere o "pronto" do usuário. Na área de briefing há
+   **"Documentos de apoio"** (vários, acumulam): copy dos anúncios, regras de layout, safe
+   areas, segurança do logo — texto/PDF/Word/imagem/planilha. O `plan` lista todos; leia e
+   aplique (copy → campaign.json.copy; regras → geometry/safe_zones/compliance).
 5. **Siga o `AGENTS.md`**: `intake (ou brief --apply) → plan → assets → render →
    video`. A direção de arte vem do briefing + refs + brandbook (se houver), não de
    outro cliente. Briefing
