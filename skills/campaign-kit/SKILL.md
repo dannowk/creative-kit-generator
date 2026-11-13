@@ -39,6 +39,9 @@ e o navegador.**
    `delivery/` e enfileirar rejeitadas (recriar) + refazer (com a nota) em `requests.json`.
    **Cumpra o lote**: ajuste template/asset/copy (recrie de fato — o render é determinístico),
    rode `render --ids <ids>` (preserva as aprovadas) e a revisão atualiza sozinha. Repita até fechar.
+   **Ajuste de estilo por conceito**: se o usuário usou **Ajustar estilo** na revisão, há um
+   `styles/<concept>.yaml` (cores/fontes) que o **próprio render aplica** — para esse lote basta
+   `render --ids`, sem editar template. Ver "Ajuste de estilo por conceito" no AGENTS.md.
 8. **Planilhas de PPC (Meta + Google)**: o Continuar/`deliver` já gera `delivery/ppc/` com o
    bulk upload de cada plataforma em CSV + XLSX (Meta Ads Manager, Google Search RSA, Google
    Display) + manifesto. Ou rode `ppc <campanha>` (`--all` p/ não-aprovadas). Nomes/copy/CTA/

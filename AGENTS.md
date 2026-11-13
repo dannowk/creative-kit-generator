@@ -130,7 +130,8 @@ python3 -m kit.cli ppc campaigns/acme-launch
 - `campaigns/<slug>/` — `campaign.json` (brand, channels, concepts, axes, cta, copy,
   provider, asset_jobs) + `assets/` + `out/<concept>/` + `review/` + `delivery/<concept>/`
   (aprovadas exportadas pelo Continuar) + `delivery/ppc/` (planilhas de bulk upload Meta +
-  Google, CSV + XLSX) + `state.json` (decisões) + `requests.json` (lote de regeneração).
+  Google, CSV + XLSX) + `styles/<concept>.yaml` (ajuste de cores/fontes do conceito, opcional)
+  + `state.json` (decisões) + `requests.json` (lote de regeneração).
 - `brands/acme` + `campaigns/acme-launch` — exemplo genérico que acompanha o repo.
 
 ## Documentos de apoio do briefing (`<inbox>/briefing/`)
@@ -173,7 +174,9 @@ na rodada única se ficar em branco); o `plan` imprime. Para cada conceito pedid
 A matriz é `conceitos × formatos × eixos`. Cada conceito entrega em pasta própria
 `out/<concept>/` e ganha um contact sheet próprio `review/sheet_<concept>[_<eixo>].png`.
 Na revisão, os chips de **conceito** (além dos de status) isolam uma direção por vez para
-aprovar/rejeitar/refazer sem misturar.
+aprovar/rejeitar/refazer sem misturar. Com um conceito filtrado, o botão **Ajustar estilo**
+muda cores/fontes de **todas** as peças daquele conceito de uma vez (ver "Ajuste de estilo
+por conceito").
 
 ## Vídeo
 
@@ -260,6 +263,8 @@ Python re-renderiza e a UI atualiza. A revisão é **em lote** — decidir não 
   de aprovadas**, marcada para ir para a pasta de entrega.
 - **Rejeitar** → `status:"rejected"`. Marcada para **recriar** (sem nota).
 - **Refazer** → `status:"redo"` + `note` (o que ajustar). Marcada para **refazer com a nota**.
+- **Ajustar estilo** (por conceito, ao filtrar um conceito) → grava `styles/<concept>.yaml`
+  (cores/fontes/nota) e marca **todas** as peças daquele conceito como `redo`. Ver abaixo.
 
 **O botão "Continuar" (ou `kit.cli deliver`) executa o lote:**
 1. **Exporta** as aprovadas de `out/` para `delivery/<conceito>/` (cópia local, imediata) e
@@ -282,6 +287,33 @@ Python re-renderiza e a UI atualiza. A revisão é **em lote** — decidir não 
    lista de aprovadas. O usuário revisa de novo e clica Continuar outra vez até fechar.
 
 `delivery/` é a pasta de entrega final (aprovadas). `out/` continua sendo o render de trabalho.
+
+## Ajuste de estilo por conceito (`styles/<concept>.yaml`)
+
+Para mudar **cores, fontes etc. de todas as peças de um conceito de uma vez**, o usuário
+filtra o conceito na revisão e clica **Ajustar estilo**: mexe nos papéis da paleta
+(`primary/accent/ink/paper/dark`), nos papéis tipográficos (`display/text/accent`) e numa
+nota livre. Isso grava `campaigns/<slug>/styles/<concept>.yaml` e marca todas as peças do
+conceito como `redo` (as aprovadas voltam a `pending`). **Nada renderiza na hora** — igual
+ao refazer, o lote sai no **Continuar** (`requests.json`).
+
+**O override é aplicado pelo próprio render**, por conceito: `campaign.run` mescla
+`styles/<concept>.yaml` sobre a paleta/tipografia da marca base (`styled_brand`) antes de
+renderizar e checar compliance. Ou seja:
+
+- Para cumprir um lote de restyle, **basta rodar `render --ids <ids>`** — o novo estilo já
+  entra sozinho; você **não** precisa editar template nem `brand.yaml` para cor/fonte.
+- O ajuste **persiste**: vale para essa e para as próximas renderizações daquele conceito.
+- A `note` do restyle é orientação extra (ex.: "mais contraste"); se pedir algo além de
+  cor/fonte (layout, safe area), aí sim ajuste o template/`brand.yaml` como no refazer normal.
+- Conflito entre o override e o briefing/brandbook vira pergunta — não chute.
+
+```yaml
+# campaigns/<slug>/styles/cinema.yaml (exemplo)
+palette: {dark: "#040D0B", accent: "#FC6C54"}
+type: {display: DINPro-Bold.otf}
+note: mais contraste
+```
 
 ## Etapa 6b — Planilhas de PPC (bulk upload Meta + Google)
 

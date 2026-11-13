@@ -42,6 +42,10 @@ def hex_rgb(value):
     return tuple(int(s[i:i + 2], 16) for i in (0, 2, 4))
 
 
+def rgb_hex(rgb):
+    return "#{:02X}{:02X}{:02X}".format(*rgb[:3])
+
+
 def font_dirs(extra=()):
     here = os.path.dirname(os.path.abspath(__file__))
     return [d for d in list(extra) + [

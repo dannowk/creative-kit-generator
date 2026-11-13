@@ -4,19 +4,22 @@ Os eixos (produto, região, público, idioma) substituem o regions×programs chu
 o produto cartesiano e o nome do arquivo vêm do brand.yaml, não do código.
 """
 
+import copy
 import itertools
 import json
 import os
 import glob
 import shutil
 
+import yaml
 from PIL import Image
 
 from . import compliance, formats, primitives as P, render
-from .brand import load_brand
+from .brand import Brand, load_brand
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATES_DIR = os.path.join(ROOT, "templates")
+STYLES_DIR = "styles"
 
 
 def load_campaign(path):
@@ -115,6 +118,37 @@ def _spec_path(campaign, concept):
     return local if os.path.isfile(local) else os.path.join(TEMPLATES_DIR, f"{concept}.yaml")
 
 
+def style_path(root, concept):
+    return os.path.join(root, STYLES_DIR, f"{concept}.yaml")
+
+
+def load_style(root, concept):
+    """Override de estilo do conceito (paleta/tipografia/nota) gravado pela revisão.
+
+    Vazio se não houver ajuste. O render aplica por conceito, então o ajuste vale para
+    todas as peças daquele conceito e persiste nas próximas renderizações do agente.
+    """
+    p = style_path(root, concept)
+    if not os.path.isfile(p):
+        return {}
+    with open(p, encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def styled_brand(brand, style):
+    """Marca com a paleta/tipografia do conceito mescladas por cima da marca base."""
+    if not style:
+        return brand
+    data = copy.deepcopy(brand.data)
+    pal = style.get("palette") or {}
+    if pal:
+        data.setdefault("palette", {}).update(pal)
+    typ = style.get("type") or {}
+    if typ:
+        data.setdefault("type", {}).update(typ)
+    return Brand(data, brand.root)
+
+
 def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None, dry=False,
         only_ids=None):
     """Renderiza a matriz inteira. Devolve o estado que a UI local consome.
@@ -133,6 +167,7 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
         names = [n for n in names if n in only_formats]
     concepts = only_concepts or campaign.get("concepts") or available_concepts()
     specs = {c: render.load_spec(_spec_path(campaign, c)) for c in concepts}
+    cbrands = {c: styled_brand(brand, load_style(root, c)) for c in concepts}
 
     combos = expand_axes(brand, campaign)
     overrides = load_subject_overrides(campaign)
@@ -166,9 +201,9 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
                 if geo["tight"] and spec.get("needs_photo") and "tight" not in (spec.get("variants") or {}):
                     continue
                 trace = {}
-                img = render.render(spec, brand, geo, photo=photo, fx=fx, logo=logo,
+                img = render.render(spec, cbrands[concept], geo, photo=photo, fx=fx, logo=logo,
                                     copy=merged, extra=extra, trace=trace)
-                findings = compliance.run(img, trace, brand)
+                findings = compliance.run(img, trace, cbrands[concept])
                 rel = os.path.join(concept, f"{name}.png")
                 entry = {"id": name, "path": rel, "concept": concept, "format": fmt,
                          "axes": combo, "asset": os.path.basename(asset_path) if asset_path else None,
@@ -193,6 +228,13 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
     if not dry:
         pieces = _merge_prior(root, pieces)
         _sheets(root, out_dir, pieces)
+    for cb in cbrands.values():
+        for m in cb.fonts.missing:
+            if m not in brand.fonts.missing:
+                brand.fonts.missing.append(m)
+        for s in cb.fonts.substituted:
+            if s not in brand.fonts.substituted:
+                brand.fonts.substituted.append(s)
     state = {"campaign": campaign.get("slug"), "brand": brand.id, "root": root,
              "formats": names, "concepts": concepts, "pieces": pieces,
              "blocked_count": sum(1 for p in pieces if p.get("status") == "blocked"),

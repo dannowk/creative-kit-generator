@@ -17,6 +17,8 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
+import yaml
+
 from . import campaign, i18n, intake, onboard
 
 _STYLE = """<style>
@@ -114,6 +116,15 @@ dialog::backdrop{background:rgba(20,26,32,.55)}
 .empty{padding:60px 20px;color:var(--mut);text-align:center}
 .filters{display:flex;gap:8px;flex-wrap:wrap}
 .filters button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.stylepanel{display:grid;gap:12px;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0;background:#fbfcfd}
+.stylepanel .desc{margin:0}
+.stylegrid{display:flex;gap:16px;flex-wrap:wrap}
+.stylefield{display:grid;gap:4px}
+.stylefield label{font-size:12px;color:var(--mut);text-transform:capitalize}
+.stylefield input[type=color]{width:56px;height:34px;padding:2px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
+.stylefield input[type=text]{width:200px}
+.stylenote{min-height:64px}
+.stylelabel{font-size:12.5px;color:var(--mut);font-weight:600}
 dialog .msgbody{display:grid;gap:12px;padding:10px 12px;min-width:320px;max-width:480px}
 dialog .msgbody p{margin:0;font-size:14px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:50;
@@ -182,6 +193,14 @@ function ask(msg){return new Promise(res=>{const d=document.getElementById('msgb
   const done=v=>{d.close();ok.onclick=cancel.onclick=null;res(v);};
   ok.onclick=()=>done(inp.value);cancel.onclick=()=>done(null);
   d.showModal();inp.focus();});}
+function confirmBox(msg){return new Promise(res=>{const d=document.getElementById('msgbox');
+  document.getElementById('msgtext').textContent=msg;
+  const inp=document.getElementById('msginput');inp.hidden=true;
+  const ok=document.getElementById('msgok'),cancel=document.getElementById('msgcancel');
+  cancel.hidden=false;
+  const done=v=>{d.close();ok.onclick=cancel.onclick=null;cancel.hidden=true;res(v);};
+  ok.onclick=()=>done(true);cancel.onclick=()=>done(false);
+  d.showModal();});}
 </script>
 """
 
@@ -214,7 +233,18 @@ def review_page(lang):
 <div class="panel"><h2><span class="n">5</span>{i18n.t('rv.p5.title', lang)}</h2>
 <p class="desc">{i18n.t('rv.p5.desc', lang)}</p>
 <div class="filters" id="filters"></div>
-<div class="row" style="align-items:center"><span class="meta">{i18n.t('rv.concept', lang)}</span><div class="filters" id="cfilters"></div></div>
+<div class="row" style="align-items:center"><span class="meta">{i18n.t('rv.concept', lang)}</span><div class="filters" id="cfilters"></div>
+<button class="btn" id="stylebtn" onclick="toggleStyle()" style="display:none">{i18n.t('rv.adjust', lang)}</button></div>
+<div id="stylepanel" class="stylepanel" hidden>
+<p class="desc" id="styledesc"></p>
+<div><div class="stylelabel">{i18n.t('rv.js.style.colors', lang)}</div><div class="stylegrid" id="stylecolors"></div></div>
+<div><div class="stylelabel">{i18n.t('rv.js.style.fonts', lang)}</div><div class="stylegrid" id="stylefonts"></div></div>
+<datalist id="fontlist"></datalist>
+<div><label class="stylelabel" for="stylenote">{i18n.t('rv.stylenote', lang)}</label>
+<textarea id="stylenote" class="stylenote" rows="2"></textarea></div>
+<div class="row"><button class="btn primary" onclick="applyStyle()">{i18n.t('rv.applystyle', lang)}</button>
+<span class="meta" id="stylemsg"></span></div>
+</div>
 <div class="rgrid" id="grid"></div></div>
 <div class="panel"><h2><span class="n">6</span>{i18n.t('rv.p6.title', lang)}</h2>
 <p class="desc">{i18n.t('rv.p6.desc', lang)}</p>
@@ -226,7 +256,7 @@ def review_page(lang):
 <dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
 """ + _modal(lang) + _JS_UTIL + _inject(lang, "rv.js") + """
 <script>
-let state=null, filter="working", cfilter="all", lastState="";
+let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null;
 const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"],blocked:T["lbl.blocked"]};
 const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"],blocked:T["sing.blocked"]};
 const fmsg=f=>(LANG==="en"&&f.message_en)?f.message_en:f.message;
@@ -250,13 +280,50 @@ function applyState(s){
   document.getElementById("cfilters").innerHTML =
     `<button class="${cfilter==='all'?'on':''}" onclick="setConcept('all')">${fill(T.allconcepts,{n:state.pieces.length})}</button>`+
     concepts.map(k=>`<button class="${cfilter===k?'on':''}" onclick="setConcept('${k}')">${k} (${cc[k]||0})</button>`).join("");
+  document.getElementById("stylebtn").style.display = cfilter==="all" ? "none" : "";
   document.getElementById("deliver-summary").innerHTML = fill(T["deliver.summary"],
     {approved:c("approved"),regen:c("rejected")+c("redo")});
   if(delivered>0) setStep(6);
   draw();
 }
 function setFilter(f){filter=f;draw();}
-function setConcept(k){cfilter=k;draw();}
+function setConcept(k){cfilter=k;draw();
+  document.getElementById("stylebtn").style.display = k==="all" ? "none" : "";
+  if(k==="all") closeStyle();
+  else if(styleOpen) openStyle(k);}
+function closeStyle(){styleOpen=false;document.getElementById("stylepanel").hidden=true;}
+async function toggleStyle(){
+  if(styleOpen){closeStyle();return;}
+  await openStyle(cfilter);}
+async function openStyle(concept){
+  const r=await fetch("/style?concept="+encodeURIComponent(concept));
+  const j=await r.json();
+  if(!r.ok){await tell(j.error||"erro");return;}
+  styleConcept=concept;styleOpen=true;
+  document.getElementById("styledesc").textContent=fill(T["style.desc"],{concept});
+  const ov=j.override||{}, pal=Object.assign({},j.palette,ov.palette||{});
+  document.getElementById("stylecolors").innerHTML=Object.keys(j.palette).map(role=>
+    `<div class="stylefield"><label>${esc(role)}</label><input type="color" data-role="${esc(role)}" value="${esc(pal[role]||"#000000")}"></div>`).join("");
+  const typ=Object.assign({},j.type,ov.type||{});
+  document.getElementById("stylefonts").innerHTML=Object.keys(j.type).map(role=>{
+    const v=typ[role], file=typeof v==="string"?v:((v&&v.file)||"");
+    return `<div class="stylefield"><label>${esc(role)}</label><input type="text" data-font="${esc(role)}" list="fontlist" value="${esc(file)}" placeholder="${esc(T["style.fontph"])}"></div>`;}).join("");
+  document.getElementById("fontlist").innerHTML=(j.fonts||[]).map(f=>`<option value="${esc(f)}">`).join("");
+  document.getElementById("stylenote").value=ov.note||"";
+  document.getElementById("stylemsg").textContent="";
+  document.getElementById("stylepanel").hidden=false;}
+async function applyStyle(){
+  const palette={};document.querySelectorAll("#stylecolors input[type=color]").forEach(i=>palette[i.dataset.role]=i.value);
+  const type={};document.querySelectorAll("#stylefonts input[type=text]").forEach(i=>{if(i.value.trim())type[i.dataset.font]=i.value.trim();});
+  const note=document.getElementById("stylenote").value.trim();
+  const n=state.pieces.filter(p=>p.concept===styleConcept).length;
+  if(!await confirmBox(fill(T["style.confirm"],{n,concept:styleConcept})))return;
+  const r=await fetch("/concept-style",{method:"POST",body:JSON.stringify({concept:styleConcept,palette,type,note})});
+  const j=await r.json();
+  if(!r.ok){await tell(j.error||"erro");return;}
+  await load();
+  notify(fill(T["style.applied"],{n:j.count,concept:styleConcept}));
+  closeStyle();}
 function setStep(n){document.querySelectorAll(".stepper .step").forEach(el=>{
   const i=+el.dataset.step;el.classList.toggle("done",i<n);el.classList.toggle("current",i===n);
   const d=el.querySelector(".n");if(d)d.textContent=i<n?"✓":String(i);});}
@@ -665,6 +732,24 @@ class Handler(BaseHTTPRequestHandler):
                      }.get(os.path.splitext(path)[1].lower(), "application/octet-stream")
             with open(path, "rb") as f:
                 self._send(200, f.read(), ctype)
+        elif url.path == "/style":
+            from .brand import rgb_hex, font_dirs
+            import glob as _glob
+            concept = parse_qs(url.query).get("concept", [""])[0]
+            camp = campaign.load_campaign(self.root)
+            brand = campaign.brand_for(camp)
+            palette = {r: rgb_hex(brand.palette[r])
+                       for r in ("primary", "accent", "ink", "paper", "dark") if r in brand.palette}
+            type_cfg = {}
+            for r in ("display", "text", "accent"):
+                e = brand.fonts.cfg.get(r)
+                type_cfg[r] = e if isinstance(e, str) else (e or {}).get("file", "")
+            dirs = font_dirs([brand.assets_dir, os.path.join(brand.root, "fontes")])
+            fonts = sorted({os.path.basename(p) for d in dirs
+                            for p in _glob.glob(os.path.join(d, "*"))
+                            if p.lower().endswith((".ttf", ".otf", ".ttc"))})
+            self._send(200, {"concept": concept, "palette": palette, "type": type_cfg,
+                             "fonts": fonts, "override": campaign.load_style(self.root, concept)})
         else:
             self._send(404, {"error": "not found"})
 
@@ -692,6 +777,50 @@ class Handler(BaseHTTPRequestHandler):
             with open(state_path, "w", encoding="utf-8") as f:
                 json.dump(state, f, indent=2, ensure_ascii=False)
             self._send(200, {"ok": True})
+        elif self.path == "/concept-style":
+            lang = self._lang()
+            concept = payload.get("concept", "")
+            camp = campaign.load_campaign(self.root)
+            known = set(campaign.available_concepts()) | set(camp.get("concepts") or [])
+            if not re.fullmatch(r"[A-Za-z0-9_-]+", concept) or concept not in known:
+                return self._send(400, {"error": i18n.t("rv.err.concept", lang)})
+            pal = {}
+            for r, v in (payload.get("palette") or {}).items():
+                if r in ("primary", "accent", "ink", "paper", "dark") and \
+                        isinstance(v, str) and re.fullmatch(r"#?[0-9A-Fa-f]{6}", v):
+                    pal[r] = v if v.startswith("#") else "#" + v
+            typ = {}
+            for r, v in (payload.get("type") or {}).items():
+                if r in ("display", "text", "accent") and isinstance(v, str) and v.strip():
+                    typ[r] = v.strip()
+            note = (payload.get("note") or "").strip()
+            style = {}
+            if pal:
+                style["palette"] = pal
+            if typ:
+                style["type"] = typ
+            if note:
+                style["note"] = note
+            sp = campaign.style_path(self.root, concept)
+            os.makedirs(os.path.dirname(sp), exist_ok=True)
+            with open(sp, "w", encoding="utf-8") as f:
+                yaml.safe_dump(style, f, allow_unicode=True, sort_keys=False)
+            with open(state_path, encoding="utf-8") as f:
+                state = json.load(f)
+            rnote = note or i18n.t("rv.restyle.defaultnote", lang)
+            count = 0
+            for p in state["pieces"]:
+                if p["concept"] == concept:
+                    p["status"] = "redo"
+                    p["note"] = rnote
+                    p["restyle"] = True
+                    p.pop("delivered", None)
+                    p.pop("delivery_path", None)
+                    p.pop("queued", None)
+                    count += 1
+            with open(state_path, "w", encoding="utf-8") as f:
+                json.dump(state, f, indent=2, ensure_ascii=False)
+            self._send(200, {"ok": True, "concept": concept, "count": count})
         elif self.path == "/continue":
             if not os.path.isfile(state_path):
                 return self._send(400, {"error": i18n.t("rv.err.nostate", self._lang())})

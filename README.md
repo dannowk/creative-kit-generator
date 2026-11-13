@@ -108,6 +108,11 @@ livre). Na tela você decide peça por peça — **cada clique só marca, nada e
   trabalho (vai só para a lista **Aprovadas**).
 - **✕ rejeitar** → marcada para o sistema **recriar** outra automaticamente.
 - **↻ refazer** → você escreve o que ajustar; a nota fica guardada.
+- **Ajustar estilo (o conceito inteiro)** → filtre um conceito e clique **Ajustar estilo**
+  para mudar **cores e fontes de todas as peças daquele conceito de uma vez** (papéis da
+  paleta e da tipografia, mais uma nota livre). O ajuste é salvo em `styles/<conceito>.yaml`
+  e todas as peças do conceito entram na fila de refazer — o agente re-renderiza com o novo
+  look (e ele vale para as próximas renderizações também).
 
 Quando terminar de marcar, clique no botão **Continuar** (etapa 6). Aí sim tudo executa de
 uma vez: as aprovadas são **exportadas para a pasta de entrega** e as rejeitadas/refazer
@@ -185,6 +190,7 @@ variável de ambiente, nunca no briefing**).
 | render de trabalho | `<kit>/campaigns/<id>-<slug>/out/<conceito>/` + `review/sheet_<conceito>.png` |
 | revisão | navegador `127.0.0.1:8765+` · atalho `ABRIR-REVISAO.html` |
 | lote de regeneração | `<kit>/campaigns/<id>-<slug>/requests.json` (rejeitadas + refazer) |
+| ajuste de estilo do conceito | `<kit>/campaigns/<id>-<slug>/styles/<conceito>.yaml` (cores/fontes; o render aplica) |
 | gerados pelo MCP | `drop_dir` (ex.: `~/Downloads`) → coletados p/ `assets/` da campanha |
 
 ## Início rápido (manual)

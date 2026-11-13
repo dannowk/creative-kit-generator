@@ -27,6 +27,8 @@ conversa com você no chat e usa o navegador. Conduza nesta ordem:
    clica **Continuar** (etapa 6) — ou você roda `deliver` — para exportar as aprovadas em
    `delivery/` e enfileirar rejeitadas/refazer em `requests.json`. Cumpra o lote (recrie/refaça
    de fato, mudando template/asset/copy), rode `render --ids <ids>` e a revisão atualiza sozinha.
+   Se o usuário usou **Ajustar estilo** (cores/fontes de um conceito inteiro), o `styles/<concept>.yaml`
+   já é aplicado pelo render — para esse lote basta `render --ids`. Ver AGENTS.md.
 8. O Continuar/`deliver` também gera as **planilhas de PPC** (Meta + Google) em `delivery/ppc/`,
    CSV + XLSX, p/ o time de tráfego importar em lote. Ou rode `ppc <campanha>`. URL/orçamento/
    targeting/IDs ficam em branco para o PPC — não invente. Ver "Etapa 6b" no AGENTS.md.
