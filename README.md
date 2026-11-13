@@ -53,7 +53,8 @@ minha-marca/
 ```
 
 Cada slot aceita **botão ou arrastar-e-soltar** — e o briefing também: arraste um
-`.md/.txt/.rtf/.pdf/.docx` para a área de briefing, ou escreva/cole na tela. Se você
+`.md/.txt/.rtf/.pdf/.docx` para a área de briefing, ou escreva/cole na tela. Cada arquivo
+enviado aparece na lista com um **✕ para remover** só aquele arquivo. Se você
 anexar um **brandbook**, o agente lê as regras da marca (cores, tipografia, uso do logo,
 voz) e as segue junto com o briefing e as referências.
 

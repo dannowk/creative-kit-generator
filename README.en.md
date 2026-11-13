@@ -52,7 +52,8 @@ my-brand/
 ```
 
 Every slot accepts a **button or drag-and-drop** — and so does the briefing: drag a
-`.md/.txt/.rtf/.pdf/.docx` onto the briefing area, or write/paste on screen. If you
+`.md/.txt/.rtf/.pdf/.docx` onto the briefing area, or write/paste on screen. Each uploaded
+file shows in the list with an **✕ to remove** just that file. If you
 attach a **brandbook**, the agent reads the brand rules (colors, typography, logo usage,
 voice) and follows them alongside the briefing and references.
 

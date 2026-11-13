@@ -472,7 +472,8 @@ async function load(){
       <div class="row"><b>${s.label}</b><span class="sp"></span>
         <span class="tag ${s.ok?"approved":(s.required?"blocked":"")}"><span class="dot"></span>${s.ok?T.tagok:(s.required?T.tagmissing:T.tagoptional)}</span></div>
       <p class="hint">${s.hint}</p>
-      <ul class="files">${s.files.map(f=>`<li>${esc(f.name)}<span class="meta">${fmt(f.size)}</span></li>`).join("")||`<li><span class="meta">${T.empty}</span></li>`}</ul>
+      <ul class="files">${s.files.map(f=>`<li><span>${esc(f.name)}</span><span class="row"><span class="meta">${fmt(f.size)}</span>
+        <button class="btn docremove" title="${T["docs.remove"]}" onclick="removeSlotFile('${k}','${esc(f.name)}')">✕</button></span></li>`).join("")||`<li><span class="meta">${T.empty}</span></li>`}</ul>
       <div class="row"><label class="btn">${T.add}<input type="file" ${s.multiple?"multiple":""}
         accept="${s.ext.join(",")}" hidden onchange="upload('${k}',this.files)"></label>
       <span class="meta">${T.drag}</span></div>
@@ -536,6 +537,12 @@ async function uploadDocs(files){
 }
 async function removeDoc(name){
   const r=await fetch(`/brief-docs-delete?name=${encodeURIComponent(name)}`,{method:"POST",body:"{}"});
+  if(!r.ok){await tell((await r.json()).error);return;}
+  await load();
+  notify(fill(T["docs.removed"],{name}));
+}
+async function removeSlotFile(slot,name){
+  const r=await fetch(`/upload-delete?slot=${slot}&name=${encodeURIComponent(name)}`,{method:"POST",body:"{}"});
   if(!r.ok){await tell((await r.json()).error);return;}
   await load();
   notify(fill(T["docs.removed"],{name}));
@@ -639,6 +646,18 @@ class Handler(BaseHTTPRequestHandler):
                     os.remove(os.path.join(d, f))
             with open(os.path.join(d, name), "wb") as f:
                 f.write(data)
+            return self._send(200, {"ok": True})
+        if url.path == "/upload-delete":
+            q = parse_qs(url.query)
+            slot = q.get("slot", [""])[0]
+            name = os.path.basename(q.get("name", [""])[0])
+            spec = next((s for s in onboard.SLOTS if s["key"] == slot), None)
+            self.rfile.read(length)
+            if not spec or not name or name.startswith("."):
+                return self._send(400, {"error": i18n.t("ob.err.slot", lang)})
+            p = os.path.join(self.root, spec["dir"], name)
+            if os.path.isfile(p):
+                os.remove(p)
             return self._send(200, {"ok": True})
         if url.path == "/briefing-file":
             q = parse_qs(url.query)

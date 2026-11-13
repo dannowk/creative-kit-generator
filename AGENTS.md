@@ -51,7 +51,8 @@ nem fallback de sistema (raro).
 python3 -m kit.cli onboard ~/inbox/acme
 #    cria logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ + briefing.md; o usuário preenche.
 #    No wizard, cada slot aceita botão + arrastar-e-soltar; o briefing também (arraste
-#    .md/.txt/.rtf/.pdf/.docx). brandbook/ é opcional (manual da marca em PDF/imagens/docx).
+#    .md/.txt/.rtf/.pdf/.docx). Cada arquivo enviado tem um ✕ para remover só aquele arquivo.
+#    brandbook/ é opcional (manual da marca em PDF/imagens/docx).
 #    briefing/ = documentos de apoio (vários, acumulam): copy dos anúncios, regras de layout,
 #    safe areas, segurança do logo — texto/PDF/Word/imagem/planilha (.csv/.xlsx). O plan lista todos.
 #    --no-ui = só scaffold + checklist, sem servidor.
