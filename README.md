@@ -1,5 +1,7 @@
 # campaign-kit
 
+**Idioma:** Português · [English](README.en.md)
+
 Gere uma campanha completa a partir de uma pasta com **logo + referências + briefing**.
 Roda na **sua máquina**, com o **seu agente de IA** (Claude, Codex, Qoder…). Não é um
 serviço hospedado: nada de nuvem, login ou URL pública — os arquivos e o controle são
@@ -92,6 +94,8 @@ livre). Na tela: aprovar / rejeitar por peça; **refazer** enfileira seu motivo 
   o endereço também fica no topo da tela e no fim de `render` / `video` no terminal.
 - Peças aprovadas: `campaigns/<campanha>/out/<conceito>/` (png/mp4 por formato) +
   contact sheet `review/sheet_<conceito>.png`.
+- **Idioma da interface:** o wizard e a revisão têm toggle **PT | EN** no topo (fica
+  gravado no navegador). No terminal, `--lang en` ou `KIT_LANG=en` traduz as mensagens.
 
 ### 5. Gerar imagem/vídeo com IA (opcional — só p/ o que faltar)
 

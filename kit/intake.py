@@ -13,7 +13,7 @@ import numpy as np
 import yaml
 from PIL import Image
 
-from . import primitives as P
+from . import i18n, primitives as P
 from .onboard import VID_EXT, requested_concepts
 
 IMG_EXT = (".png", ".jpg", ".jpeg", ".webp")
@@ -117,8 +117,10 @@ def subject_map(refs):
     return {os.path.basename(p): round(P.subject_center(Image.open(p).convert("RGB")), 4) for p in refs}
 
 
-def run(inbox, brand_id, brands_dir):
-    """Cria brands/<id>/ com brand.yaml proposto, assets e fontes. Devolve (resumo, gaps)."""
+def run(inbox, brand_id, brands_dir, lang="pt"):
+    """Cria brands/<id>/ com brand.yaml proposto, assets e fontes. Devolve (resumo, gaps).
+    Gaps são construídos em PT (o intake.json gravado é o contrato do agente) e o
+    resumo/gaps retornados são localizados para lang — cada gap carrega um tkey."""
     inv = inventory(inbox)
     root = os.path.join(brands_dir, brand_id)
     os.makedirs(os.path.join(root, "assets"), exist_ok=True)
@@ -129,8 +131,9 @@ def run(inbox, brand_id, brands_dir):
         palette = extract_palette(inv["logo"])
     else:
         palette = {}
-        gaps.append({"field": "logo", "question": "Qual arquivo é o logo da marca?",
-                     "why": "Sem logo não há paleta nem assinatura nas peças."})
+        gaps.append({"field": "logo", "tkey": "logo",
+                     "question": i18n.t("gap.intake.logo.q"),
+                     "why": i18n.t("gap.intake.logo.w")})
 
     if inv["fonts"]:
         os.makedirs(os.path.join(root, "fontes"), exist_ok=True)
@@ -138,12 +141,15 @@ def run(inbox, brand_id, brands_dir):
             shutil.copy(p, os.path.join(root, "fontes", os.path.basename(p)))
         type_cfg = propose_fonts(inv["fonts"])
         if not type_cfg.get("display") or not type_cfg.get("accent"):
-            gaps.append({"field": "type", "question": "Qual fonte é o título e qual é o destaque (itálico pesado)?",
-                         "why": "Não se identifica tipografia com confiança só pelo nome do arquivo."})
+            gaps.append({"field": "type", "tkey": "type",
+                         "question": i18n.t("gap.intake.type.q"),
+                         "why": i18n.t("gap.intake.type.w")})
     else:
         type_cfg = {}
-        gaps.append({"field": "type", "question": "Pode jogar os arquivos de fonte (.otf/.ttf) na pasta? Se não, uso uma substituta do sistema.",
-                     "why": "Fonte da marca não é inferível de imagens; sem ela o resultado não é fiel."})
+        gaps.append({"field": "type", "tkey": "type_missing",
+                     "question": i18n.t("gap.intake.type_missing.q"),
+                     "why": i18n.t("gap.intake.type_missing.w")})
+
 
     brand_name = brand_id.replace("-", " ").title()
     data = {
@@ -167,15 +173,19 @@ def run(inbox, brand_id, brands_dir):
         data["compliance"].append({"check": "palette_forbidden", "tolerance": 40, "min_area": 0.005})
         data["palette"]["forbidden"] = []
 
-    gaps.append({"field": "voice", "question": "Qual o tom de voz e o que a marca nunca pode prometer?",
-                 "why": "Voz e restrições de copy vêm do briefing, não dos pixels."})
-    gaps.append({"field": "compliance", "question": "Há disclaimer obrigatório, cor proibida ou termo que não pode quebrar linha?",
-                 "why": "Regra de compliance não é inferível; em educação/saúde/financeiro é onde mora o risco."})
-    gaps.append({"field": "channels", "question": "Onde a campanha veicula (Meta, Google, LinkedIn, impresso, web)?",
-                 "why": "Os aspect ratios e safe zones dependem do canal."})
+    gaps.append({"field": "voice", "tkey": "voice",
+                 "question": i18n.t("gap.intake.voice.q"),
+                 "why": i18n.t("gap.intake.voice.w")})
+    gaps.append({"field": "compliance", "tkey": "compliance",
+                 "question": i18n.t("gap.intake.compliance.q"),
+                 "why": i18n.t("gap.intake.compliance.w")})
+    gaps.append({"field": "channels", "tkey": "channels",
+                 "question": i18n.t("gap.intake.channels.q"),
+                 "why": i18n.t("gap.intake.channels.w")})
     if not inv["photos"] and not inv["videos"]:
-        gaps.append({"field": "assets", "question": "Tem fotos próprias para as peças ou gero com o provider? (mostro a estimativa de custo antes)",
-                     "why": "Sem foto na pasta, a imagem sai de geração paga — o aviso de ≈ créditos aparece antes de gerar."})
+        gaps.append({"field": "assets", "tkey": "assets",
+                     "question": i18n.t("gap.intake.assets.q"),
+                     "why": i18n.t("gap.intake.assets.w")})
 
     brief_text = ""
     primary = next((b for b in inv["briefs"] if os.path.basename(b).lower() == "briefing.md"), None) \
@@ -188,9 +198,9 @@ def run(inbox, brand_id, brands_dir):
             brief_text = ""
     concepts_req = requested_concepts(brief_text)
     if not concepts_req:
-        gaps.append({"field": "concepts",
-                     "question": "Quantas direções visuais (conceitos) você quer? Liste os nomes — ex.: clean, editorial, cinema.",
-                     "why": "Cada conceito vira um template, uma pasta de entrega e um filtro na revisão."})
+        gaps.append({"field": "concepts", "tkey": "concepts",
+                     "question": i18n.t("gap.intake.concepts.q"),
+                     "why": i18n.t("gap.intake.concepts.w")})
 
     with open(os.path.join(root, "brand.yaml"), "w", encoding="utf-8") as f:
         yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
@@ -207,4 +217,15 @@ def run(inbox, brand_id, brands_dir):
                                       "texture": "", "layout": "", "must_avoid": ""}}
     with open(os.path.join(root, "intake.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, ensure_ascii=False)
-    return summary, gaps
+    if lang == "pt":
+        return summary, gaps
+    loc = [_localize_gap(g, lang) for g in gaps]
+    return {**summary, "gaps": loc}, loc
+
+
+def _localize_gap(g, lang):
+    tk = g.get("tkey")
+    if not tk:
+        return g
+    return {**g, "question": i18n.t(f"gap.intake.{tk}.q", lang),
+            "why": i18n.t(f"gap.intake.{tk}.w", lang)}

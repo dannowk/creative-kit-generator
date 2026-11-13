@@ -3,6 +3,10 @@
 Sobe em 127.0.0.1. Tema claro com passos numerados e legenda de status para a pessoa se
 localizar; onboarding prepara a pasta, revisão deixa aprovar/rejeitar/refazer por clique e
 enfileira pedidos de regeneração que o agente executa. Morre quando você fecha.
+
+Bilíngue PT/EN: o toggle no header grava cookie `lang` e recarrega; as páginas são
+montadas por idioma (chrome server-side + dicionário T injetado pro JS dinâmico) e os
+dados (slots, gaps, achados de compliance) também saem localizados.
 """
 
 import json
@@ -13,7 +17,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
-from . import intake, onboard
+from . import i18n, intake, onboard
 
 _STYLE = """<style>
 :root{color-scheme:light;
@@ -40,6 +44,8 @@ button:hover,.btn:hover{background:#f2f4f7}
 .btn.primary:hover{background:var(--accent-dk)}
 .btn.ok{background:var(--ok-bg);border-color:var(--ok-line);color:var(--ok)}
 .btn.no{background:var(--bad-bg);border-color:var(--bad-line);color:var(--bad)}
+a.btn{text-decoration:none}
+.langbtn{min-height:30px;padding:3px 10px;font-size:12.5px;font-weight:600}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .banner{max-width:1160px;margin:18px auto 0;padding:0 24px;display:grid;gap:10px}
 .stepper{display:flex;align-items:center;flex-wrap:wrap;gap:0}
@@ -109,35 +115,48 @@ dialog .msgbody p{margin:0;font-size:14px}
  padding:10px 16px;font-size:14px;box-shadow:0 4px 16px rgba(16,24,32,.15);max-width:90vw}
 </style>"""
 
-_STEPS = ["Arquivos", "Briefing", "Marca", "Gerar", "Revisar"]
+_STEPS = {
+    "pt": ["Arquivos", "Briefing", "Marca", "Gerar", "Revisar"],
+    "en": ["Files", "Briefing", "Brand", "Generate", "Review"],
+}
 
 
-def _head(title):
-    return ('<!doctype html><html lang="pt"><head><meta charset="utf-8">'
+def _head(title, lang):
+    return ('<!doctype html><html lang="' + lang + '"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1">'
             '<title>campaign-kit · ' + title + '</title>' + _STYLE + '</head><body>')
 
 
-def _stepper(current, done=0):
+def _stepper(current, done, lang):
+    steps = _STEPS.get(lang, _STEPS["pt"])
     out = ['<div class="stepper">']
-    for i, label in enumerate(_STEPS, 1):
+    for i, label in enumerate(steps, 1):
         cls = "done" if i <= done else ("current" if i == current else "")
         mark = "✓" if i <= done else str(i)
         out.append(f'<span class="step {cls}"><span class="n">{mark}</span>{label}</span>')
-        if i < len(_STEPS):
+        if i < len(steps):
             out.append('<span class="bar"></span>')
     out.append("</div>")
     return "".join(out)
 
 
-_MODAL = """
+def _lang_toggle(lang):
+    def a(code):
+        cls = "btn langbtn primary" if code == lang else "btn langbtn"
+        return f'<a class="{cls}" href="/lang?set={code}">{code.upper()}</a>'
+    return f'<div class="row" style="gap:4px">{a("pt")}{a("en")}</div>'
+
+
+def _modal(lang):
+    return f"""
 <dialog id="msgbox"><div class="msgbody"><p id="msgtext"></p>
 <input type="text" id="msginput" hidden>
 <div class="row"><span class="sp"></span>
-<button class="btn" id="msgcancel">cancelar</button>
-<button class="btn primary" id="msgok">ok</button></div></div></dialog>
+<button class="btn" id="msgcancel">{i18n.t('modal.cancel', lang)}</button>
+<button class="btn primary" id="msgok">{i18n.t('modal.ok', lang)}</button></div></div></dialog>
 <div id="toast" class="toast" hidden></div>
 """
+
 
 _JS_UTIL = """<script>
 function notify(msg){const t=document.getElementById('toast');t.textContent=msg;t.hidden=false;
@@ -161,43 +180,50 @@ function ask(msg){return new Promise(res=>{const d=document.getElementById('msgb
 """
 
 
-PAGE = _head("revisão") + """
-<header><span class="brand">campaign-kit</span><h1 id="title">Revisão</h1>
+def _inject(lang, group):
+    """`const LANG` + dicionário `T` com as strings JS do grupo (prefixo no catálogo)."""
+    d = i18n.js_dict(lang, group)
+    return ('<script>const LANG="' + lang + '";const T='
+            + json.dumps(d, ensure_ascii=False) + ';</script>')
+
+
+def review_page(lang):
+    return _head(i18n.t("rv.title", lang), lang) + f"""
+<header><span class="brand">campaign-kit</span><h1 id="title">{i18n.t('rv.title', lang)}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
-<button onclick="load()">↻ atualizar</button></header>
+{_lang_toggle(lang)}
+<button onclick="load()">{i18n.t('btn.refresh', lang)}</button></header>
 <div class="banner">
-""" + _stepper(5, 4) + """
+""" + _stepper(5, 4, lang) + f"""
 <div class="stats" id="stats"></div>
-<div class="legend"><b>Legenda:</b>
-<span class="tag approved"><span class="dot"></span>aprovada = vai ao ar</span>
-<span class="tag"><span class="dot"></span>pendente = aguarda você</span>
-<span class="tag rejected"><span class="dot"></span>rejeitada = descartada</span>
-<span class="tag blocked"><span class="dot"></span>bloqueada = regra de compliance violada</span></div>
+<div class="legend"><b>{i18n.t('rv.legend', lang)}</b>
+<span class="tag approved"><span class="dot"></span>{i18n.t('rv.legend.approved', lang)}</span>
+<span class="tag"><span class="dot"></span>{i18n.t('rv.legend.pending', lang)}</span>
+<span class="tag rejected"><span class="dot"></span>{i18n.t('rv.legend.rejected', lang)}</span>
+<span class="tag blocked"><span class="dot"></span>{i18n.t('rv.legend.blocked', lang)}</span></div>
 </div>
 <div class="wrap">
-<div class="panel"><h2><span class="n">5</span>Revisar peças</h2>
-<p class="desc">Clique numa peça para ampliar. Aprove, rejeite ou peça refazer; bloqueios de compliance aparecem no card.
-Perdeu o endereço? Ele fica no topo desta tela e no arquivo <b>ABRIR-REVISAO.html</b> da pasta da campanha.</p>
+<div class="panel"><h2><span class="n">5</span>{i18n.t('rv.p5.title', lang)}</h2>
+<p class="desc">{i18n.t('rv.p5.desc', lang)}</p>
 <div class="filters" id="filters"></div>
-<div class="row" style="align-items:center"><span class="meta">Conceito:</span><div class="filters" id="cfilters"></div></div>
+<div class="row" style="align-items:center"><span class="meta">{i18n.t('rv.concept', lang)}</span><div class="filters" id="cfilters"></div></div>
 <div class="rgrid" id="grid"></div></div>
 </div>
 <dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
-""" + _MODAL + _JS_UTIL + """
+""" + _modal(lang) + _JS_UTIL + _inject(lang, "rv.js") + """
 <script>
 let state=null, filter="all", cfilter="all";
-const LBL={all:"Todas",pending:"Pendentes",approved:"Aprovadas",rejected:"Rejeitadas",blocked:"Bloqueadas"};
-const SING={pending:"Pendente",approved:"Aprovada",rejected:"Rejeitada",blocked:"Bloqueada"};
+const LBL={all:T["lbl.all"],pending:T["lbl.pending"],approved:T["lbl.approved"],rejected:T["lbl.rejected"],blocked:T["lbl.blocked"]};
+const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],blocked:T["sing.blocked"]};
+const fmsg=f=>(LANG==="en"&&f.message_en)?f.message_en:f.message;
 async function load(){
   state = await (await fetch("/state")).json();
   document.getElementById("title").textContent = state.campaign + " · " + state.brand;
-  document.getElementById("meta").textContent = "etapa 5 de 5 · revisar · " + location.origin;
+  document.getElementById("meta").textContent = T.meta.replace("{origin}",location.origin);
   const c=s=>state.pieces.filter(p=>p.status===s).length;
-  document.getElementById("stats").innerHTML =
-    `<span class="stat"><b>${state.pieces.length}</b> peças</span>`+
-    `<span class="stat"><b>${c("approved")}</b> aprovadas</span>`+
-    `<span class="stat"><b>${c("pending")}</b> pendentes</span>`+
-    `<span class="stat"><b>${state.blocked_count}</b> bloqueadas</span>`;
+  document.getElementById("stats").innerHTML = T.stats
+    .replace("{total}",state.pieces.length).replace("{approved}",c("approved"))
+    .replace("{pending}",c("pending")).replace("{blocked}",state.blocked_count);
   const counts={all:state.pieces.length};
   for(const s of ["pending","approved","rejected","blocked"]) counts[s]=c(s);
   document.getElementById("filters").innerHTML = Object.entries(counts)
@@ -205,7 +231,7 @@ async function load(){
   const cc={}; for(const p of state.pieces) cc[p.concept]=(cc[p.concept]||0)+1;
   const concepts=(state.concepts&&state.concepts.length?state.concepts:Object.keys(cc));
   document.getElementById("cfilters").innerHTML =
-    `<button class="${cfilter==='all'?'on':''}" onclick="setConcept('all')">Todos (${state.pieces.length})</button>`+
+    `<button class="${cfilter==='all'?'on':''}" onclick="setConcept('all')">${T.allconcepts.replace("{n}",state.pieces.length)}</button>`+
     concepts.map(k=>`<button class="${cfilter===k?'on':''}" onclick="setConcept('${k}')">${k} (${cc[k]||0})</button>`).join("");
   draw();
 }
@@ -216,10 +242,10 @@ function draw(){
     .filter(p=>(filter==="all"||p.status===filter)&&(cfilter==="all"||p.concept===cfilter))
     .sort((a,b)=>a.concept.localeCompare(b.concept)||a.format.localeCompare(b.format));
   const g=document.getElementById("grid");
-  if(!items.length){g.innerHTML='<div class="empty">Nenhuma peça neste filtro.</div>';return;}
+  if(!items.length){g.innerHTML=`<div class="empty">${T.empty}</div>`;return;}
   g.innerHTML=items.map(p=>{
     const finds=(p.findings||[]).filter(f=>f.level!=="info")
-      .map(f=>`<li class="${f.level==="fail"?"fail":"warn"}">${f.level==="fail"?"Bloqueio: ":"Atenção: "}${f.message}</li>`).join("");
+      .map(f=>`<li class="${f.level==="fail"?"fail":"warn"}">${f.level==="fail"?T.block:T.warn}${fmsg(f)}</li>`).join("");
     const isVid=p.kind==="video";
     const media=isVid
       ? `<video controls preload="metadata" poster="/img?path=${encodeURIComponent("review/thumbs/"+p.path.replace(/\\.\\w+$/,".video.png"))}"
@@ -230,12 +256,12 @@ function draw(){
       ${media}
       <div class="body">
         <div class="row"><span class="tag ${p.status}"><span class="dot"></span>${SING[p.status]}</span>
-          ${isVid?'<span class="tag">vídeo</span>':""}</div>
+          ${isVid?`<span class="tag">${T.video}</span>`:""}</div>
         <div class="name">${p.concept} · ${p.format}${isVid?" · "+Math.round(p.duration||0)+"s":""}</div>
         <div class="row">
-          <button class="btn ok" onclick="decide('${p.id}','approved')">✓ aprovar</button>
-          <button class="btn no" onclick="decide('${p.id}','rejected')">✕ rejeitar</button>
-          <button class="btn" onclick="regen('${p.id}')">↻ refazer</button></div>
+          <button class="btn ok" onclick="decide('${p.id}','approved')">${T.approve}</button>
+          <button class="btn no" onclick="decide('${p.id}','rejected')">${T.reject}</button>
+          <button class="btn" onclick="regen('${p.id}')">${T.redo}</button></div>
         ${finds?`<ul class="findings">${finds}</ul>`:""}
       </div></div>`;
   }).join("");
@@ -247,82 +273,82 @@ async function decide(id,status){
   await load();
 }
 async function regen(id){
-  const note=await ask("O que mudar nesta peça? (o agente executa)");
+  const note=await ask(T.regenask);
   if(note===null||note.trim()==="") return;
   await fetch("/regen",{method:"POST",body:JSON.stringify({id,note})});
-  notify("Pedido enfileirado em requests.json — o agente executa.");
+  notify(T.regentoast);
 }
 load();
 </script></body></html>"""
 
 
-ONBOARD_PAGE = _head("onboarding") + """
-<header><span class="brand">campaign-kit</span><h1>Preparar campanha</h1>
+def onboard_page(lang):
+    return _head(i18n.t("ob.title", lang), lang) + f"""
+<header><span class="brand">campaign-kit</span><h1>{i18n.t('ob.title', lang)}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
-<button onclick="load()">↻ atualizar</button></header>
+{_lang_toggle(lang)}
+<button onclick="load()">{i18n.t('btn.refresh', lang)}</button></header>
 <div class="banner">
-""" + _stepper(1, 0) + """
-<span class="meta">etapas 1–3 nesta tela · 4 e 5 o agente continua depois</span>
+""" + _stepper(1, 0, lang) + f"""
+<span class="meta">{i18n.t('ob.meta.steps', lang)}</span>
 <div class="callout warn" id="ready"></div>
 </div>
 <div class="wrap">
-<div class="panel"><h2><span class="n">1</span>Arquivos da marca</h2>
-<p class="desc">Solte os arquivos em cada slot (clique em adicionar ou arraste). Só o logo é obrigatório; o resto melhora o resultado.</p>
+<div class="panel"><h2><span class="n">1</span>{i18n.t('ob.p1.title', lang)}</h2>
+<p class="desc">{i18n.t('ob.p1.desc', lang)}</p>
 <span class="meta" id="slotprog"></span>
 <div class="grid" id="slots"></div></div>
-<div class="panel"><h2><span class="n">2</span>Briefing</h2>
-<p class="desc">Suba um arquivo de briefing (.md, .txt, .rtf, .pdf, .docx) ou escreva/cole abaixo. O que ficar em branco vira uma pergunta única na etapa 3.</p>
-<div class="row"><label class="btn">+ subir arquivo de briefing<input type="file"
+<div class="panel"><h2><span class="n">2</span>{i18n.t('ob.p2.title', lang)}</h2>
+<p class="desc">{i18n.t('ob.p2.desc', lang)}</p>
+<div class="row"><label class="btn">{i18n.t('ob.p2.upload', lang)}<input type="file"
   accept=".md,.txt,.rtf,.pdf,.docx" hidden onchange="uploadBrief(this.files)"></label>
-<span class="meta" id="brieffile">PDF/Word: o agente normaliza o arquivo para o modelo.</span></div>
+<span class="meta" id="brieffile">{i18n.t('ob.p2.filenote', lang)}</span></div>
 <div class="chips" id="sections"></div>
 <div class="chips" id="concepts"></div>
 <textarea id="brief"></textarea>
-<div class="row"><button class="btn primary" onclick="saveBrief()">salvar briefing</button>
-<span class="meta">✓ = seção preenchida · • = ainda em branco</span></div></div>
-<div class="panel"><h2><span class="n">3</span>Derivar marca</h2>
-<p class="desc">Gera a paleta a partir do logo e abre a rodada única de perguntas.</p>
-<div class="row"><input type="text" id="bid" placeholder="id da marca (ex. acme)">
-<button class="btn primary" onclick="derivar()">rodar intake</button></div>
+<div class="row"><button class="btn primary" onclick="saveBrief()">{i18n.t('ob.p2.save', lang)}</button>
+<span class="meta">{i18n.t('ob.p2.legend', lang)}</span></div></div>
+<div class="panel"><h2><span class="n">3</span>{i18n.t('ob.p3.title', lang)}</h2>
+<p class="desc">{i18n.t('ob.p3.desc', lang)}</p>
+<div class="row"><input type="text" id="bid" placeholder="{i18n.t('ob.p3.idph', lang)}">
+<button class="btn primary" onclick="derivar()">{i18n.t('ob.p3.run', lang)}</button></div>
 <div id="result"></div></div>
-<div class="panel"><h2><span class="n">4</span>Próximas etapas (o agente continua)</h2>
-<p class="desc">Depois da marca, o agente roda:</p>
-<span class="meta"><code>plan</code> direção de arte a partir do briefing + refs →
-<code>assets</code> gera imagem/vídeo com aviso de ≈ custo →
-<code>render</code> monta as peças →
-<code>review</code> você aprova / rejeita / refaz (etapa 5).</span>
-<p class="desc" style="margin-top:10px">Cole isto no seu agente (Claude, Codex, Qoder…) aberto na pasta do kit:</p>
+<div class="panel"><h2><span class="n">4</span>{i18n.t('ob.p4.title', lang)}</h2>
+<p class="desc">{i18n.t('ob.p4.desc', lang)}</p>
+<span class="meta">{i18n.t('ob.p4.pipe', lang)}</span>
+<p class="desc" style="margin-top:10px">{i18n.t('ob.p4.paste', lang)}</p>
 <div class="row"><input type="text" id="agentline" readonly>
-<button class="btn primary" onclick="copyAgent()">copiar frase</button></div></div>
+<button class="btn primary" onclick="copyAgent()">{i18n.t('ob.p4.copy', lang)}</button></div></div>
 </div>
-""" + _MODAL + _JS_UTIL + """
+""" + _modal(lang) + _JS_UTIL + _inject(lang, "ob.js") + """
 <script>
 let S=null, INT=null;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmt=n=>n>1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB";
+const fill=(s,o)=>s.replace(/\\{(\\w+)\\}/g,(m,k)=>(k in o?o[k]:m));
 async function load(){
   S = await (await fetch("/state")).json();
-  document.getElementById("agentline").value = "leia o AGENTS.md e rode a campanha de " + S.inbox;
+  document.getElementById("agentline").value = fill(T.agentline,{inbox:S.inbox});
   document.getElementById("meta").textContent = S.inbox;
   const slotsOk=Object.values(S.slots).filter(s=>s.ok).length;
   const secOk=S.briefing.sections.filter(x=>x.filled).length;
   document.getElementById("slotprog").textContent =
-    slotsOk+"/"+Object.keys(S.slots).length+" slots com arquivo · briefing "+secOk+"/"+S.briefing.sections.length+" seções";
+    fill(T.slotprog,{n:slotsOk,total:Object.keys(S.slots).length,sec:secOk,sectotal:S.briefing.sections.length});
   const missing=[];
   for(const s of Object.values(S.slots)) if(s.required&&!s.ok) missing.push(s.label);
-  for(const t of S.briefing.missing) missing.push("briefing: "+t);
+  for(const t of S.briefing.missing) missing.push(fill(T.missingbrief,{title:t}));
   const r=document.getElementById("ready");
-  if(S.ready){r.className="callout ok";r.textContent="✓ Pronto para derivar a marca (etapa 3).";}
-  else{r.className="callout warn";r.textContent="Faltam: "+missing.join(" · ");}
+  if(S.ready){r.className="callout ok";r.textContent=T.ready;}
+  else{r.className="callout warn";r.textContent=fill(T.missing,{items:missing.join(" · ")});}
   document.getElementById("slots").innerHTML = Object.entries(S.slots).map(([k,s])=>`
     <div class="card slot" data-slot="${k}"><div class="body">
       <div class="row"><b>${s.label}</b><span class="sp"></span>
-        <span class="tag ${s.ok?"approved":(s.required?"blocked":"")}"><span class="dot"></span>${s.ok?"ok":(s.required?"faltando":"opcional")}</span></div>
+        <span class="tag ${s.ok?"approved":(s.required?"blocked":"")}"><span class="dot"></span>${s.ok?T.tagok:(s.required?T.tagmissing:T.tagoptional)}</span></div>
       <p class="hint">${s.hint}</p>
-      <ul class="files">${s.files.map(f=>`<li>${esc(f.name)}<span class="meta">${fmt(f.size)}</span></li>`).join("")||'<li><span class="meta">vazio</span></li>'}</ul>
-      <div class="row"><label class="btn">+ adicionar<input type="file" ${s.multiple?"multiple":""}
+      <ul class="files">${s.files.map(f=>`<li>${esc(f.name)}<span class="meta">${fmt(f.size)}</span></li>`).join("")||`<li><span class="meta">${T.empty}</span></li>`}</ul>
+      <div class="row"><label class="btn">${T.add}<input type="file" ${s.multiple?"multiple":""}
         accept="${s.ext.join(",")}" hidden onchange="upload('${k}',this.files)"></label>
-      <span class="meta">ou arraste aqui</span></div>
+      <span class="meta">${T.drag}</span></div>
     </div></div>`).join("");
   document.querySelectorAll(".slot").forEach(c=>{
     c.addEventListener("dragover",e=>{e.preventDefault();c.classList.add("drag");});
@@ -335,8 +361,8 @@ async function load(){
     .map(x=>`<span class="tag ${x.filled?"approved":""}">${x.filled?"✓":"•"} ${esc(x.title)}</span>`).join("");
   const cs=S.briefing.concepts||[];
   document.getElementById("concepts").innerHTML = cs.length
-    ? '<span class="meta">Conceitos reconhecidos:</span>'+cs.map(c=>`<span class="tag approved">${esc(c)}</span>`).join("")
-    : '<span class="meta">Liste os conceitos na seção 7 (ex.: clean, editorial, cinema) — cada um vira uma entrega e um filtro na revisão.</span>';
+    ? `<span class="meta">${T["concepts.ok"]}</span>`+cs.map(c=>`<span class="tag approved">${esc(c)}</span>`).join("")
+    : `<span class="meta">${T["concepts.none"]}</span>`;
 }
 async function upload(slot,files){
   for(const f of files){
@@ -356,45 +382,45 @@ async function uploadBrief(files){
     if(!r.ok){await tell(j.error);continue;}
     const note=document.getElementById("brieffile");
     if(j.kind==="binary"){
-      note.textContent="✓ "+j.name+" salvo na pasta — o agente normaliza (visão/Word) na etapa seguinte.";
-      notify("Briefing "+j.name+" salvo. O agente normaliza para o modelo.");
+      note.textContent=fill(T["brief.binary"],{name:j.name});
+      notify(fill(T["brief.binarytoast"],{name:j.name}));
     }else{
-      note.textContent="✓ "+f.name+" carregado no editor abaixo.";
-      notify("Briefing carregado no editor.");
+      note.textContent=fill(T["brief.text"],{name:f.name});
+      notify(T["brief.texttoast"]);
     }
   }
   await load();
 }
 async function copyAgent(){
   await navigator.clipboard.writeText(document.getElementById("agentline").value);
-  notify("Frase copiada — cole no agente aberto na pasta do kit.");
+  notify(T.copied);
 }
 async function derivar(){
   const id=document.getElementById("bid").value.trim();
-  if(!id){await tell("Dá um id pra marca (ex. acme)");return;}
-  const r=await fetch("/intake",{method:"POST",body:JSON.stringify({brand_id:id})});
+  if(!id){await tell(T.needid);return;}
+  const r=await fetch("/intake?lang="+LANG,{method:"POST",body:JSON.stringify({brand_id:id})});
   if(!r.ok){await tell((await r.json()).error);return;}
   INT=await r.json(); drawResult();
 }
 function drawResult(){
   const s=INT.summary;
   document.getElementById("result").innerHTML = `
-    <div class="row"><span class="meta">paleta proposta:</span>
-      ${Object.entries(s.palette||{}).map(([k,v])=>`<span class="sw" style="background:${v}" title="${k} ${v}"></span>`).join("")||'<span class="meta">sem logo</span>'}
-      <span class="meta">· ${s.ref_count} refs · ${s.photos.length} fotos · ${s.videos.length} vídeos · ${s.fonts} fontes</span></div>
-    <div class="row"><span class="meta">conceitos pedidos:</span>
-      ${(s.concepts_requested||[]).map(c=>`<span class="tag approved">${esc(c)}</span>`).join("")||'<span class="meta">nenhum — responda abaixo</span>'}</div>
+    <div class="row"><span class="meta">${T.palette}</span>
+      ${Object.entries(s.palette||{}).map(([k,v])=>`<span class="sw" style="background:${v}" title="${k} ${v}"></span>`).join("")||`<span class="meta">${T.nologo}</span>`}
+      <span class="meta">${fill(T.counts,{refs:s.ref_count,photos:s.photos.length,videos:s.videos.length,fonts:s.fonts})}</span></div>
+    <div class="row"><span class="meta">${T.conceptsreq}</span>
+      ${(s.concepts_requested||[]).map(c=>`<span class="tag approved">${esc(c)}</span>`).join("")||`<span class="meta">${T.noconcepts}</span>`}</div>
     ${INT.gaps.map(g=>`<div class="gap"><b>${esc(g.question)}</b>
       <span class="why">${esc(g.why)}</span>
-      <input type="text" id="gap-${g.field}" placeholder="sua resposta"></div>`).join("")}
-    <div class="row"><button class="btn primary" onclick="saveAnswers()">salvar respostas</button>
-      <span class="meta">uma rodada só; o agente aplica no brand.yaml</span></div>`;
+      <input type="text" id="gap-${g.field}" placeholder="${T.answerph}"></div>`).join("")}
+    <div class="row"><button class="btn primary" onclick="saveAnswers()">${T.saveanswers}</button>
+      <span class="meta">${T.oneround}</span></div>`;
 }
 async function saveAnswers(){
   const answers={};
   for(const g of INT.gaps) answers[g.field]=document.getElementById("gap-"+g.field).value;
   await fetch("/answers",{method:"POST",body:JSON.stringify({brand_id:INT.summary.brand,answers})});
-  notify("Respostas salvas em brands/"+INT.summary.brand+"/answers.json — o agente aplica em uma rodada.");
+  notify(fill(T.saved,{brand:INT.summary.brand}));
 }
 load();
 </script></body></html>"""
@@ -407,6 +433,16 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, *args):
         pass
+
+    def _cookie_lang(self):
+        m = re.search(r"(?:^|;\s*)lang=(pt|en)", self.headers.get("Cookie", ""))
+        return m.group(1) if m else None
+
+    def _lang(self):
+        q = parse_qs(urlparse(self.path).query).get("lang", [None])[0]
+        if q in ("pt", "en"):
+            return q
+        return self._cookie_lang() or i18n.resolve_lang()
 
     def _send(self, code, body, ctype="application/json"):
         data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode()
@@ -423,6 +459,7 @@ class Handler(BaseHTTPRequestHandler):
         return path if os.path.isfile(path) else None
 
     def _onboard_post(self, length):
+        lang = self._lang()
         url = urlparse(self.path)
         if url.path == "/upload":
             q = parse_qs(url.query)
@@ -430,11 +467,13 @@ class Handler(BaseHTTPRequestHandler):
             name = os.path.basename(q.get("name", [""])[0])
             spec = next((s for s in onboard.SLOTS if s["key"] == slot), None)
             if not spec or not name or name.startswith("."):
-                return self._send(400, {"error": "slot ou nome inválido"})
+                return self._send(400, {"error": i18n.t("ob.err.slot", lang)})
             if not name.lower().endswith(spec["ext"]):
-                return self._send(400, {"error": f"{spec['label']} aceita {', '.join(spec['ext'])}"})
+                return self._send(400, {"error": i18n.t(
+                    "ob.err.ext", lang,
+                    label=i18n.t(f"slot.{slot}.label", lang), exts=", ".join(spec["ext"]))})
             if length > 300 * 1024 * 1024:
-                return self._send(413, {"error": "arquivo > 300 MB: solte direto na pasta pelo Finder"})
+                return self._send(413, {"error": i18n.t("ob.err.big", lang)})
             data = self.rfile.read(length)
             d = os.path.join(self.root, spec["dir"])
             os.makedirs(d, exist_ok=True)
@@ -448,9 +487,9 @@ class Handler(BaseHTTPRequestHandler):
             q = parse_qs(url.query)
             name = os.path.basename(q.get("name", [""])[0])
             if not name or name.startswith(".") or not name.lower().endswith(intake.BRIEF_EXT):
-                return self._send(400, {"error": "briefing aceita .md, .txt, .rtf, .pdf, .docx"})
+                return self._send(400, {"error": i18n.t("ob.err.briefext", lang)})
             if length > 20 * 1024 * 1024:
-                return self._send(413, {"error": "briefing > 20 MB: solte direto na pasta"})
+                return self._send(413, {"error": i18n.t("ob.err.briefbig", lang)})
             data = self.rfile.read(length)
             if name.lower().endswith((".md", ".txt", ".rtf")):
                 text = data.decode("utf-8", errors="replace")
@@ -468,14 +507,14 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/intake":
             bid = payload.get("brand_id", "").strip()
             if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", bid):
-                return self._send(400, {"error": "id da marca: letras minúsculas, números e hífen"})
-            summary, gaps = intake.run(self.root, bid, self.brands)
+                return self._send(400, {"error": i18n.t("ob.err.brandid", lang)})
+            summary, gaps = intake.run(self.root, bid, self.brands, lang)
             return self._send(200, {"summary": summary, "gaps": gaps})
         if url.path == "/answers":
             bid = os.path.basename(payload.get("brand_id", ""))
             path = os.path.join(self.brands, bid, "answers.json")
             if not os.path.isdir(os.path.dirname(path)):
-                return self._send(400, {"error": "rode o intake primeiro"})
+                return self._send(400, {"error": i18n.t("ob.err.intakefirst", lang)})
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(payload.get("answers", {}), f, indent=2, ensure_ascii=False)
             return self._send(200, {"ok": True})
@@ -483,12 +522,23 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         url = urlparse(self.path)
+        if url.path == "/lang":
+            setl = parse_qs(url.query).get("set", ["pt"])[0]
+            if setl not in ("pt", "en"):
+                setl = "pt"
+            self.send_response(302)
+            self.send_header("Set-Cookie", f"lang={setl}; Path=/; Max-Age=31536000; SameSite=Lax")
+            self.send_header("Location", "/")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        lang = self._lang()
         if url.path == "/":
-            page = ONBOARD_PAGE if self.mode == "onboard" else PAGE
+            page = onboard_page(lang) if self.mode == "onboard" else review_page(lang)
             self._send(200, page.encode(), "text/html; charset=utf-8")
         elif url.path == "/state":
             if self.mode == "onboard":
-                return self._send(200, onboard.status(self.root))
+                return self._send(200, onboard.status(self.root, lang))
             with open(os.path.join(self.root, "state.json"), encoding="utf-8") as f:
                 self._send(200, json.load(f))
         elif url.path == "/img":
@@ -533,7 +583,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, {"error": "not found"})
 
 
-def _serve(root, port, open_browser=True, shortcut_name="ABRIR-REVISAO.html"):
+def _serve(root, port, open_browser=True, shortcut_name="ABRIR-REVISAO.html", lang="pt"):
     """Sobe a UI em 127.0.0.1, grava atalho clicável na pasta e abre o navegador.
 
     Porta ocupada → tenta as próximas: cada campanha ganha a sua, sem conflito.
@@ -551,29 +601,31 @@ def _serve(root, port, open_browser=True, shortcut_name="ABRIR-REVISAO.html"):
     threading.Thread(target=server.serve_forever, daemon=True).start()
     shortcut = os.path.join(root, shortcut_name)
     with open(shortcut, "w", encoding="utf-8") as f:
-        f.write('<!doctype html><html lang="pt"><head><meta charset="utf-8">'
+        f.write('<!doctype html><html lang="' + lang + '"><head><meta charset="utf-8">'
                 f'<meta http-equiv="refresh" content="0;url={url}">'
-                '<title>abrir revisão</title></head>'
+                '<title>campaign-kit</title></head>'
                 '<body style="font-family:system-ui,sans-serif;padding:40px">'
-                f'<p>Abrindo <a href="{url}">{url}</a> …</p>'
-                '<p>Se o navegador não abrir sozinho, clique no link.</p>'
+                f'<p>{i18n.t("cli.shortcut.opening", lang, url=url)} <a href="{url}">{url}</a></p>'
+                f'<p>{i18n.t("cli.shortcut.manual", lang)}</p>'
                 '</body></html>\n')
-    print(f"\n  ➜  {url}\n  (atalho: {shortcut_name} na pasta da campanha)\n", flush=True)
+    print(f"\n  ➜  {url}\n  ({i18n.t('cli.serve.shortcut', lang, name=shortcut_name)})\n", flush=True)
     if open_browser:
         webbrowser.open(url)
     return server, url
 
 
-def serve(campaign_root, port=8765, open_browser=True):
+def serve(campaign_root, port=8765, open_browser=True, lang=None):
+    lang = lang or i18n.resolve_lang()
     Handler.mode = "review"
     Handler.root = os.path.abspath(campaign_root)
-    return _serve(os.path.abspath(campaign_root), port, open_browser)
+    return _serve(os.path.abspath(campaign_root), port, open_browser, lang=lang)
 
 
-def serve_onboard(inbox, brands_dir, port=8766, open_browser=True):
+def serve_onboard(inbox, brands_dir, port=8766, open_browser=True, lang=None):
+    lang = lang or i18n.resolve_lang()
     inbox = os.path.abspath(os.path.expanduser(inbox))
     onboard.scaffold(inbox)
     Handler.mode = "onboard"
     Handler.root = inbox
     Handler.brands = os.path.abspath(brands_dir)
-    return _serve(inbox, port, open_browser, shortcut_name="ABRIR-ONBOARDING.html")
+    return _serve(inbox, port, open_browser, shortcut_name="ABRIR-ONBOARDING.html", lang=lang)

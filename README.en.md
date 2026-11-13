@@ -1,0 +1,192 @@
+# campaign-kit
+
+**Language:** [Português](README.md) · English
+
+Generate a complete campaign from a folder with a **logo + references + briefing**.
+It runs on **your machine**, with **your AI agent** (Claude, Codex, Qoder…). It is not a
+hosted service: no cloud, no login, no public URL — the files and the control are yours.
+
+## Start here (step by step)
+
+### 1. Start — no terminal
+
+**You do not need to open a terminal or type a command.** The agent does it all for you:
+it creates the campaign folder, installs Python by itself (no admin), opens the
+onboarding in the browser and walks you through to review. You just **chat with it** and
+**use the browser**. Pick how to get the agent running:
+
+**Door 1 · Claude Code (plugin — nothing to download):**
+
+1. Open Claude Code.
+2. Ask it to install the repository - https://github.com/dannowk/creative-kit-generator
+   ```
+   /plugin marketplace add dannowk/creative-kit-generator
+   ```
+   ```
+   /plugin install campaign-kit@creative-kit-generator
+   ```
+3. To begin, type:
+   ```
+   /campaign-kit:start
+   ```
+
+### 2. Fill in YOUR folder (the campaign inbox)
+
+Your folder lives **outside the kit** (e.g. `~/Desktop/my-campaign`) — the kit is the
+tool; the inbox is your material. **The agent creates this folder and opens the wizard in
+the browser for you.** That is where you prepare everything, without typing a command:
+upload or drag files into each slot and fill in the briefing on screen.
+
+The wizard creates exactly this structure inside the folder the agent created:
+
+```
+my-brand/
+  logo/        ← logo png, transparent background preferred (required)
+  photos/      ← photos that can become a piece
+  videos/      ← source clips
+  refs/        ← 2–6 references of the desired look
+  fonts/       ← brand .ttf / .otf (optional; there are substitutes)
+  briefing.md  ← the briefing you filled on screen (or edited by hand)
+```
+
+**Already have a briefing in any format** (Word, PDF, text, email)? No need to rewrite
+anything: the agent **normalizes** it into the kit template and asks you only about what
+is missing (a single round). Just say: *"normalize this briefing"* and point at the file.
+Whoever fills in the template on screen (above) is already in the right format.
+
+**Prefer to create it by hand, or reopen the wizard later?** Inside the kit folder, use
+the Python the installer left behind (not the system `python3`, which lacks the
+dependencies):
+
+```
+.venv/bin/python -m kit.cli onboard ~/Desktop/my-brand       # Mac / Linux
+.venv\Scripts\python -m kit.cli onboard ~/Desktop/my-brand   # Windows
+```
+
+(In the manual flow of [Quick start](#quick-start-manual), use `python3` with the venv activated.)
+
+### 3. Hand it to the agent
+
+> **In the no-terminal flow (Doors 1 and 2)** the agent is already driving — this step is
+> only for those who prepared the folder by hand (terminal alternatives).
+
+Open the **kit folder** in your agent — Claude Code (`claude` in the terminal inside it),
+Qoder (open the folder in the app), Codex (`codex`) — and say:
+
+> "read AGENTS.md and run the campaign for `~/Desktop/my-brand`"
+
+The agent drives `intake (or brief --apply) → plan → assets → render → video` and creates:
+
+- `brands/my-brand/` — `brand.yaml` (palette, fonts, voice), `assets/logo.png`;
+- `campaigns/my-brand-<slug>/` — `campaign.json`, `templates/` (art direction),
+  `assets/`, `out/`, `review/`.
+
+Missing information? It becomes a **single round** of questions (in the wizard or in the
+terminal). Before generating any paid asset, the agent shows the ≈ credits notice.
+
+### 4. Approve in the browser
+
+`review` **opens the browser by itself** at `http://127.0.0.1:8765` (or the next free
+port). On screen: approve / reject per piece; **redo** queues your reason in
+`requests.json` and the agent executes it.
+
+- Lost the link? Clickable shortcut **`ABRIR-REVISAO.html`** inside the campaign folder;
+  the address is also at the top of the screen and at the end of `render` / `video` in the terminal.
+- Approved pieces: `campaigns/<campaign>/out/<concept>/` (png/mp4 per format) +
+  contact sheet `review/sheet_<concept>.png`.
+- **Interface language:** the wizard and the review have a **PT | EN** toggle at the top
+  (it is remembered in the browser). In the terminal, `--lang en` or `KIT_LANG=en`
+  translates the messages.
+
+### 5. Generate image/video with AI (optional — only for what is missing)
+
+**Do you need this?** Only if you want the AI to **create** image or video that is
+missing. If your inbox already has `photos/` and `videos/`, the kit renders from them and
+you **skip this step**.
+
+**Who does it?** The **agent**, by itself — you do not edit YAML or run a command twice.
+Your only job is to have the provider's MCP installed in the agent (e.g. Magnific):
+Claude Code (`claude mcp add …`), Qoder (Settings → MCP), Codex (`~/.codex/config.toml`).
+Then tell the agent: *"generate the missing assets"*. It shows the ≈ credits notice
+before generating (it is a notice, not a gatekeeper) and handles the rest.
+
+**Why the agent and not the kit?** The kit is local Python and **holds no MCP connection** —
+on purpose, it never sees your credentials. The agent is the one with the MCP; that is why
+it generates, and the kit only collects the finished files.
+
+<details>
+<summary>Under the hood (advanced / manual)</summary>
+
+The contract lives in the briefing's `provider` section:
+
+```yaml
+provider:
+  nome: magnific-mcp        # manual | magnific-mcp | http
+  creditos_imagem: 4        # feeds the "≈ X credits" notice
+  creditos_video: 20
+  drop_dir: ~/Downloads     # where the agent drops the generated files
+```
+
+1. `assets` prepares `campaigns/<campaign>/assets/jobs.json` and stops (`NeedsAgent`).
+2. The agent fulfills each job through its MCP and saves into `drop_dir` with the **job id
+   prefix** (e.g. `acme-hero_….png`).
+3. `assets` again collects from `drop_dir`, copies into the campaign's `assets/` and writes
+   `manifest.json` (type + credits).
+
+Alternatives: `manual` (no MCP — you drop the files into `drop_dir` yourself) and `http`
+(generic API: `api_url` + `api_key_env`, e.g. `MAGNIFIC_API_KEY`; **the key lives in an
+environment variable, never in the briefing**).
+
+</details>
+
+### 6. New campaign
+
+- **Same brand:** just a new briefing (goal, offer, CTA, channels, concepts, copy);
+  the agent reuses `brands/<id>` and creates `campaigns/<id>-<new-slug>/`.
+- **New brand:** a new inbox (step 2) and repeat from step 3.
+
+### Where everything lives
+
+| What | Where |
+| --- | --- |
+| kit code | where you downloaded/opened it (e.g. `~/Documents/creative-kit-generator`) |
+| your files | the inbox the agent created (e.g. `~/Desktop/my-campaign`) |
+| derived brand | `<kit>/brands/<id>/` |
+| final pieces | `<kit>/campaigns/<id>-<slug>/out/<concept>/` |
+| review | browser `127.0.0.1:8765+` · shortcut `ABRIR-REVISAO.html` |
+| redo requests | `<kit>/campaigns/<id>-<slug>/requests.json` |
+| generated by MCP | `drop_dir` (e.g. `~/Downloads`) → collected into the campaign's `assets/` |
+
+## Quick start (manual)
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+python3 -m kit.cli onboard ~/inbox/acme        # prepares the folder; wizard opens in the browser
+python3 -m kit.cli intake  ~/inbox/acme acme   # derives the brand
+#  or, via the canonical briefing template (advanced):
+python3 -m kit.cli brief --template           # only PRINTS a markdown checklist (does not save a file)
+#  fill in a briefing.yaml/.json with those fields and then:
+python3 -m kit.cli brief ~/inbox/briefing.yaml --apply   # validates and writes brand + campaign
+#  or normalize a free-form briefing (prose/PDF/docx) — emits a skeleton + contract for the agent:
+python3 -m kit.cli brief --normalize ~/inbox/briefing.pdf   # agent fills it → brief <out> --apply
+python3 -m kit.cli plan    campaigns/acme-launch
+python3 -m kit.cli assets  campaigns/acme-launch
+python3 -m kit.cli render  campaigns/acme-launch
+python3 -m kit.cli video   campaigns/acme-launch   # trim/reframe/overlay/concat/captions
+python3 -m kit.cli review  campaigns/acme-launch   # opens the browser by itself; shortcut ABRIR-REVISAO.html in the folder
+```
+
+Add `--lang en` (or set `KIT_LANG=en`) to any command for English messages; the default is
+Portuguese. The `plan` art-direction output stays in Portuguese — it is guidance for the
+agent, like `AGENTS.md`.
+
+## What is in the repo
+
+- `kit/` — declarative render engine + compliance + providers + local UI.
+- `templates/` — library of concept specs (overridable per campaign).
+- `brands/acme` + `campaigns/acme-launch` — a generic example for you to follow.
+
+The design **follows the briefing and the references** — it does not inherit another
+client's look. Full rules and the provider contract are in **[AGENTS.md](AGENTS.md)** (Portuguese).

@@ -208,6 +208,14 @@ Seu trabalho como agente:
 
 A garantia determinística é o **validate + apply**, não a sua leitura da prosa.
 
+## Idioma (PT/EN)
+
+A UI (wizard + revisão) tem toggle **PT | EN** no topo, gravado em cookie, e o CLI aceita
+`--lang en` ou a env `KIT_LANG=en` (default PT). Slots, perguntas do briefing, gaps e
+achados de compliance saem localizados. **Este AGENTS.md, as skills e a saída do `plan`
+ficam em PT** — são o contrato do agente, não UI. Ao conversar com o usuário, responda no
+idioma dele; o idioma da interface é independente e o usuário escolhe no toggle.
+
 ## Limites honestos
 
 O motor renderiza specs deterministicamente (PIL). A criatividade — autorais de

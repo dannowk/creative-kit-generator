@@ -12,13 +12,15 @@ import json
 import os
 import sys
 
-from . import briefing, campaign, intake, onboard, providers, render, ui, video
+from . import briefing, campaign, i18n, intake, onboard, providers, render, ui, video
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="campaign-kit")
+    ap.add_argument("--lang", choices=["pt", "en"],
+                    help="idioma das mensagens / message language (default: env KIT_LANG, else pt)")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("intake", help="deriva uma marca da pasta jogada")
@@ -60,6 +62,7 @@ def main(argv=None):
     p.add_argument("--no-open", action="store_true", help="não abre o navegador (headless)")
 
     args = ap.parse_args(argv)
+    lang = i18n.resolve_lang(args.lang)
 
     if args.cmd == "brief":
         if args.normalize:
@@ -71,16 +74,15 @@ def main(argv=None):
                 print(str(e), file=sys.stderr)
                 return 1
             print(json.dumps(summary, indent=2, ensure_ascii=False))
-            extract = " (extraia a fonte com visão/docx)" if summary["needs_extraction"] else ""
-            print(f"\nNORMALIZE MEDIADO PELO AGENTE: leia {summary['contract']}, preencha "
-                  f"{summary['skeleton']}{extract}; o que não souber fica vazio (vira gap). "
-                  f"Depois: brief {summary['skeleton']} --apply")
+            extract = i18n.t("cli.normalize.extract", lang) if summary["needs_extraction"] else ""
+            print("\n" + i18n.t("cli.normalize.header", lang, contract=summary["contract"],
+                                skeleton=summary["skeleton"], extract=extract))
             return 0
         if args.template:
             print(briefing.template_md())
             return 0
         if not args.file:
-            ap.error("brief precisa de um arquivo (ou --template)")
+            ap.error(i18n.t("cli.brief.needfile", lang))
         path = os.path.expanduser(args.file)
         struct = briefing.load(path)
         base = os.path.dirname(os.path.abspath(path))
@@ -91,19 +93,19 @@ def main(argv=None):
                 print(str(e), file=sys.stderr)
                 return 1
             print(json.dumps(summary, indent=2, ensure_ascii=False))
-            print(f"\npróximos passos: plan campaigns/{summary['campaign']} → render → review"
-                  "  (review abre o navegador sozinho)")
+            print("\n" + i18n.t("cli.brief.next", lang, campaign=summary["campaign"]))
             if summary["palette_proposed"]:
-                print("paleta derivada do logo é PROPOSTA — confirme com o designer antes de veicular.")
+                print(i18n.t("cli.palette.proposed", lang))
             return 0
-        v = briefing.validate(struct, base)
-        print(f"{'APLICÁVEL' if v['ok'] else 'NÃO APLICÁVEL'} · {len(v['errors'])} erro(s) · "
-              f"{sum(g['required'] for g in v['gaps'])} gap(s) obrigatório(s) · "
-              f"{sum(not g['required'] for g in v['gaps'])} pergunta(s) opcional(is)")
+        v = briefing.validate(struct, base, lang)
+        status = i18n.t("cli.appliable" if v["ok"] else "cli.notappliable", lang)
+        print(i18n.t("cli.briefsummary", lang, status=status, errors=len(v["errors"]),
+                     reqgaps=sum(g["required"] for g in v["gaps"]),
+                     optgaps=sum(not g["required"] for g in v["gaps"])))
         for e in v["errors"]:
-            print(f"  ERRO [{e['field']}] {e['message']}", file=sys.stderr)
+            print("  " + i18n.t("cli.err", lang, field=e["field"], message=e["message"]), file=sys.stderr)
         for g in v["gaps"]:
-            tag = "FALTA" if g["required"] else "opcional"
+            tag = i18n.t("cli.gap.req" if g["required"] else "cli.gap.opt", lang)
             print(f"  [{tag}] {g['field']}: {g['question']}")
             print(f"          {g['why']}")
         return 0 if v["ok"] else 1
@@ -111,17 +113,20 @@ def main(argv=None):
     if args.cmd == "onboard":
         inbox = os.path.expanduser(args.inbox)
         brief = onboard.scaffold(inbox)
-        st = onboard.status(inbox)
-        print(f"pasta em {st['inbox']}")
+        st = onboard.status(inbox, lang)
+        print(i18n.t("cli.folder", lang, inbox=st["inbox"]))
         for s in st["slots"].values():
-            mark = "ok" if s["ok"] else ("FALTA" if s["required"] else "opcional")
-            print(f"  [{mark}] {s['label']}: {len(s['files'])} arquivo(s) — {s['hint']}")
-        print(f"  briefing: {brief} · {len(st['briefing']['missing'])} seção(ões) obrigatória(s) em branco")
+            mark = i18n.t("cli.mark.ok" if s["ok"] else
+                          ("cli.mark.missing" if s["required"] else "cli.mark.optional"), lang)
+            print("  " + i18n.t("cli.slotline", lang, mark=mark, label=s["label"],
+                                n=len(s["files"]), hint=s["hint"]))
+        print("  " + i18n.t("cli.briefline", lang, path=brief,
+                            n=len(st["briefing"]["missing"])))
         if args.no_ui:
             return 0
         server, url = ui.serve_onboard(inbox, os.path.join(ROOT, "brands"), args.port,
-                                       open_browser=not args.no_open)
-        print("  Ctrl+C para fechar o servidor")
+                                       open_browser=not args.no_open, lang=lang)
+        print("  " + i18n.t("cli.ctrlc", lang))
         try:
             server.serve_forever()
         except KeyboardInterrupt:
@@ -130,9 +135,9 @@ def main(argv=None):
 
     if args.cmd == "intake":
         summary, gaps = intake.run(os.path.expanduser(args.inbox), args.brand_id,
-                                   os.path.join(ROOT, "brands"))
+                                   os.path.join(ROOT, "brands"), lang)
         print(json.dumps(summary, indent=2, ensure_ascii=False))
-        print(f"\n{len(gaps)} perguntas para uma única rodada:", file=sys.stderr)
+        print("\n" + i18n.t("cli.gaps.one", lang, n=len(gaps)), file=sys.stderr)
         for g in gaps:
             print(f"  [{g['field']}] {g['question']}", file=sys.stderr)
         return 0
@@ -147,7 +152,7 @@ def main(argv=None):
         try:
             result = providers.run_assets(camp)
         except providers.NeedsAgent as e:
-            print(f"PROVIDER MEDIADO PELO AGENTE: cumpra os jobs em {e.jobs_path}")
+            print(i18n.t("cli.provider.agent", lang, path=e.jobs_path))
             with open(e.jobs_path, encoding="utf-8") as f:
                 print(json.dumps(json.load(f)["jobs"], indent=2, ensure_ascii=False))
             return 0
@@ -157,30 +162,32 @@ def main(argv=None):
     if args.cmd == "render":
         state = campaign.run(camp, only_concepts=args.concepts, only_formats=args.formats,
                              limit=args.limit, dry=args.dry)
-        print(f"{len(state['pieces'])} peças · {state['blocked_count']} bloqueadas · "
-              f"conceitos: {', '.join(state['concepts'])}")
+        print(i18n.t("cli.render.summary", lang, n=len(state["pieces"]),
+                     blocked=state["blocked_count"], concepts=", ".join(state["concepts"])))
         for p in state["pieces"]:
             for f in p["findings"]:
                 if f["level"] == "fail":
-                    print(f"  BLOQUEADA {p['id']}: {f['message']}")
+                    msg = f.get("message_en") if lang == "en" and f.get("message_en") else f["message"]
+                    print("  " + i18n.t("cli.render.blocked", lang, id=p["id"], message=msg))
         if state["font_warnings"]["substituted"]:
-            print("  fontes substitutas:", state["font_warnings"]["substituted"])
+            print("  " + i18n.t("cli.render.fonts", lang, fonts=state["font_warnings"]["substituted"]))
         if not args.dry:
-            print(f"  próximo passo: python3 -m kit.cli review {args.campaign}  (abre o navegador)")
+            print("  " + i18n.t("cli.render.next", lang, campaign=args.campaign))
         return 0
 
     if args.cmd == "video":
         result = video.run(camp)
         if not result["count"]:
-            print(result.get("note", "sem peças de vídeo"))
+            print(i18n.t("cli.video.none", lang))
             return 0
-        print(f"{result['count']} peças de vídeo · {result['blocked']} bloqueadas · "
-              f"conceitos: {', '.join(result['concepts'])}")
+        print(i18n.t("cli.video.summary", lang, n=result["count"], blocked=result["blocked"],
+                     concepts=", ".join(result["concepts"])))
         for p in result["pieces"]:
             for f in p["findings"]:
                 if f["level"] == "fail":
-                    print(f"  BLOQUEADA {p['id']}: {f['message']}")
-        print(f"  próximo passo: python3 -m kit.cli review {args.campaign}  (abre o navegador)")
+                    msg = f.get("message_en") if lang == "en" and f.get("message_en") else f["message"]
+                    print("  " + i18n.t("cli.render.blocked", lang, id=p["id"], message=msg))
+        print("  " + i18n.t("cli.render.next", lang, campaign=args.campaign))
         return 0
 
     if args.cmd == "plan":
@@ -222,8 +229,8 @@ def main(argv=None):
         return 0
 
     if args.cmd == "review":
-        server, url = ui.serve(camp["_root"], args.port, open_browser=not args.no_open)
-        print("  Ctrl+C para fechar o servidor")
+        server, url = ui.serve(camp["_root"], args.port, open_browser=not args.no_open, lang=lang)
+        print("  " + i18n.t("cli.ctrlc", lang))
         try:
             server.serve_forever()
         except KeyboardInterrupt:

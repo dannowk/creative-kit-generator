@@ -14,7 +14,7 @@ import shutil
 
 import yaml
 
-from . import formats
+from . import formats, i18n
 from .intake import extract_palette
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -61,8 +61,9 @@ def _fields(schema):
             yield f"{sec}.{key}", meta
 
 
-def validate(struct, base_dir=None):
-    """Gaps (required/optional, rodada única) + erros estruturais. ok = aplicável."""
+def validate(struct, base_dir=None, lang="pt"):
+    """Gaps (required/optional, rodada única) + erros estruturais. ok = aplicável.
+    Perguntas dos gaps saem no idioma lang; erros estruturais ficam PT (contrato do agente)."""
     schema = load_schema()
     gaps, errors = [], []
 
@@ -85,12 +86,11 @@ def validate(struct, base_dir=None):
         v = _get(struct, field)
         tipo = meta["tipo"]
         if _empty(v):
+            q, w = i18n.field_strings(field, meta, lang)
             if meta.get("obrigatorio"):
-                gaps.append({"field": field, "question": meta["pergunta"],
-                             "why": meta["porque"], "required": True})
+                gaps.append({"field": field, "question": q, "why": w, "required": True})
             elif meta.get("perguntar_se_ausente"):
-                gaps.append({"field": field, "question": meta["pergunta"],
-                             "why": meta["porque"], "required": False})
+                gaps.append({"field": field, "question": q, "why": w, "required": False})
             continue
 
         if tipo == "texto" and not isinstance(v, str):
@@ -170,25 +170,25 @@ def validate(struct, base_dir=None):
         entry = copy_keys.get(c) or {}
         if not isinstance(entry, dict) or _empty(entry.get("hook")):
             gaps.append({"field": f"campanha.copy.{c}.hook",
-                         "question": f"Qual o hook (chamada) do conceito '{c}'?",
-                         "why": "Sem copy.hook por conceito o render pula o conceito.",
+                         "question": i18n.t("gap.brief.hook.q", lang, c=c),
+                         "why": i18n.t("gap.brief.hook.w", lang),
                          "required": True})
 
     video_present = any(not _empty(_get(struct, f"video.{k}"))
                         for k in ("fonte", "concat", "duracoes", "legendas", "segmentos", "formatos"))
     if video_present and _empty(_get(struct, "video.fonte")) and _empty(_get(struct, "video.concat")):
         gaps.append({"field": "video.fonte",
-                     "question": "A seção vídeo foi preenchida mas sem fonte: qual arquivo (ou concat) edito?",
-                     "why": "Trim/reframe/overlay precisam de um vídeo-fonte local.", "required": True})
+                     "question": i18n.t("gap.brief.videosource.q", lang),
+                     "why": i18n.t("gap.brief.videosource.w", lang), "required": True})
     if _get(struct, "video.legendas") == "manual" and _empty(_get(struct, "video.segmentos")):
         gaps.append({"field": "video.segmentos",
-                     "question": "Legendas manuais: quais os segmentos ({start, end, text})?",
-                     "why": "Não invento texto falado; legenda manual precisa das janelas de tempo.",
+                     "question": i18n.t("gap.brief.segments.q", lang),
+                     "why": i18n.t("gap.brief.segments.w", lang),
                      "required": True})
     if _get(struct, "provider.nome") == "http" and _empty(_get(struct, "provider.api_url")):
         gaps.append({"field": "provider.api_url",
-                     "question": "Provider http: qual a URL da API?",
-                     "why": "Sem URL não há contrato de geração.", "required": True})
+                     "question": i18n.t("gap.brief.apiurl.q", lang),
+                     "why": i18n.t("gap.brief.apiurl.w", lang), "required": True})
 
     return {"ok": not errors and not any(g["required"] for g in gaps),
             "gaps": gaps, "errors": errors}

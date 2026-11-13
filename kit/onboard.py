@@ -118,7 +118,8 @@ def requested_concepts(text):
     return out
 
 
-def status(inbox):
+def status(inbox, lang="pt"):
+    from . import i18n
     slots = {}
     for s in SLOTS:
         d = os.path.join(inbox, s["dir"])
@@ -132,6 +133,9 @@ def status(inbox):
                               "rel": os.path.join(s["dir"], f)})
         slots[s["key"]] = {**{k: s[k] for k in ("label", "hint", "required", "multiple", "dir")},
                            "ext": list(s["ext"]), "files": files, "ok": bool(files)}
+        if lang != "pt":
+            slots[s["key"]]["label"] = i18n.t(f"slot.{s['key']}.label", lang)
+            slots[s["key"]]["hint"] = i18n.t(f"slot.{s['key']}.hint", lang)
     brief = os.path.join(inbox, "briefing.md")
     text = ""
     if os.path.isfile(brief):

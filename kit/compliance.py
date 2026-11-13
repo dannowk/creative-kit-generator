@@ -6,6 +6,8 @@ em prosa no handoff passam a bloquear a peça de verdade.
 
 import numpy as np
 
+from . import i18n
+
 
 def _overlap(a, b):
     if not a or not b:
@@ -43,7 +45,8 @@ def check_subject_safe(img, trace, rule, brand):
         frac = _overlap(el["box"], face)
         if frac > tolerance:
             out.append({"check": "subject_safe", "level": "fail",
-                        "message": f"{el['op']} cobre {frac:.0%} do rosto (máx {tolerance:.0%})."})
+                        "message": f"{el['op']} cobre {frac:.0%} do rosto (máx {tolerance:.0%}).",
+                        "message_en": i18n.t("cmp.subject_safe", "en", op=el["op"], frac=frac, tol=tolerance)})
     return out
 
 
@@ -61,7 +64,9 @@ def check_palette_forbidden(img, trace, rule, brand):
         if frac > min_area:
             out.append({"check": "palette_forbidden", "level": "fail",
                         "message": f"Cor proibida rgb{tuple(color)} em {frac:.1%} da peça "
-                                   f"(máx {min_area:.1%})."})
+                                   f"(máx {min_area:.1%}).",
+                        "message_en": i18n.t("cmp.palette_forbidden", "en", color=tuple(color),
+                                             frac=frac, min_area=min_area)})
     return out
 
 
@@ -76,7 +81,9 @@ def check_min_font_size(img, trace, rule, brand):
         if floor and el.get("size", 999) < floor:
             out.append({"check": "min_font_size", "level": "fail",
                         "message": f"Chamada encolheu para {el['size']:.0f}px, mínimo {floor:.0f}px. "
-                                   f"Encurte o texto: \"{el.get('text', '')[:40]}…\""})
+                                   f"Encurte o texto: \"{el.get('text', '')[:40]}…\"",
+                        "message_en": i18n.t("cmp.min_font_size", "en", size=el["size"], floor=floor,
+                                             text=el.get("text", "")[:40] + "…")})
     return out
 
 
@@ -90,7 +97,9 @@ def check_contrast_min(img, trace, rule, brand):
         if ratio < minimum:
             out.append({"check": "contrast_min", "level": "warn",
                         "message": f"Contraste {ratio:.1f}:1 abaixo de {minimum:.1f}:1 "
-                                   f"em \"{el.get('text', '')[:30]}…\""})
+                                   f"em \"{el.get('text', '')[:30]}…\"",
+                        "message_en": i18n.t("cmp.contrast_min", "en", ratio=ratio, minimum=minimum,
+                                             text=el.get("text", "")[:30] + "…")})
     return out
 
 
@@ -101,7 +110,8 @@ def check_disclaimer_required(img, trace, rule, brand):
     haystack = " ".join(el.get("text", "") for el in trace.get("elements", []))
     if required.lower() not in haystack.lower():
         return [{"check": "disclaimer_required", "level": "fail",
-                 "message": f"Disclaimer obrigatório ausente: \"{required}\"."}]
+                 "message": f"Disclaimer obrigatório ausente: \"{required}\".",
+                 "message_en": i18n.t("cmp.disclaimer_required", "en", text=required)}]
     return []
 
 
@@ -111,7 +121,8 @@ def check_nobreak(img, trace, rule, brand):
     terms = terms if isinstance(terms, list) else [terms]
     haystack = " ".join(el.get("text", "") for el in trace.get("elements", []))
     return [{"check": "nobreak", "level": "info",
-             "message": f"\"{t}\" protegido contra quebra de linha."}
+             "message": f"\"{t}\" protegido contra quebra de linha.",
+             "message_en": i18n.t("cmp.nobreak", "en", t=t)}
             for t in terms if t.lower() in haystack.lower()]
 
 
@@ -133,7 +144,8 @@ def run(img, trace, brand):
         fn = CHECKS.get(rule.get("check"))
         if fn is None:
             findings.append({"check": rule.get("check"), "level": "warn",
-                             "message": f"Check desconhecido: {rule.get('check')}"})
+                             "message": f"Check desconhecido: {rule.get('check')}",
+                             "message_en": i18n.t("cmp.unknown", "en", check=rule.get("check"))})
             continue
         findings += fn(img, trace, rule, brand)
     return findings
