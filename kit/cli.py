@@ -20,6 +20,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def main(argv=None):
+    # Console Windows (cp1252) não encoda os símbolos Unicode do kit (➜, ✓, ≈): força UTF-8.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(prog="campaign-kit")
     ap.add_argument("--lang", choices=["pt", "en"],
                     help="idioma das mensagens / message language (default: env KIT_LANG, else pt)")
