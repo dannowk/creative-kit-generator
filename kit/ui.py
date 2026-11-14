@@ -915,7 +915,7 @@ def serve(campaign_root, port=8765, open_browser=True, lang=None):
 def serve_onboard(inbox, brands_dir, port=8766, open_browser=True, lang=None):
     lang = lang or i18n.resolve_lang()
     inbox = os.path.abspath(os.path.expanduser(inbox))
-    onboard.scaffold(inbox)
+    onboard.scaffold(inbox, lang)
     Handler.mode = "onboard"
     Handler.root = inbox
     Handler.brands = os.path.abspath(brands_dir)

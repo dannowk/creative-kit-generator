@@ -126,7 +126,7 @@ def main(argv=None):
 
     if args.cmd == "onboard":
         inbox = os.path.expanduser(args.inbox)
-        brief = onboard.scaffold(inbox)
+        brief = onboard.scaffold(inbox, lang)
         st = onboard.status(inbox, lang)
         print(i18n.t("cli.folder", lang, inbox=st["inbox"]))
         for s in st["slots"].values():

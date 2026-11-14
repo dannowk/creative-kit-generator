@@ -72,11 +72,49 @@ _preencher: disclaimer obrigatório, cor proibida, termo que não pode quebrar l
 _preencher: fotos e vídeos que já posso usar (e se há direito de uso)._
 """
 
+BRIEFING_TEMPLATE_EN = """# Campaign briefing
+
+<!-- Fill in what you know. Anything left blank becomes a single question at the end of onboarding. -->
+
+## 1. Business and product
+_fill in: what the company sells, in one sentence._
+
+## 2. Audience
+_fill in: who decides the purchase._
+
+## 3. Goal, offer and CTA
+_fill in: what the campaign should do and the button text._
+
+## 4. Tone of voice
+_fill in: how the brand speaks — and what it can never promise._
+
+## 5. Channels
+_fill in: Meta, Google, LinkedIn, print, web…_
+
+## 6. Languages
+_fill in: e.g. pt-BR, en._
+
+## 7. Concepts (visual directions)
+_fill in: how many different directions you want and the name of each, comma-separated — e.g. clean, editorial, cinema. Each concept becomes a template, a delivery folder and a review filter._
+
+## 8. Visual direction
+_fill in: what to copy from the references and what to avoid._
+
+## 9. Compliance
+_fill in: mandatory disclaimer, forbidden color, term that must not wrap._
+
+## 10. Existing assets
+_fill in: photos and videos you can already use (and whether you hold the rights)._
+"""
+
+# Marcadores de seção não preenchida (PT/EN) — o parser de conceitos e o status usam.
+_UNFILLED = ("_preencher", "_fill in")
+
 REQUIRED_SECTIONS = ("1.", "2.", "3.")
 CONCEPT_SECTION = "7."
 
 
-def scaffold(inbox):
+def scaffold(inbox, lang="pt"):
     os.makedirs(inbox, exist_ok=True)
     for s in SLOTS:
         os.makedirs(os.path.join(inbox, s["dir"]), exist_ok=True)
@@ -84,7 +122,7 @@ def scaffold(inbox):
     brief = os.path.join(inbox, "briefing.md")
     if not os.path.isfile(brief):
         with open(brief, "w", encoding="utf-8") as f:
-            f.write(BRIEFING_TEMPLATE)
+            f.write(BRIEFING_TEMPLATE_EN if lang != "pt" else BRIEFING_TEMPLATE)
     return brief
 
 
@@ -95,7 +133,7 @@ def _sections(text):
         nxt = re.search(r"^## ", text[start:], re.M)
         body = text[start:start + nxt.start()] if nxt else text[start:]
         body = re.sub(r"<!--.*?-->", "", body, flags=re.S).strip()
-        filled = bool(body) and "_preencher" not in body
+        filled = bool(body) and not any(p in body for p in _UNFILLED)
         out.append({"title": m.group(1).strip(), "filled": filled, "body": body})
     return out
 
@@ -119,7 +157,7 @@ def requested_concepts(text):
     out = []
     for raw in re.split(r"[,;\n]+|\s+e\s+|\s+and\s+", body):
         raw = raw.strip()
-        if not raw or "_preencher" in raw or len(raw.split()) > 3:
+        if not raw or any(p in raw for p in _UNFILLED) or len(raw.split()) > 3:
             continue
         slug = _concept_slug(raw)
         if slug and len(slug) <= 24 and slug not in out:
@@ -150,6 +188,11 @@ def status(inbox, lang="pt"):
     if os.path.isfile(brief):
         with open(brief, encoding="utf-8") as f:
             text = f.read()
+    # Template intacto → mostra no idioma da UI; conteúdo preenchido nunca é traduzido.
+    if text.strip() == BRIEFING_TEMPLATE.strip() and lang != "pt":
+        text = BRIEFING_TEMPLATE_EN
+    elif text.strip() == BRIEFING_TEMPLATE_EN.strip() and lang == "pt":
+        text = BRIEFING_TEMPLATE
     sections = _sections(text)
     missing = [x["title"] for x in sections
                if not x["filled"] and x["title"].startswith(REQUIRED_SECTIONS)]
