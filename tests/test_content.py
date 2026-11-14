@@ -207,3 +207,22 @@ class BriefingSection(unittest.TestCase):
             onboard.scaffold(d)
             st = onboard.status(d)
             self.assertFalse(any(t.startswith("11.") for t in st["briefing"]["missing"]))
+
+
+class RenderRouting(unittest.TestCase):
+    def test_ppc_only_copy_skips_images(self):
+        from kit import campaign as C
+        camp = C.load_campaign("campaigns/acme-launch")
+        entries = [e for concepts in (camp.get("copy") or {}).values()
+                   if isinstance(concepts, dict) for e in concepts.values()
+                   if isinstance(e, dict)]
+        self.assertTrue(entries)
+        for e in entries:
+            e["hook"] = e.get("hook") or "Hi"
+            e["use"] = "ppc"
+        state = C.run(camp, dry=True)
+        self.assertEqual(state["pieces"], [])
+        for e in entries:
+            e["use"] = "both"
+        state = C.run(camp, dry=True)
+        self.assertTrue(state["pieces"])

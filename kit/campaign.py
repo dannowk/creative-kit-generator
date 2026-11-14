@@ -190,6 +190,8 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
             if spec.get("needs_photo") and photo is None:
                 continue
             voice = copy.get(concept)
+            if isinstance(voice, dict) and voice.get("use") == "ppc":
+                continue
             merged = {**copy, **voice} if isinstance(voice, dict) else copy
             if not merged.get("hook"):
                 print(f"  sem copy.hook para {concept} em {combo or 'campanha'} — conceito pulado")
