@@ -226,3 +226,48 @@ class RenderRouting(unittest.TestCase):
             e["use"] = "both"
         state = C.run(camp, dry=True)
         self.assertTrue(state["pieces"])
+
+
+class PpcRouting(unittest.TestCase):
+    def _brand(self):
+        from kit import campaign as C
+        return C.brand_for(C.load_campaign("campaigns/acme-launch"))
+
+    def _camp(self):
+        return {"slug": "t", "concepts": ["clean"], "cta": "Learn more",
+                "copy": {"default": {"clean": {
+                    "hook": "Base", "kicker": "K", "program": "P", "cta": "Buy",
+                    "use": "both",
+                    "versions": [{"hook": "V2", "use": "ppc"}]}}}}
+
+    def _piece(self):
+        return {"id": "p1", "concept": "clean", "format": "meta_feed_square",
+                "axes": {}, "path": "clean/p1.png", "status": "approved"}
+
+    def test_copy_for_carries_use_and_versions(self):
+        from kit import ppc
+        c = ppc._copy_for(self._camp(), {}, "clean")
+        self.assertEqual(c["use"], "both")
+        self.assertEqual(c["versions"], [{"hook": "V2", "use": "ppc"}])
+
+    def test_meta_one_row_per_version(self):
+        from kit import ppc
+        rows = ppc._meta_rows([self._piece()], self._camp(), self._brand())
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["Ad Name"], "p1")
+        self.assertEqual(rows[1]["Ad Name"], "p1_V1")
+        self.assertEqual(rows[1]["Body"], "V2")
+
+    def test_image_only_excluded(self):
+        from kit import ppc
+        camp = self._camp()
+        camp["copy"]["default"]["clean"]["use"] = "image"
+        self.assertEqual(ppc._meta_rows([self._piece()], camp, self._brand()), [])
+
+    def test_ppc_only_extra_rows(self):
+        from kit import ppc
+        camp = self._camp()
+        camp["copy"]["default"]["clean"]["use"] = "ppc"
+        rows = ppc._ppc_only_rows(camp, self._brand())
+        self.assertEqual(len(rows), 2)  # base + 1 version
+        self.assertEqual(rows[0]["Body"], "Base")
