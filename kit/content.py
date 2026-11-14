@@ -14,11 +14,18 @@ ALIASES = {
     "headline": "hook", "apoio": "kicker", "subtitulo": "kicker",
     "programa": "program", "oferta": "program", "uso": "use", "destino": "use",
     "idioma": "lang", "locale": "lang",
+    "decisao": "decision", "aprovacao": "decision", "approval": "decision",
+    "nota": "note", "observacao": "note", "comment": "note",
 }
 USES = ("image", "ppc", "both")
 SHEET_EXT = (".xlsx", ".csv")
 STATUSES = ("pending", "approved", "rejected", "redo")
 ORIGINS = ("sheet", "agent")
+_DECISION_VALUES = {
+    "approve": "approved", "aprovar": "approved",
+    "reject": "rejected", "rejeitar": "rejected",
+    "redo": "redo", "refazer": "redo",
+}
 
 
 def _norm_header(h):
@@ -41,23 +48,28 @@ def _rows_from_dicts(dicts):
     return rows
 
 
-def read_sheet(path):
-    """Canonical rows from .xlsx/.csv. Empty cells dropped; blank use = both."""
+def _raw_rows(path):
+    """Normalized-header dicts from .xlsx/.csv (all columns; empty cells kept)."""
     low = path.lower()
     if low.endswith(".csv"):
         with open(path, encoding="utf-8-sig", newline="") as f:
-            return _rows_from_dicts(list(csv.DictReader(f)))
+            return [dict((_norm_header(k), v) for k, v in row.items())
+                    for row in csv.DictReader(f)]
     if low.endswith(".xlsx"):
         from openpyxl import load_workbook
         wb = load_workbook(path, read_only=True, data_only=True)
         try:
             it = wb.active.iter_rows(values_only=True)
             headers = [_norm_header(h) for h in next(it, ())]
-            dicts = [dict(zip(headers, vals)) for vals in it]
+            return [dict(zip(headers, vals)) for vals in it]
         finally:
             wb.close()
-        return _rows_from_dicts(dicts)
     raise ValueError(f"unsupported sheet extension: {path} (use .xlsx or .csv)")
+
+
+def read_sheet(path):
+    """Canonical rows from .xlsx/.csv. Empty cells dropped; blank use = both."""
+    return _rows_from_dicts(_raw_rows(path))
 
 
 def _stamp(rows):
@@ -324,3 +336,52 @@ def export_review(root, lang="pt"):
     wb.save(path)
     wb.close()
     return {"path": path, "rows": len(rows)}
+
+
+def import_decisions(root, path):
+    """Apply team decisions from a returned review sheet. Atomic; decisions only."""
+    zeros = {"approved": 0, "rejected": 0, "redo": 0, "unchanged": 0}
+    if os.path.getsize(path) > 20 * 1024 * 1024:
+        return {"errors": ["arquivo > 20 MB"], **zeros}
+    try:
+        raw = _raw_rows(path)
+    except Exception as e:
+        return {"errors": [f"não foi possível ler a planilha: {e}"], **zeros}
+    if not raw:
+        return {"errors": ["planilha sem linhas"], **zeros}
+    if "id" not in raw[0]:
+        return {"errors": ["coluna id ausente — use a planilha exportada"], **zeros}
+    data = _load_rows(root)
+    by_id = {r.get("id"): r for r in data.get("rows") or []}
+    errors, changes, unchanged = [], [], 0
+    for i, rr in enumerate(raw, 2):
+        rid = str(rr.get("id") or "").strip()
+        if not rid:
+            errors.append(f"linha {i}: id vazio")
+            continue
+        if rid not in by_id:
+            errors.append(f"linha {i}: id desconhecido: {rid}")
+            continue
+        decision = str(rr.get("decision") or "").strip().lower()
+        note = str(rr.get("note") or "").strip()
+        if decision == "":
+            unchanged += 1
+            continue
+        if decision not in _DECISION_VALUES:
+            errors.append(f"linha {i}: decision inválida: {decision} (approve/reject/redo)")
+            continue
+        changes.append((by_id[rid], _DECISION_VALUES[decision], note))
+    if errors:
+        return {"errors": errors, **zeros}
+    counts = dict(zeros)
+    counts["unchanged"] = unchanged
+    for row, status, note in changes:
+        row["status"] = status
+        if note:
+            row["note"] = note
+        else:
+            row.pop("note", None)
+        counts[status] += 1
+    _save_rows(root, data)
+    counts["errors"] = []
+    return counts

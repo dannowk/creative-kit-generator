@@ -132,3 +132,79 @@ class ExportReview(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaises(ValueError):
                 content.export_review(d)
+
+
+class ImportDecisions(unittest.TestCase):
+    def _setup(self, d):
+        cdir = os.path.join(d, "content")
+        os.makedirs(cdir)
+        with open(os.path.join(cdir, "base.csv"), "w", encoding="utf-8") as f:
+            f.write("concept,hook\nclean,One\nclean,Two\nclean,Three\n")
+        content.ingest({"_root": d, "concepts": ["clean"]})
+
+    def _return_xlsx(self, d, rows):
+        from openpyxl import Workbook
+        p = os.path.join(d, "return.xlsx")
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["id", "decision", "note"])
+        for row in rows:
+            ws.append(list(row))
+        wb.save(p)
+        wb.close()
+        return p
+
+    def test_round_trip(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._setup(d)
+            p = self._return_xlsx(d, [("c01", "approve", ""),
+                                      ("c02", "reject", "mudar"),
+                                      ("c03", "", "")])
+            summary = content.import_decisions(d, p)
+            self.assertEqual(summary["errors"], [])
+            self.assertEqual(summary["approved"], 1)
+            self.assertEqual(summary["rejected"], 1)
+            self.assertEqual(summary["unchanged"], 1)
+            rows = {r["id"]: r for r in content.review_payload(d)["rows"]}
+            self.assertEqual(rows["c01"]["status"], "approved")
+            self.assertEqual(rows["c02"]["status"], "rejected")
+            self.assertEqual(rows["c02"]["note"], "mudar")
+            self.assertEqual(rows["c03"]["status"], "approved")
+
+    def test_unknown_id_blocks_all(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._setup(d)
+            p = self._return_xlsx(d, [("c01", "reject", ""), ("nope", "approve", "")])
+            summary = content.import_decisions(d, p)
+            self.assertTrue(summary["errors"])
+            rows = {r["id"]: r for r in content.review_payload(d)["rows"]}
+            self.assertEqual(rows["c01"]["status"], "approved")  # nothing written
+
+    def test_bad_decision_blocks(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._setup(d)
+            p = self._return_xlsx(d, [("c01", "maybe", "")])
+            self.assertTrue(content.import_decisions(d, p)["errors"])
+
+    def test_missing_id_column_blocks(self):
+        from openpyxl import Workbook
+        with tempfile.TemporaryDirectory() as d:
+            self._setup(d)
+            p = os.path.join(d, "noid.xlsx")
+            wb = Workbook()
+            wb.active.append(["decision"])
+            wb.active.append(["approve"])
+            wb.save(p)
+            wb.close()
+            self.assertTrue(content.import_decisions(d, p)["errors"])
+
+    def test_pt_decision_aliases(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._setup(d)
+            p = os.path.join(d, "return.csv")
+            with open(p, "w", encoding="utf-8") as f:
+                f.write("id,decisao,nota\nc01,aprovar,\nc02,rejeitar,ajustar\n")
+            summary = content.import_decisions(d, p)
+            self.assertEqual(summary["errors"], [])
+            self.assertEqual(summary["approved"], 1)
+            self.assertEqual(summary["rejected"], 1)
