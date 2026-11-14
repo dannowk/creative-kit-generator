@@ -272,3 +272,55 @@ def review_payload(root):
         rows = json.load(f).get("rows") or []
     counts = {s: sum(1 for r in rows if r.get("status") == s) for s in STATUSES}
     return {"rows": rows, "counts": counts}
+
+
+REVIEW_COLUMNS = ("id",) + COLUMNS + ("origin", "status", "decision", "note")
+
+_REVIEW_NOTES = {
+    "pt": [
+        "Preencha a coluna decision com approve / reject / redo (ou aprovar / rejeitar / refazer).",
+        "Em branco = sem mudança. Edições no texto do copy são ignoradas na importação.",
+        "A coluna note é opcional — use para pedir ajustes (redo) ou justificar (reject).",
+        "Devolva este arquivo para importar as decisões. Re-ingest (nova planilha base) zera as decisões.",
+    ],
+    "en": [
+        "Fill the decision column with approve / reject / redo (or aprovar / rejeitar / refazer).",
+        "Blank = no change. Edits to the copy text are ignored on import.",
+        "The note column is optional — use it to request changes (redo) or justify (reject).",
+        "Send this file back to import the decisions. Re-ingest (new base sheet) resets decisions.",
+    ],
+}
+
+
+def export_review(root, lang="pt"):
+    """Write content_review.xlsx into <delivery>/content_review/. {path, rows}."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    from openpyxl.utils import get_column_letter
+    from . import campaign as C
+
+    payload = review_payload(root)
+    if payload is None:
+        raise ValueError("content.json ausente — rode content primeiro")
+    rows = payload["rows"]
+    key = "pt" if lang == "pt" else "en"
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Review"
+    ws.append(list(REVIEW_COLUMNS))
+    for c in ws[1]:
+        c.font = Font(bold=True)
+    for r in rows:
+        ws.append([r.get(col, "") for col in REVIEW_COLUMNS])
+    for i, w in enumerate((8, 12, 12, 46, 12, 26, 18, 8, 6, 8, 10, 12, 30), 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = "A2"
+    ins = wb.create_sheet("Instruções" if key == "pt" else "Instructions")
+    for line in _REVIEW_NOTES[key]:
+        ins.append([line])
+    dest_dir = os.path.join(C.delivery_dir(root), "content_review")
+    os.makedirs(dest_dir, exist_ok=True)
+    path = os.path.join(dest_dir, "content_review.xlsx")
+    wb.save(path)
+    wb.close()
+    return {"path": path, "rows": len(rows)}

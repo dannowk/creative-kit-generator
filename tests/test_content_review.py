@@ -101,3 +101,34 @@ class DecideAndPayload(unittest.TestCase):
     def test_review_payload_none_without_file(self):
         with tempfile.TemporaryDirectory() as d:
             self.assertIsNone(content.review_payload(d))
+
+
+class ExportReview(unittest.TestCase):
+    def _setup(self, d):
+        cdir = os.path.join(d, "content")
+        os.makedirs(cdir)
+        with open(os.path.join(cdir, "base.csv"), "w", encoding="utf-8") as f:
+            f.write("concept,hook\nclean,Hi\n")
+        content.ingest({"_root": d, "concepts": ["clean"]})
+
+    def test_export_tabs_and_columns(self):
+        from unittest import mock
+        from openpyxl import load_workbook
+        with tempfile.TemporaryDirectory() as d:
+            self._setup(d)
+            with mock.patch("kit.campaign.delivery_dir",
+                            return_value=os.path.join(d, "delivery")):
+                summary = content.export_review(d, "en")
+            self.assertEqual(summary["rows"], 1)
+            wb = load_workbook(summary["path"])
+            try:
+                self.assertEqual(wb.sheetnames, ["Review", "Instructions"])
+                self.assertEqual([c.value for c in wb["Review"][1]],
+                                 list(content.REVIEW_COLUMNS))
+            finally:
+                wb.close()
+
+    def test_export_without_content_raises(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(ValueError):
+                content.export_review(d)
