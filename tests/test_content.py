@@ -91,3 +91,55 @@ class Ingest(unittest.TestCase):
             self.assertEqual(summary["rows"], 0)
             self.assertTrue(summary["gaps"])
             self.assertEqual(summary["errors"], [])
+
+
+class Apply(unittest.TestCase):
+    def _camp(self, d, rows):
+        import json
+        cdir = os.path.join(d, "content")
+        os.makedirs(cdir, exist_ok=True)
+        with open(os.path.join(cdir, "base.csv"), "w", encoding="utf-8") as f:
+            f.write("concept,hook,use\n" + "\n".join(
+                f"{r['concept']},{r['hook']},{r.get('use', 'both')}" for r in rows) + "\n")
+        with open(os.path.join(d, "campaign.json"), "w", encoding="utf-8") as f:
+            json.dump({"concepts": ["clean"], "copy": {"default": {"other": {"hook": "keep"}}}}, f)
+        content.ingest({"_root": d, "concepts": ["clean"]})
+        return {"_root": d, "concepts": ["clean"]}
+
+    def test_base_and_versions(self):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            camp = self._camp(d, [{"concept": "clean", "hook": "V1"},
+                                  {"concept": "clean", "hook": "V2", "use": "ppc"}])
+            summary = content.apply(camp)
+            self.assertEqual(summary["errors"], [])
+            with open(os.path.join(d, "campaign.json"), encoding="utf-8") as f:
+                campj = json.load(f)
+            entry = campj["copy"]["default"]["clean"]
+            self.assertEqual(entry["hook"], "V1")
+            self.assertEqual(entry["versions"], [{"hook": "V2", "use": "ppc"}])
+            self.assertEqual(campj["copy"]["default"]["other"], {"hook": "keep"})
+
+    def test_axis_key(self):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            camp = self._camp(d, [{"concept": "clean", "hook": "Hi"}])
+            with open(os.path.join(d, "content.json"), encoding="utf-8") as f:
+                cj = json.load(f)
+            cj["rows"][0]["axis"] = "BC|Course-02"
+            with open(os.path.join(d, "content.json"), "w", encoding="utf-8") as f:
+                json.dump(cj, f)
+            content.apply(camp)
+            with open(os.path.join(d, "campaign.json"), encoding="utf-8") as f:
+                campj = json.load(f)
+            self.assertIn("clean", campj["copy"]["BC|Course-02"])
+
+    def test_errors_block_apply(self):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            camp = self._camp(d, [{"concept": "clean", "hook": "Hi", "use": "banner"}])
+            summary = content.apply(camp)
+            self.assertTrue(summary["errors"])
+            with open(os.path.join(d, "campaign.json"), encoding="utf-8") as f:
+                campj = json.load(f)
+            self.assertNotIn("clean", campj["copy"]["default"])

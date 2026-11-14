@@ -107,3 +107,44 @@ def ingest(camp):
         json.dump(out, f, indent=2, ensure_ascii=False)
     return {"file": out["source"]["file"], "link": link, "rows": len(rows),
             "gaps": gaps, "errors": errors}
+
+
+def _entry(row):
+    e = {k: row[k] for k in ("hook", "kicker", "program", "cta", "lang") if row.get(k)}
+    e["use"] = row.get("use", "both")
+    return e
+
+
+def apply(camp):
+    """Re-validate content.json and merge rows into campaign.json.copy.
+
+    First row per (axis, concept) = base entry; further rows = versions.
+    Existing copy entries not covered by the sheet are preserved.
+    """
+    root = camp["_root"]
+    cj_path = os.path.join(root, "content.json")
+    if not os.path.isfile(cj_path):
+        return {"errors": ["content.json ausente — rode content primeiro"], "merged": 0}
+    with open(cj_path, encoding="utf-8") as f:
+        rows = json.load(f).get("rows") or []
+    errors = validate(rows, camp.get("concepts") or [])
+    if errors:
+        return {"errors": errors, "merged": 0}
+    camp_path = os.path.join(root, "campaign.json")
+    with open(camp_path, encoding="utf-8") as f:
+        campj = json.load(f)
+    copy = campj.setdefault("copy", {})
+    merged = 0
+    for row in rows:
+        key = row.get("axis") or "default"
+        concept = row["concept"]
+        entry = _entry(row)
+        slot = copy.setdefault(key, {}).setdefault(concept, {})
+        if not slot.get("hook"):
+            slot.update(entry)
+            merged += 1
+        else:
+            slot.setdefault("versions", []).append(entry)
+    with open(camp_path, "w", encoding="utf-8") as f:
+        json.dump(campj, f, indent=2, ensure_ascii=False)
+    return {"errors": [], "merged": merged}
