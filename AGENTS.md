@@ -92,6 +92,8 @@ python3 -m kit.cli content campaigns/acme-launch          # ingest + valida → 
 #    SEU TRABALHO: aplique as regras da seção 11 do briefing em content.json
 #    (versões, adaptação por destino use: image/ppc/both). Nunca invente copy.
 python3 -m kit.cli content campaigns/acme-launch --apply  # mescla em campaign.json.copy
+#    Revise o copy no navegador antes do render: o painel "Revisar copy" aprova/rejeita/refaz;
+#    só "Aplicar copy aprovado" mescla as aprovadas. Time aprova online: content --export / --import.
 
 # 4. Assets de IA (imagem e vídeo) — aviso de custo informativo, sem porteiro
 python3 -m kit.cli assets campaigns/acme-launch
@@ -191,6 +193,22 @@ headlines/descriptions do RSA; entries `ppc` sem peça viram linhas de anúncio 
 (criativo em branco para o time de PPC). Variantes de **imagem** usam o mecanismo
 existente de eixos: adicione um eixo de versão em `campaign.json.axes` e keyed o copy
 por ele — `lookup` resolve por valor de eixo, a matriz expande sozinha.
+
+### Revisão do copy (etapa entre content e render)
+
+Depois de adaptar o copy em `content.json`, **abra a revisão** (`review`) — o painel
+**Revisar copy** aparece quando há `content.json`. Cada linha tem `id` (`c01…`),
+`origin` (`sheet`/`agent`), `status` (`pending`/`approved`/`rejected`/`redo`) e `note`.
+O ingest marca as linhas da planilha como `origin:sheet, status:approved` (copy do time
+é confiável). **SEU TRABALHO:** linhas que você adiciona/edita ao adaptar ficam
+`origin:agent, status:pending` (nova linha pega o próximo id livre); cumprir um
+`rejected`/`redo` = reescrever o copy, voltar `status:pending` e limpar `note`. **Nunca**
+marque `approved` você mesmo — isso é do usuário/time. Re-ingest (nova planilha) zera as
+decisões. Só **Aplicar copy aprovado** (`content --apply`) mescla as aprovadas em
+`campaign.json.copy` — render/PPC não mudam. O time aprova online pela planilha:
+`content --export` gera `content_review.xlsx` na pasta de entrega; eles preenchem
+`decision` (approve/reject/redo) + `note` e devolvem; `content --import <arquivo>` aplica
+só as decisões (edições de texto são ignoradas). O kit nunca fala com SharePoint.
 
 ## Specs de template (declarativo)
 

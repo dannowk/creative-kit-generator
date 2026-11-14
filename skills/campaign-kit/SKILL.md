@@ -40,9 +40,13 @@ e o navegador.**
    `use: image/ppc/both`; nunca invente copy) e rode `content --apply`. Sem planilha,
    o passo é opcional. O wizard tem **↓ planilha modelo** (.xlsx com aba de exemplos)
    para o time de conteúdo começar. Ver "Conteúdo base" no AGENTS.md.
+   Depois de adaptar, abra `review`: o painel **Revisar copy** deixa o usuário/time aprovar,
+   rejeitar ou refazer cada linha. Só **Aplicar copy aprovado** entra no render/PPC. Para o
+   time aprovar online: `content --export` → eles preenchem `decision`/`note` → `content --import`.
 6. **Custo é aviso**: mostre ≈ créditos antes de jobs de provider e siga.
 7. **Revisão + entrega (etapa 6)**: suba `review` (abre o navegador sozinho; atalho
-   `ABRIR-REVISAO.html` na pasta da campanha). Aprovar/rejeitar/refazer só **marcam** a peça;
+   `ABRIR-REVISAO.html` na pasta da campanha). O copy é revisado **antes do render** no painel
+   **Revisar copy** (só o aprovado entra na matriz). Aprovar/rejeitar/refazer só **marcam** a peça;
    o usuário clica **Continuar** (ou você roda `deliver`) para exportar as aprovadas na pasta
    de entrega do Desktop (`~/Desktop/Campaign Kit/<campanha>/`) e enfileirar rejeitadas
    (recriar) + refazer (com a nota) em `requests.json`. O botão **Abrir pasta** na revisão abre
