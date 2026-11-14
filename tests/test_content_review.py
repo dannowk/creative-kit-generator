@@ -34,3 +34,36 @@ class StampAndValidate(unittest.TestCase):
     def test_validate_accepts_stamped(self):
         rows = content._stamp([{"concept": "clean", "hook": "Hi"}])
         self.assertEqual(content.validate(rows, ["clean"]), [])
+
+
+class ApplyApprovedOnly(unittest.TestCase):
+    def _camp(self, d, rows):
+        with open(os.path.join(d, "content.json"), "w", encoding="utf-8") as f:
+            json.dump({"rows": rows}, f)
+        with open(os.path.join(d, "campaign.json"), "w", encoding="utf-8") as f:
+            json.dump({"concepts": ["clean"]}, f)
+        return {"_root": d, "concepts": ["clean"]}
+
+    def test_only_approved_merged(self):
+        with tempfile.TemporaryDirectory() as d:
+            rows = content._stamp([{"concept": "clean", "hook": "A"},
+                                   {"concept": "clean", "hook": "B"}])
+            rows[1]["status"] = "pending"
+            summary = content.apply(self._camp(d, rows))
+            self.assertEqual(summary["merged"], 1)
+            self.assertEqual(summary["pending"], 1)
+            with open(os.path.join(d, "campaign.json"), encoding="utf-8") as f:
+                copy = json.load(f)["copy"]["default"]["clean"]
+            self.assertEqual(copy["hook"], "A")
+            self.assertNotIn("versions", copy)
+
+    def test_rejected_and_redo_excluded(self):
+        with tempfile.TemporaryDirectory() as d:
+            rows = content._stamp([{"concept": "clean", "hook": "A"},
+                                   {"concept": "clean", "hook": "B"},
+                                   {"concept": "clean", "hook": "C"}])
+            rows[1]["status"] = "rejected"
+            rows[2]["status"] = "redo"
+            summary = content.apply(self._camp(d, rows))
+            self.assertEqual(summary["merged"], 1)
+            self.assertEqual(summary["pending"], 2)

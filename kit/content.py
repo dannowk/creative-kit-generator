@@ -194,26 +194,31 @@ def _entry(row):
 
 
 def apply(camp):
-    """Re-validate content.json and merge rows into campaign.json.copy.
+    """Merge only approved rows into campaign.json.copy (the single review gate).
 
-    First row per (axis, concept) = base entry; further rows = versions.
-    Existing copy entries not covered by the sheet are preserved.
+    First approved row per (axis, concept) = base entry; further approved rows =
+    versions in row order. Unrelated existing copy entries are preserved.
+    `pending` counts rows not approved (still awaiting review/agent).
     """
     root = camp["_root"]
     cj_path = os.path.join(root, "content.json")
     if not os.path.isfile(cj_path):
-        return {"errors": ["content.json ausente — rode content primeiro"], "merged": 0}
+        return {"errors": ["content.json ausente — rode content primeiro"],
+                "merged": 0, "pending": 0}
     with open(cj_path, encoding="utf-8") as f:
         rows = json.load(f).get("rows") or []
+    pending = sum(1 for r in rows if r.get("status") != "approved")
     errors = validate(rows, camp.get("concepts") or [])
     if errors:
-        return {"errors": errors, "merged": 0}
+        return {"errors": errors, "merged": 0, "pending": pending}
     camp_path = os.path.join(root, "campaign.json")
     with open(camp_path, encoding="utf-8") as f:
         campj = json.load(f)
     copy = campj.setdefault("copy", {})
     merged = 0
     for row in rows:
+        if row.get("status") != "approved":
+            continue
         key = row.get("axis") or "default"
         concept = row["concept"]
         entry = _entry(row)
@@ -225,4 +230,4 @@ def apply(camp):
             slot.setdefault("versions", []).append(entry)
     with open(camp_path, "w", encoding="utf-8") as f:
         json.dump(campj, f, indent=2, ensure_ascii=False)
-    return {"errors": [], "merged": merged}
+    return {"errors": [], "merged": merged, "pending": pending}
