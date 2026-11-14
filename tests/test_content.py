@@ -143,3 +143,28 @@ class Apply(unittest.TestCase):
             with open(os.path.join(d, "campaign.json"), encoding="utf-8") as f:
                 campj = json.load(f)
             self.assertNotIn("clean", campj["copy"]["default"])
+
+
+class Cli(unittest.TestCase):
+    def test_content_ingest_and_apply(self):
+        import io
+        import json
+        from contextlib import redirect_stdout
+        from kit import cli
+        with tempfile.TemporaryDirectory() as d:
+            cdir = os.path.join(d, "content")
+            os.makedirs(cdir)
+            with open(os.path.join(cdir, "base.csv"), "w", encoding="utf-8") as f:
+                f.write("concept,hook\nclean,Hi\n")
+            with open(os.path.join(d, "campaign.json"), "w", encoding="utf-8") as f:
+                json.dump({"concepts": ["clean"]}, f)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = cli.main(["content", d])
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.isfile(os.path.join(d, "content.json")))
+            with redirect_stdout(buf):
+                rc = cli.main(["content", d, "--apply"])
+            self.assertEqual(rc, 0)
+            with open(os.path.join(d, "campaign.json"), encoding="utf-8") as f:
+                self.assertEqual(json.load(f)["copy"]["default"]["clean"]["hook"], "Hi")
