@@ -469,7 +469,7 @@ async function decideCopy(id,status){
   const j=await r.json();
   if(!r.ok){await tell(j.error||"erro");return;}
   await load();
-  notify(status==="approved"?T.approvetoast:T.rejecttoast);
+  notify(status==="approved"?T["copy.approvetoast"]:status==="rejected"?T["copy.rejecttoast"]:status==="pending"?T["copy.reopentoast"]:T["copy.regentoast"]);
 }
 async function redoCopy(id){
   const note=await ask(T["copy.redoask"]);
@@ -478,7 +478,7 @@ async function redoCopy(id){
   const j=await r.json();
   if(!r.ok){await tell(j.error||"erro");return;}
   await load();
-  notify(T.regentoast);
+  notify(T["copy.regentoast"]);
 }
 async function applyCopy(){
   const r=await fetch("/copy-apply",{method:"POST",body:"{}"});

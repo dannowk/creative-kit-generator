@@ -361,5 +361,7 @@ class Panel(unittest.TestCase):
         from kit import i18n
         for lang in ("pt", "en"):
             for key in ("rv.copy.title", "rv.copy.apply",
-                        "rv.js.copy.stats", "rv.js.copy.applied"):
+                        "rv.js.copy.stats", "rv.js.copy.applied",
+                        "rv.js.copy.approvetoast", "rv.js.copy.rejecttoast",
+                        "rv.js.copy.regentoast", "rv.js.copy.reopentoast"):
                 self.assertTrue(i18n.t(key, lang))
