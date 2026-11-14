@@ -5,6 +5,7 @@ rules, the kit applies. One row = one base copy; `use` routes it (image/ppc/both
 """
 
 import csv
+import json
 import os
 
 COLUMNS = ("concept", "axis", "hook", "kicker", "program", "cta", "use", "lang")
@@ -55,3 +56,54 @@ def read_sheet(path):
             wb.close()
         return _rows_from_dicts(dicts)
     raise ValueError(f"unsupported sheet extension: {path} (use .xlsx or .csv)")
+
+
+def validate(rows, concepts):
+    """Row-level errors (PT — agent contract). Empty list = appliable."""
+    errs = []
+    for i, r in enumerate(rows, 1):
+        if not r.get("concept"):
+            errs.append(f"linha {i}: concept vazio")
+        elif r["concept"] not in concepts:
+            errs.append(f"linha {i}: conceito não declarado: {r['concept']}")
+        if not r.get("hook"):
+            errs.append(f"linha {i}: hook vazio")
+        if r.get("use", "both") not in USES:
+            errs.append(f"linha {i}: use inválido: {r.get('use')} (image/ppc/both)")
+    return errs
+
+
+def find_sheet(root):
+    d = os.path.join(root, "content")
+    if not os.path.isdir(d):
+        return None
+    for f in sorted(os.listdir(d)):
+        if f.lower().endswith(SHEET_EXT):
+            return os.path.join(d, f)
+    return None
+
+
+def ingest(camp):
+    """Parse + validate the sheet into <campaign>/content.json. Touches nothing else."""
+    root = camp["_root"]
+    sheet = find_sheet(root)
+    link_path = os.path.join(root, "content", "content_link.txt")
+    link = ""
+    if os.path.isfile(link_path):
+        with open(link_path, encoding="utf-8") as f:
+            link = f.read().strip()
+    rows, gaps = [], []
+    if sheet:
+        rows = read_sheet(sheet)
+    elif link:
+        gaps.append("link presente, arquivo ausente — o agente baixa a planilha uma vez "
+                    "e salva em content/ antes de rodar content de novo")
+    else:
+        gaps.append("sem planilha em content/ — passo opcional; o copy manual segue valendo")
+    errors = validate(rows, camp.get("concepts") or []) if rows else []
+    out = {"source": {"file": os.path.relpath(sheet, root) if sheet else None, "link": link},
+           "rows": rows, "gaps": gaps, "errors": errors}
+    with open(os.path.join(root, "content.json"), "w", encoding="utf-8") as f:
+        json.dump(out, f, indent=2, ensure_ascii=False)
+    return {"file": out["source"]["file"], "link": link, "rows": len(rows),
+            "gaps": gaps, "errors": errors}
