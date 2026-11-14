@@ -191,3 +191,19 @@ class Wizard(unittest.TestCase):
             open(p, "w").write("concept,hook\nclean,Hi\n")
             inv = intake.inventory(d)
             self.assertEqual(inv["content"], [p])
+
+
+class BriefingSection(unittest.TestCase):
+    def test_section_11_present_both_langs(self):
+        from kit import onboard
+        for tmpl, marker in ((onboard.BRIEFING_TEMPLATE, "_preencher"),
+                             (onboard.BRIEFING_TEMPLATE_EN, "_fill in")):
+            self.assertIn("## 11.", tmpl)
+            self.assertIn(marker, tmpl.split("## 11.")[1])
+
+    def test_section_11_not_required(self):
+        from kit import onboard
+        with tempfile.TemporaryDirectory() as d:
+            onboard.scaffold(d)
+            st = onboard.status(d)
+            self.assertFalse(any(t.startswith("11.") for t in st["briefing"]["missing"]))
