@@ -168,3 +168,26 @@ class Cli(unittest.TestCase):
             self.assertEqual(rc, 0)
             with open(os.path.join(d, "campaign.json"), encoding="utf-8") as f:
                 self.assertEqual(json.load(f)["copy"]["default"]["clean"]["hook"], "Hi")
+
+
+class Wizard(unittest.TestCase):
+    def test_slot_and_link_in_status(self):
+        from kit import onboard
+        with tempfile.TemporaryDirectory() as d:
+            onboard.scaffold(d)
+            self.assertTrue(os.path.isdir(os.path.join(d, "content")))
+            with open(os.path.join(d, "content_link.txt"), "w", encoding="utf-8") as f:
+                f.write("https://sharepoint.example/base.xlsx\n")
+            st = onboard.status(d)
+            self.assertIn("content", st["slots"])
+            self.assertEqual(st["content_link"], "https://sharepoint.example/base.xlsx")
+            self.assertFalse(st["slots"]["content"]["required"])
+
+    def test_intake_collects_content(self):
+        from kit import intake
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "content"))
+            p = os.path.join(d, "content", "base.csv")
+            open(p, "w").write("concept,hook\nclean,Hi\n")
+            inv = intake.inventory(d)
+            self.assertEqual(inv["content"], [p])

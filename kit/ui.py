@@ -423,7 +423,11 @@ def onboard_page(lang):
 <div class="panel"><h2><span class="n">1</span>{i18n.t('ob.p1.title', lang)}</h2>
 <p class="desc">{i18n.t('ob.p1.desc', lang)}</p>
 <span class="meta" id="slotprog"></span>
-<div class="grid" id="slots"></div></div>
+<div class="grid" id="slots"></div>
+<div class="row" style="margin-top:10px"><input type="text" id="contentlink"
+  placeholder="{i18n.t('ob.content.linkph', lang)}">
+<button class="btn" onclick="saveLink()">{i18n.t('ob.content.linksave', lang)}</button></div>
+<p class="desc">{i18n.t('ob.content.linknote', lang)}</p></div>
 <div class="panel"><h2><span class="n">2</span>{i18n.t('ob.p2.title', lang)}</h2>
 <p class="desc">{i18n.t('ob.p2.desc', lang)}</p>
 <div class="dropzone" id="briefdrop">
@@ -507,6 +511,8 @@ async function load(){
     ? docs.map(f=>`<li><span>${esc(f.name)}</span><span class="row"><span class="meta">${fmt(f.size)}</span>
         <button class="btn docremove" title="${T["docs.remove"]}" onclick="removeDoc('${esc(f.name)}')">✕</button></span></li>`).join("")
     : `<li><span class="meta">${T["docs.empty"]}</span></li>`;
+  const cl=document.getElementById("contentlink");
+  if(document.activeElement!==cl) cl.value=S.content_link||"";
 }
 async function upload(slot,files){
   for(const f of files){
@@ -517,6 +523,10 @@ async function upload(slot,files){
 }
 async function saveBrief(){
   await fetch("/briefing",{method:"POST",body:JSON.stringify({text:document.getElementById("brief").value})});
+  await load();
+}
+async function saveLink(){
+  await fetch("/content-link",{method:"POST",body:JSON.stringify({link:document.getElementById("contentlink").value})});
   await load();
 }
 async function uploadBrief(files){
@@ -723,6 +733,11 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/briefing":
             with open(os.path.join(self.root, "briefing.md"), "w", encoding="utf-8") as f:
                 f.write(payload.get("text", ""))
+            return self._send(200, {"ok": True})
+        if url.path == "/content-link":
+            link = str(payload.get("link", "")).strip()
+            with open(os.path.join(self.root, "content_link.txt"), "w", encoding="utf-8") as f:
+                f.write(link)
             return self._send(200, {"ok": True})
         if url.path == "/intake":
             bid = payload.get("brand_id", "").strip()

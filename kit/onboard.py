@@ -35,6 +35,9 @@ SLOTS = [
     {"key": "videos", "dir": "videos", "label": "Vídeos", "ext": VID_EXT, "multiple": True,
      "required": False,
      "hint": "Clipes fonte ou referência de movimento. Vídeos novos são gerados pelo provider (ex. Magnific via MCP), com estimativa de custo antes de gerar."},
+    {"key": "content", "dir": "content", "label": "Conteúdo base (planilha)",
+     "ext": (".xlsx", ".csv"), "multiple": False, "required": False,
+     "hint": "Opcional. Planilha do time de conteúdo com o copy base (colunas: concept, hook, kicker, program, cta, use). A coluna use roteia: image / ppc / both."},
 ]
 
 BRIEFING_TEMPLATE = """# Briefing da campanha
@@ -205,8 +208,14 @@ def status(inbox, lang="pt"):
             p = os.path.join(docs_dir, f)
             docs.append({"name": f, "size": os.path.getsize(p),
                          "rel": os.path.join(BRIEF_DOCS_DIR, f)})
+    link_path = os.path.join(inbox, "content_link.txt")
+    content_link = ""
+    if os.path.isfile(link_path):
+        with open(link_path, encoding="utf-8") as f:
+            content_link = f.read().strip()
     return {"inbox": os.path.abspath(inbox), "slots": slots,
             "briefing": {"text": text, "sections": sections, "missing": missing,
                          "concepts": requested_concepts(text)},
             "briefing_docs": docs,
+            "content_link": content_link,
             "ready": slots["logo"]["ok"] and not missing}
