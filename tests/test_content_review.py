@@ -67,3 +67,37 @@ class ApplyApprovedOnly(unittest.TestCase):
             summary = content.apply(self._camp(d, rows))
             self.assertEqual(summary["merged"], 1)
             self.assertEqual(summary["pending"], 2)
+
+
+class DecideAndPayload(unittest.TestCase):
+    def _setup(self, d):
+        cdir = os.path.join(d, "content")
+        os.makedirs(cdir)
+        with open(os.path.join(cdir, "base.csv"), "w", encoding="utf-8") as f:
+            f.write("concept,hook\nclean,One\nclean,Two\n")
+        content.ingest({"_root": d, "concepts": ["clean"]})
+
+    def test_decide_marks_and_persists(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._setup(d)
+            self.assertTrue(content.decide(d, "c01", "rejected", "mudar"))
+            payload = content.review_payload(d)
+            row = next(r for r in payload["rows"] if r["id"] == "c01")
+            self.assertEqual(row["status"], "rejected")
+            self.assertEqual(row["note"], "mudar")
+            self.assertEqual(payload["counts"]["rejected"], 1)
+
+    def test_decide_unknown_id_false(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._setup(d)
+            self.assertFalse(content.decide(d, "nope", "approved"))
+
+    def test_decide_bad_status_raises(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._setup(d)
+            with self.assertRaises(ValueError):
+                content.decide(d, "c01", "bogus")
+
+    def test_review_payload_none_without_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertIsNone(content.review_payload(d))

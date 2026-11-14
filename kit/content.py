@@ -231,3 +231,44 @@ def apply(camp):
     with open(camp_path, "w", encoding="utf-8") as f:
         json.dump(campj, f, indent=2, ensure_ascii=False)
     return {"errors": [], "merged": merged, "pending": pending}
+
+
+def _load_rows(root):
+    with open(os.path.join(root, "content.json"), encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _save_rows(root, data):
+    with open(os.path.join(root, "content.json"), "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+
+def decide(root, row_id, status, note=""):
+    """Mark one row (UI/import). Writes only status/note. False if id unknown."""
+    if status not in STATUSES:
+        raise ValueError(f"status inválido: {status}")
+    data = _load_rows(root)
+    found = False
+    for r in data.get("rows") or []:
+        if r.get("id") == row_id:
+            r["status"] = status
+            if note:
+                r["note"] = note
+            else:
+                r.pop("note", None)
+            found = True
+            break
+    if found:
+        _save_rows(root, data)
+    return found
+
+
+def review_payload(root):
+    """{rows, counts} for the review /state, or None without content.json."""
+    path = os.path.join(root, "content.json")
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        rows = json.load(f).get("rows") or []
+    counts = {s: sum(1 for r in rows if r.get("status") == s) for s in STATUSES}
+    return {"rows": rows, "counts": counts}
