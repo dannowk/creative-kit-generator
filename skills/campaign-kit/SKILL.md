@@ -18,7 +18,8 @@ e o navegador.**
 2. **Crie a pasta da campanha automaticamente**: default `~/Desktop/minha-campanha`
    (ou `~/Desktop/<marca>` se ele já disse o nome no chat). Sem perguntar caminho.
 3. **Bootstrap + onboarding num comando só**, em background: `./install.sh <inbox>`
-   (sem `--no-open`). Baixa `uv` + Python 3.12 gerenciado sem admin, instala as deps
+   (Mac/Linux, sem `--no-open`) ou `Instalar.bat <inbox>` (Windows). Baixa `uv` +
+   Python 3.12 gerenciado sem admin, instala as deps
    e **abre o wizard no navegador**, criando `logo/ refs/ brandbook/ fonts/ photos/
    videos/ briefing/ briefing.md`. Cada slot aceita botão + arrastar-e-soltar (o briefing também).
    `.venv/` já existe → só reabre o wizard.

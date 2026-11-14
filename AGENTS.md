@@ -24,8 +24,8 @@ Dependências: **Pillow, numpy, PyYAML, imageio-ffmpeg, faster-whisper**. Python
 Rode todos os comandos da raiz como `python3 -m kit.cli ...`.
 
 **Fluxo sem terminal (padrão):** o usuário não abre terminal nem digita comando — você
-roda tudo. Em vez do venv manual acima, use `./install.sh <inbox>` em background (sem
-`--no-open`): ele baixa `uv` + Python 3.12 gerenciado **sem admin**, instala as deps e
+roda tudo. Em vez do venv manual acima, use `./install.sh <inbox>` (Mac/Linux, sem
+`--no-open`) ou `Instalar.bat <inbox>` (Windows) em background: ele baixa `uv` + Python 3.12 gerenciado **sem admin**, instala as deps e
 **abre o wizard de onboarding no navegador**. **Crie a pasta `<inbox>` automaticamente**
 (default `~/Desktop/minha-campanha`, ou `~/Desktop/<marca>`), sem perguntar caminho ao
 usuário; o `onboard` faz o scaffold (`logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ briefing.md`).

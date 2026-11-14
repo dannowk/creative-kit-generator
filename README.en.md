@@ -30,6 +30,17 @@ onboarding in the browser and walks you through to review. You just **chat with 
    /campaign-kit:start
    ```
 
+**Door 2 · Any agent (Qoder, Codex, Claude… — no plugin):**
+
+1. Clone or download the repository and open the folder in your agent:
+   <https://github.com/dannowk/creative-kit-generator>
+2. Say: *"read AGENTS.md and start a campaign"*. The agent follows the repository
+   rules, runs the installer (`install.sh` on Mac/Linux, `Instalar.bat` on Windows)
+   and opens the onboarding in a **local browser tab** (`127.0.0.1`).
+3. Everything is managed in the browser: you fill the inbox in the wizard and approve
+   pieces in the review; the agent drives the rest from the chat. No plugin or native
+   install is required — any agent that reads `AGENTS.md` can drive it.
+
 ### 2. Fill in YOUR folder (the campaign inbox)
 
 Your folder lives **outside the kit** (e.g. `~/Desktop/my-campaign`) — the kit is the

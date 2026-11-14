@@ -31,6 +31,17 @@ navegador**. Escolha como colocar o agente para rodar:
    /campaign-kit:start
    ```
 
+**Porta 2 · Qualquer agente (Qoder, Codex, Claude… — sem plugin):**
+
+1. Clone ou baixe o repositório e abra a pasta no seu agente:
+   <https://github.com/dannowk/creative-kit-generator>
+2. Diga: *"leia o AGENTS.md e comece uma campanha"*. O agente segue as regras do
+   repositório, roda o instalador (`install.sh` no Mac/Linux, `Instalar.bat` no Windows)
+   e abre o onboarding numa **aba local do navegador** (`127.0.0.1`).
+3. Tudo é gerenciado no navegador: você preenche o inbox no wizard e aprova as peças
+   na revisão; o agente conduz o resto pelo chat. Nenhum plugin ou instalação nativa
+   é necessária — qualquer agente que leia o `AGENTS.md` consegue conduzir.
+
 ### 2. Preencha a SUA pasta (o inbox da campanha)
 
 Sua pasta fica **fora do kit** (ex.: `~/Desktop/minha-campanha`) — o kit é a

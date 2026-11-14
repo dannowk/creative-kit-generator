@@ -9,7 +9,8 @@ conversa com você no chat e usa o navegador. Conduza nesta ordem:
 2. **Crie a pasta da campanha automaticamente**, sem perguntar caminho: default
    `~/Desktop/minha-campanha` (ou `~/Desktop/<marca>` se o usuário já disse o nome
    da marca no chat). Não peça para ele criar pasta nem digitar path.
-3. Rode `./install.sh <inbox>` em **background, sem `--no-open`**. Ele baixa `uv` +
+3. Rode `./install.sh <inbox>` (Mac/Linux, sem `--no-open`) ou `Instalar.bat <inbox>`
+   (Windows) em **background**. Ele baixa `uv` +
    Python 3.12 gerenciado (sem admin), instala as dependências e **abre o wizard de
    onboarding no navegador** do usuário, criando `logo/ refs/ brandbook/ fonts/
    photos/ videos/ briefing/ briefing.md`. Cada slot aceita botão + arrastar-e-soltar (o briefing
