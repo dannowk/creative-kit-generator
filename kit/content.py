@@ -17,6 +17,8 @@ ALIASES = {
 }
 USES = ("image", "ppc", "both")
 SHEET_EXT = (".xlsx", ".csv")
+STATUSES = ("pending", "approved", "rejected", "redo")
+ORIGINS = ("sheet", "agent")
 
 
 def _norm_header(h):
@@ -58,6 +60,15 @@ def read_sheet(path):
     raise ValueError(f"unsupported sheet extension: {path} (use .xlsx or .csv)")
 
 
+def _stamp(rows):
+    """Sheet rows are the team's own copy: trusted (approved), sequential ids."""
+    for i, r in enumerate(rows, 1):
+        r["id"] = f"c{i:02d}"
+        r["origin"] = "sheet"
+        r["status"] = "approved"
+    return rows
+
+
 def validate(rows, concepts):
     """Row-level errors (PT — agent contract). Empty list = appliable."""
     errs = []
@@ -70,6 +81,10 @@ def validate(rows, concepts):
             errs.append(f"linha {i}: hook vazio")
         if r.get("use", "both") not in USES:
             errs.append(f"linha {i}: use inválido: {r.get('use')} (image/ppc/both)")
+        if r.get("status") not in STATUSES:
+            errs.append(f"linha {i}: status ausente ou inválido: {r.get('status')!r} — rode content de novo")
+        if r.get("origin") not in ORIGINS:
+            errs.append(f"linha {i}: origin ausente ou inválido: {r.get('origin')!r} — rode content de novo")
     return errs
 
 
@@ -157,7 +172,7 @@ def ingest(camp):
             link = f.read().strip()
     rows, gaps = [], []
     if sheet:
-        rows = read_sheet(sheet)
+        rows = _stamp(read_sheet(sheet))
     elif link:
         gaps.append("link presente, arquivo ausente — o agente baixa a planilha uma vez "
                     "e salva em content/ antes de rodar content de novo")

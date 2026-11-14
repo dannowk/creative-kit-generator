@@ -47,21 +47,25 @@ class ReadSheet(unittest.TestCase):
 
 class Validate(unittest.TestCase):
     def test_ok(self):
-        rows = [{"concept": "clean", "hook": "Hi", "use": "both"}]
+        rows = [{"concept": "clean", "hook": "Hi", "use": "both",
+                 "status": "approved", "origin": "sheet"}]
         self.assertEqual(content.validate(rows, ["clean"]), [])
 
     def test_unknown_concept(self):
-        rows = [{"concept": "nope", "hook": "Hi", "use": "both"}]
+        rows = [{"concept": "nope", "hook": "Hi", "use": "both",
+                 "status": "approved", "origin": "sheet"}]
         errs = content.validate(rows, ["clean"])
         self.assertTrue(any("nope" in e for e in errs))
 
     def test_bad_use(self):
-        rows = [{"concept": "clean", "hook": "Hi", "use": "banner"}]
+        rows = [{"concept": "clean", "hook": "Hi", "use": "banner",
+                 "status": "approved", "origin": "sheet"}]
         errs = content.validate(rows, ["clean"])
         self.assertTrue(any("use" in e for e in errs))
 
     def test_empty_hook(self):
-        rows = [{"concept": "clean", "hook": "", "use": "both"}]
+        rows = [{"concept": "clean", "hook": "", "use": "both",
+                 "status": "approved", "origin": "sheet"}]
         errs = content.validate(rows, ["clean"])
         self.assertTrue(any("hook" in e for e in errs))
 
@@ -82,7 +86,8 @@ class Ingest(unittest.TestCase):
             self.assertEqual(summary["link"], "https://sharepoint.example/base.xlsx")
             with open(os.path.join(d, "content.json"), encoding="utf-8") as f:
                 saved = json.load(f)
-            self.assertEqual(saved["rows"], [{"concept": "clean", "hook": "Hi", "use": "ppc"}])
+            self.assertEqual(saved["rows"], [{"concept": "clean", "hook": "Hi", "use": "ppc",
+                                              "id": "c01", "origin": "sheet", "status": "approved"}])
 
     def test_no_sheet_is_gap_not_error(self):
         with tempfile.TemporaryDirectory() as d:
@@ -238,7 +243,7 @@ class Sample(unittest.TestCase):
         tab = wb["Exemplos"] if "Exemplos" in wb.sheetnames else wb["Examples"]
         dicts = [dict(zip(content.COLUMNS, [c.value for c in row]))
                  for row in tab.iter_rows(min_row=2)]
-        return content._rows_from_dicts(dicts)
+        return content._stamp(content._rows_from_dicts(dicts))
 
     def test_tabs_and_clean_template(self):
         wb = self._book("en")
