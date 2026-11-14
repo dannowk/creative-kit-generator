@@ -141,6 +141,25 @@ _PT = {
     "rv.copy.err.ext": "Envie um arquivo .xlsx ou .csv.",
     "rv.copy.err.status": "Status inválido.",
     "rv.copy.err.id": "Linha de copy não encontrada.",
+    "rv.copy.title": "Revisar copy",
+    "rv.copy.desc": "Aprove, rejeite ou peça refazer o copy sugerido — cada clique só MARCA. Nada entra nas peças/planilhas até você clicar Aplicar copy aprovado. Exporte a planilha para o time aprovar online e importe as decisões de volta.",
+    "rv.copy.export": "↓ Exportar planilha de revisão",
+    "rv.copy.import": "↑ Importar decisões",
+    "rv.copy.apply": "Aplicar copy aprovado",
+    "rv.js.copy.stats": '<span class="stat"><b>{total}</b> copies</span>'
+                        '<span class="stat"><b>{approved}</b> aprovadas</span>'
+                        '<span class="stat"><b>{pending}</b> pendentes</span>'
+                        '<span class="stat"><b>{rejected}</b> rejeitadas</span>'
+                        '<span class="stat"><b>{redo}</b> refazer</span>',
+    "rv.js.copy.warn": "{n} copy(s) ainda não aprovado(s) — a campanha segue rodando com o copy anterior.",
+    "rv.js.copy.empty": "Nenhum copy neste filtro.",
+    "rv.js.copy.ai": "IA",
+    "rv.js.copy.sheet": "planilha",
+    "rv.js.copy.approvedtitle": "Copy aprovado ({n})",
+    "rv.js.copy.redoask": "O que ajustar neste copy?",
+    "rv.js.copy.applied": "{n} copy(s) aplicado(s) · {m} ainda aguardando revisão",
+    "rv.js.copy.appliedtoast": "{n} copy(s) aplicado(s) à campanha",
+    "rv.js.copy.imported": "{a} aprovada(s) · {r} rejeitada(s) · {d} refazer",
     "rv.js.lbl.working": "A revisar",
     "rv.js.lbl.pending": "Pendentes",
     "rv.js.lbl.approved": "Aprovadas",
@@ -394,6 +413,25 @@ _EN = {
     "rv.copy.err.ext": "Send a .xlsx or .csv file.",
     "rv.copy.err.status": "Invalid status.",
     "rv.copy.err.id": "Copy row not found.",
+    "rv.copy.title": "Review copy",
+    "rv.copy.desc": "Approve, reject or ask to redo the suggested copy — each click only MARKS. Nothing reaches pieces/sheets until you click Apply approved copy. Export the sheet for the team to approve online and import the decisions back.",
+    "rv.copy.export": "↓ Export review sheet",
+    "rv.copy.import": "↑ Import decisions",
+    "rv.copy.apply": "Apply approved copy",
+    "rv.js.copy.stats": '<span class="stat"><b>{total}</b> copies</span>'
+                        '<span class="stat"><b>{approved}</b> approved</span>'
+                        '<span class="stat"><b>{pending}</b> pending</span>'
+                        '<span class="stat"><b>{rejected}</b> rejected</span>'
+                        '<span class="stat"><b>{redo}</b> redo</span>',
+    "rv.js.copy.warn": "{n} copy(ies) not approved yet — the campaign still runs on the previous copy.",
+    "rv.js.copy.empty": "No copy matches this filter.",
+    "rv.js.copy.ai": "AI",
+    "rv.js.copy.sheet": "sheet",
+    "rv.js.copy.approvedtitle": "Approved copy ({n})",
+    "rv.js.copy.redoask": "What should change in this copy?",
+    "rv.js.copy.applied": "{n} copy(ies) applied · {m} still awaiting review",
+    "rv.js.copy.appliedtoast": "{n} copy(ies) applied to the campaign",
+    "rv.js.copy.imported": "{a} approved · {r} rejected · {d} redo",
     "rv.js.lbl.working": "To review",
     "rv.js.lbl.pending": "Pending",
     "rv.js.lbl.approved": "Approved",

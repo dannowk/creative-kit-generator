@@ -232,6 +232,21 @@ def review_page(lang):
 <span class="tag blocked"><span class="dot"></span>{i18n.t('rv.legend.blocked', lang)}</span></div>
 </div>
 <div class="wrap">
+<div class="panel" id="copypanel" hidden>
+<h2>{i18n.t('rv.copy.title', lang)}</h2>
+<p class="desc">{i18n.t('rv.copy.desc', lang)}</p>
+<div class="stats" id="copystats"></div>
+<div class="row" style="align-items:center">
+<a class="btn" href="/copy-export" download>{i18n.t('rv.copy.export', lang)}</a>
+<label class="btn" style="cursor:pointer">{i18n.t('rv.copy.import', lang)}<input type="file" id="copyimport" accept=".xlsx,.csv" hidden onchange="importCopy(this)"></label>
+<button class="btn primary" onclick="applyCopy()">{i18n.t('rv.copy.apply', lang)}</button>
+<span class="meta" id="copyresult"></span></div>
+<div class="filters" id="copyfilters"></div>
+<div class="row" style="align-items:center"><span class="meta">{i18n.t('rv.concept', lang)}</span><div class="filters" id="copycfilters"></div></div>
+<div id="copywarn"></div>
+<div class="rgrid" id="copygrid"></div>
+<div id="copyapproved"></div>
+</div>
 <div class="panel"><h2><span class="n">5</span>{i18n.t('rv.p5.title', lang)}</h2>
 <p class="desc">{i18n.t('rv.p5.desc', lang)}</p>
 <div class="filters" id="filters"></div>
@@ -259,7 +274,7 @@ def review_page(lang):
 <dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
 """ + _modal(lang) + _JS_UTIL + _inject(lang, "rv.js") + """
 <script>
-let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null;
+let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null, cstatus="working", cconcept="all";
 const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"],blocked:T["lbl.blocked"]};
 const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"],blocked:T["sing.blocked"]};
 const fmsg=f=>(LANG==="en"&&f.message_en)?f.message_en:f.message;
@@ -288,7 +303,7 @@ function applyState(s){
     {approved:c("approved"),regen:c("rejected")+c("redo")});
   document.getElementById("opendelivery").style.display = delivered>0 ? "" : "none";
   if(delivered>0) setStep(6);
-  draw();
+  draw();drawCopy();
 }
 function setFilter(f){filter=f;draw();}
 function setConcept(k){cfilter=k;draw();
@@ -397,6 +412,91 @@ async function openDelivery(){
   const j=await r.json();
   if(!r.ok){await tell(j.error||"erro");return;}
   notify(fill(T["openfolder.toast"],{dir:j.path}));
+}
+function drawCopy(){
+  const cp=state.content, panel=document.getElementById("copypanel");
+  if(!cp){panel.hidden=true;return;}
+  panel.hidden=false;
+  const rows=cp.rows, counts=cp.counts;
+  document.getElementById("copystats").innerHTML=fill(T["copy.stats"],
+    {total:rows.length,pending:counts.pending,approved:counts.approved,rejected:counts.rejected,redo:counts.redo});
+  const cc={working:rows.filter(r=>r.status!=="approved").length,
+    approved:counts.approved,pending:counts.pending,rejected:counts.rejected,redo:counts.redo};
+  document.getElementById("copyfilters").innerHTML=Object.entries(cc)
+    .map(([k,v])=>`<button class="${k===cstatus?'on':''}" onclick="setCopyStatus('${k}')">${LBL[k]} (${v})</button>`).join("");
+  const ccc={};for(const r of rows)ccc[r.concept]=(ccc[r.concept]||0)+1;
+  const concepts=[...new Set(rows.map(r=>r.concept))];
+  document.getElementById("copycfilters").innerHTML=
+    `<button class="${cconcept==='all'?'on':''}" onclick="setCopyConcept('all')">${fill(T.allconcepts,{n:rows.length})}</button>`+
+    concepts.map(k=>`<button class="${cconcept===k?'on':''}" onclick="setCopyConcept('${k}')">${k} (${ccc[k]||0})</button>`).join("");
+  const notApproved=rows.filter(r=>r.status!=="approved").length;
+  document.getElementById("copywarn").innerHTML=notApproved>0
+    ?`<div class="callout warn">${fill(T["copy.warn"],{n:notApproved})}</div>`:"";
+  const items=rows.filter(r=>(cstatus==="working"?r.status!=="approved":r.status===cstatus)&&(cconcept==="all"||r.concept===cconcept));
+  const g=document.getElementById("copygrid");
+  if(!items.length){g.innerHTML=`<div class="empty">${T["copy.empty"]}</div>`;}
+  else g.innerHTML=items.map(r=>{
+    const meta=[r.kicker,r.program,r.cta].filter(Boolean).map(esc).join(" · ");
+    const tags=`<span class="tag">${esc(r.concept)}</span>`
+      +(r.axis?`<span class="tag">${esc(r.axis)}</span>`:"")
+      +`<span class="tag">${esc(r.use||"both")}</span>`
+      +(r.lang?`<span class="tag">${esc(r.lang)}</span>`:"")
+      +`<span class="tag ${r.origin==="agent"?"redo":""}">${r.origin==="agent"?T["copy.ai"]:T["copy.sheet"]}</span>`;
+    const note=(r.note&&(r.status==="redo"||r.status==="rejected"))?`<p class="hint">↻ ${esc(r.note)}</p>`:"";
+    return `<div class="card rcard"><div class="body">
+      <div class="row"><span class="tag ${r.status}"><span class="dot"></span>${SING[r.status]||r.status}</span>${tags}</div>
+      <div class="name">${esc(r.hook)}</div>
+      ${meta?`<p class="desc">${meta}</p>`:""}
+      ${note}
+      <div class="row">
+        <button class="btn ok" onclick="decideCopy('${r.id}','approved')">${T.approve}</button>
+        <button class="btn no" onclick="decideCopy('${r.id}','rejected')">${T.reject}</button>
+        <button class="btn" onclick="redoCopy('${r.id}')">${T.redo}</button>
+      </div></div></div>`;
+  }).join("");
+  const approved=rows.filter(r=>r.status==="approved");
+  document.getElementById("copyapproved").innerHTML=approved.length
+    ?`<h3>${fill(T["copy.approvedtitle"],{n:approved.length})}</h3>`+approved.map(r=>
+      `<div class="row" style="align-items:center"><span class="tag approved"><span class="dot"></span>${esc(r.hook)}</span>
+       <span class="meta">${esc(r.concept)}${r.axis?" · "+esc(r.axis):""} · ${esc(r.use||"both")}</span>
+       <button class="btn" onclick="decideCopy('${r.id}','pending')">↺</button></div>`).join("")
+    :"";
+}
+function setCopyStatus(s){cstatus=s;drawCopy();}
+function setCopyConcept(k){cconcept=k;drawCopy();}
+async function decideCopy(id,status){
+  const r=await fetch("/copy-decision",{method:"POST",body:JSON.stringify({id,status})});
+  const j=await r.json();
+  if(!r.ok){await tell(j.error||"erro");return;}
+  await load();
+  notify(status==="approved"?T.approvetoast:T.rejecttoast);
+}
+async function redoCopy(id){
+  const note=await ask(T["copy.redoask"]);
+  if(note===null)return;
+  const r=await fetch("/copy-decision",{method:"POST",body:JSON.stringify({id,status:"redo",note})});
+  const j=await r.json();
+  if(!r.ok){await tell(j.error||"erro");return;}
+  await load();
+  notify(T.regentoast);
+}
+async function applyCopy(){
+  const r=await fetch("/copy-apply",{method:"POST",body:"{}"});
+  const j=await r.json();
+  const box=document.getElementById("copyresult");
+  if(!r.ok){box.innerHTML=`<span class="tag rejected">${esc(j.error||"erro")}</span>`;return;}
+  box.innerHTML=fill(T["copy.applied"],{n:j.merged,m:j.pending});
+  notify(fill(T["copy.appliedtoast"],{n:j.merged}));
+  await load();
+}
+async function importCopy(input){
+  const file=input.files[0];input.value="";
+  if(!file)return;
+  const r=await fetch("/copy-import",{method:"POST",body:file,headers:{"X-Filename":file.name}});
+  const j=await r.json();
+  if(!r.ok){await tell(j.error||"erro");return;}
+  await load();
+  notify(fill(T["copy.imported"],{a:j.approved,r:j.rejected,d:j.redo}));
 }
 async function poll(){
   if(document.querySelector("dialog[open]")) return;

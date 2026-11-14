@@ -346,3 +346,20 @@ class Endpoints(unittest.TestCase):
                 self.assertEqual(content.review_payload(d)["rows"][0]["status"], "rejected")
             finally:
                 srv.shutdown()
+
+
+class Panel(unittest.TestCase):
+    def test_panel_markers_both_langs(self):
+        from kit import ui
+        for lang in ("pt", "en"):
+            page = ui.review_page(lang)
+            self.assertIn('id="copypanel"', page)
+            self.assertIn("/copy-export", page)
+            self.assertIn("drawCopy", page)
+
+    def test_i18n_keys_present(self):
+        from kit import i18n
+        for lang in ("pt", "en"):
+            for key in ("rv.copy.title", "rv.copy.apply",
+                        "rv.js.copy.stats", "rv.js.copy.applied"):
+                self.assertTrue(i18n.t(key, lang))
