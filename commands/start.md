@@ -23,6 +23,9 @@ conversa com você no chat e usa o navegador. Conduza nesta ordem:
 5. Leia `AGENTS.md` e siga o pipeline: `intake (ou brief --apply) → plan → assets →
    render → video`. Briefing livre (prosa/PDF/docx)? `brief --normalize <fonte>` →
    preencha o skeleton (visão p/ PDF; o que faltar fica vazio, vira gap) → `brief --apply`.
+   Se houver planilha de conteúdo (`content/`), rode `content`, adapte o copy e **revise-o no
+   painel "Revisar copy" antes do render** (só o aprovado entra; o time pode aprovar pela
+   planilha exportada). Ver "Conteúdo base" / "Revisão do copy" no AGENTS.md.
 6. Avise o ≈ custo antes de jobs de provider (é aviso, não porteiro).
 7. Suba `review` (abre o navegador sozinho). Aprovar/rejeitar/refazer só **marcam**; o usuário
    clica **Continuar** (etapa 6) — ou você roda `deliver` — para exportar as aprovadas na pasta
