@@ -35,15 +35,17 @@ e o navegador.**
 6. **Custo é aviso**: mostre ≈ créditos antes de jobs de provider e siga.
 7. **Revisão + entrega (etapa 6)**: suba `review` (abre o navegador sozinho; atalho
    `ABRIR-REVISAO.html` na pasta da campanha). Aprovar/rejeitar/refazer só **marcam** a peça;
-   o usuário clica **Continuar** (ou você roda `deliver`) para exportar as aprovadas em
-   `delivery/` e enfileirar rejeitadas (recriar) + refazer (com a nota) em `requests.json`.
+   o usuário clica **Continuar** (ou você roda `deliver`) para exportar as aprovadas na pasta
+   de entrega do Desktop (`~/Desktop/Campaign Kit/<campanha>/`) e enfileirar rejeitadas
+   (recriar) + refazer (com a nota) em `requests.json`. O botão **Abrir pasta** na revisão abre
+   essa pasta no computador do usuário.
    **Cumpra o lote**: ajuste template/asset/copy (recrie de fato — o render é determinístico),
    rode `render --ids <ids>` (preserva as aprovadas) e a revisão atualiza sozinha. Repita até fechar.
    **Ajuste de estilo por conceito**: se o usuário usou **Ajustar estilo** na revisão, há um
    `styles/<concept>.yaml` (cores/fontes) que o **próprio render aplica** — para esse lote basta
    `render --ids`, sem editar template. Ver "Ajuste de estilo por conceito" no AGENTS.md.
-8. **Planilhas de PPC (Meta + Google)**: o Continuar/`deliver` já gera `delivery/ppc/` com o
-   bulk upload de cada plataforma em CSV + XLSX (Meta Ads Manager, Google Search RSA, Google
+8. **Planilhas de PPC (Meta + Google)**: o Continuar/`deliver` já gera `ppc/` na pasta de entrega
+   (Desktop) com o bulk upload de cada plataforma em CSV + XLSX (Meta Ads Manager, Google Search RSA, Google
    Display) + manifesto. Ou rode `ppc <campanha>` (`--all` p/ não-aprovadas). Nomes/copy/CTA/
    placements/tamanho vêm preenchidos; **URL, orçamento, targeting e IDs ficam em branco para
    o time de tráfego** — não invente. Tudo sai pausado. Ver "Etapa 6b" no AGENTS.md.

@@ -10,6 +10,7 @@ import json
 import os
 import glob
 import shutil
+import sys
 
 import yaml
 from PIL import Image
@@ -272,19 +273,66 @@ def _merge_prior(root, pieces):
     return pieces
 
 
+def desktop_dir():
+    """Área de Trabalho do usuário (macOS/Windows/Linux), respeitando redirecionamento.
+
+    `KIT_DESKTOP_DIR` sobrescreve (testes e setups não padrão). No Windows o Desktop
+    pode estar no OneDrive; no Linux o XDG pode apontar para um nome localizado.
+    """
+    override = os.environ.get("KIT_DESKTOP_DIR")
+    if override:
+        return os.path.expanduser(override)
+    home = os.path.expanduser("~")
+    if sys.platform == "win32":
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                                r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders") as k:
+                val = os.path.expandvars(winreg.QueryValueEx(k, "Desktop")[0])
+            if os.path.isdir(val):
+                return val
+        except OSError:
+            pass
+    else:
+        xdg = os.path.join(home, ".config", "user-dirs.dirs")
+        if os.path.isfile(xdg):
+            with open(xdg, encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("XDG_DESKTOP_DIR="):
+                        val = line.split("=", 1)[1].strip().strip('"').replace("$HOME", home)
+                        if os.path.isdir(val):
+                            return val
+                        break
+    return os.path.join(home, "Desktop")
+
+
+def delivery_dir(root):
+    """Pasta de entrega na Área de Trabalho: ~/Desktop/Campaign Kit/<campanha>/.
+
+    Fora da pasta de trabalho do kit de propósito: o usuário acha os arquivos finais
+    direto no Desktop. Nada no kit lê estes arquivos de volta (o merge e o PPC usam
+    `state.json`/`out/`), então mover a entrega para cá não quebra a regeneração.
+    """
+    camp = load_campaign(root)
+    name = _slug(camp.get("slug") or os.path.basename(os.path.abspath(root)))
+    return os.path.join(desktop_dir(), "Campaign Kit", name)
+
+
 def deliver(root, lang="pt"):
     """Etapa 6 — o botão Continuar: exporta as aprovadas e enfileira a recriação/refazer.
 
-    Local e imediato: copia as aprovadas de `out/` para `delivery/<conceito>/` e marca
-    `delivered`. As rejeitadas (recriar) e refazer (com a nota) viram um lote em
-    `requests.json` — a regeneração é do agente (o render é determinístico; a UI não
-    chama MCP). O agente recria/refaz, roda `render --ids` e a revisão atualiza sozinha.
-    Com as aprovadas exportadas, gera também as planilhas de bulk upload de PPC
-    (Meta + Google) em `delivery/ppc/`.
+    Local e imediato: copia as aprovadas de `out/` para a pasta de entrega na Área de
+    Trabalho (`~/Desktop/Campaign Kit/<campanha>/<conceito>/`) e marca `delivered`. As
+    rejeitadas (recriar) e refazer (com a nota) viram um lote em `requests.json` — a
+    regeneração é do agente (o render é determinístico; a UI não chama MCP). O agente
+    recria/refaz, roda `render --ids` e a revisão atualiza sozinha. Com as aprovadas
+    exportadas, gera também as planilhas de bulk upload de PPC (Meta + Google) em `ppc/`
+    dentro da mesma pasta de entrega.
     """
     with open(os.path.join(root, "state.json"), encoding="utf-8") as f:
         state = json.load(f)
-    delivery = os.path.join(root, "delivery")
+    delivery = delivery_dir(root)
+    os.makedirs(delivery, exist_ok=True)
     exported, batch = [], []
     for p in state["pieces"]:
         st = p.get("status")
@@ -295,7 +343,7 @@ def deliver(root, lang="pt"):
                 os.makedirs(os.path.dirname(dest), exist_ok=True)
                 shutil.copy2(src, dest)
                 p["delivered"] = True
-                p["delivery_path"] = os.path.relpath(dest, root)
+                p["delivery_path"] = dest
                 exported.append(p["id"])
         elif st in ("rejected", "redo"):
             p["queued"] = True
@@ -313,7 +361,7 @@ def deliver(root, lang="pt"):
         from . import ppc
         ppc_summary = ppc.export(root, lang=lang)
     return {"exported": len(exported), "regen": len(batch), "exported_ids": exported,
-            "delivery_dir": "delivery", "requests_path": "requests.json", "batch": batch,
+            "delivery_dir": delivery, "requests_path": "requests.json", "batch": batch,
             "ppc": ppc_summary}
 
 

@@ -105,8 +105,8 @@ terminal). Before generating any paid asset, the agent shows the ≈ credits not
 `review` **opens the browser by itself** at `http://127.0.0.1:8765` (or the next free
 port). On screen you decide piece by piece — **each click only marks, nothing runs immediately**:
 
-- **✓ approve** → the piece is marked to go to the delivery folder and leaves the working
-  grid (it goes only to the **Approved** list).
+- **✓ approve** → the piece is marked to go to the delivery folder (on your Desktop) and
+  leaves the working grid (it goes only to the **Approved** list).
 - **✕ reject** → marked for the system to **recreate** another one automatically.
 - **↻ redo** → you write what to adjust; the note is saved.
 - **Adjust style (the whole concept)** → filter a concept and click **Adjust style** to
@@ -116,17 +116,20 @@ port). On screen you decide piece by piece — **each click only marks, nothing 
   renders too).
 
 When you finish marking, click the **Continue** button (stage 6). Only then does everything
-run at once: the approved pieces are **exported to the delivery folder** and the rejected/redo
-ones enter the regeneration queue. The **agent recreates/redoes** those pieces and they
-**update on this same page** by themselves, ready to review again. Approved pieces stay only
-in the approved list. Repeat until the campaign is done.
+run at once: the approved pieces are **exported to the delivery folder on your Desktop**
+(`~/Desktop/Campaign Kit/<campaign>/`) and the rejected/redo ones enter the regeneration
+queue. An **Open folder** button appears next to Continue and opens that folder on your
+computer (Finder on Mac, Explorer on Windows). The **agent recreates/redoes** the queued
+pieces and they **update on this same page** by themselves, ready to review again. Approved
+pieces stay only in the approved list. Repeat until the campaign is done.
 
 - Lost the link? Clickable shortcut **`ABRIR-REVISAO.html`** inside the campaign folder;
   the address is also at the top of the screen and at the end of `render` / `video` in the terminal.
-- Delivered (approved) pieces: `campaigns/<campaign>/delivery/<concept>/` (png/mp4). The
-  working render lives in `out/<concept>/` + contact sheet `review/sheet_<concept>.png`.
+- Delivered (approved) pieces: `~/Desktop/Campaign Kit/<campaign>/<concept>/` (png/mp4), on
+  your Desktop. The working render lives in `campaigns/<campaign>/out/<concept>/` + contact
+  sheet `review/sheet_<concept>.png`.
 - **Sheets for the PPC team (Meta + Google):** Continue also generates
-  `campaigns/<campaign>/delivery/ppc/` with each platform's bulk upload in **CSV + XLSX**
+  `~/Desktop/Campaign Kit/<campaign>/ppc/` with each platform's bulk upload in **CSV + XLSX**
   (Meta Ads Manager, Google Search RSA and Google Display) + a creative manifest. Names,
   copy, CTA, placements and size come pre-filled; the traffic team fills URL, budget and
   IDs. Everything ships paused for review. See [PPC sheets](#ppc-sheets-meta--google).
@@ -188,7 +191,8 @@ environment variable, never in the briefing**).
 | kit code | where you downloaded/opened it (e.g. `~/Documents/creative-kit-generator`) |
 | your files | the inbox the agent created (e.g. `~/Desktop/my-campaign`) |
 | derived brand | `<kit>/brands/<id>/` |
-| delivered (approved) pieces | `<kit>/campaigns/<id>-<slug>/delivery/<concept>/` |
+| delivered (approved) pieces | `~/Desktop/Campaign Kit/<campaign>/<concept>/` (on your Desktop) |
+| PPC sheets | `~/Desktop/Campaign Kit/<campaign>/ppc/` (CSV + XLSX) |
 | working render | `<kit>/campaigns/<id>-<slug>/out/<concept>/` + `review/sheet_<concept>.png` |
 | review | browser `127.0.0.1:8765+` · shortcut `ABRIR-REVISAO.html` |
 | regeneration batch | `<kit>/campaigns/<id>-<slug>/requests.json` (rejected + redo) |
@@ -217,7 +221,7 @@ python3 -m kit.cli review  campaigns/acme-launch   # opens the browser by itself
 python3 -m kit.cli deliver campaigns/acme-launch   # stage 6: the "Continue" — exports approved + queues recreation/redo
 #  the agent fulfils requests.json and re-renders only the batch pieces (preserves the approved):
 python3 -m kit.cli render  campaigns/acme-launch --ids <id1> <id2>
-python3 -m kit.cli ppc     campaigns/acme-launch   # bulk-upload sheets (Meta + Google), CSV + XLSX, in delivery/ppc/
+python3 -m kit.cli ppc     campaigns/acme-launch   # bulk-upload sheets (Meta + Google), CSV + XLSX, in ppc/ in the delivery folder (Desktop)
 python3 -m kit.cli ppc     campaigns/acme-launch --all   # export every piece, not just the approved ones
 ```
 
@@ -230,8 +234,8 @@ agent, like `AGENTS.md`.
 For campaigns with many ads, Meta and Google accept **bulk import via spreadsheet**. The kit
 generates those sheets by itself — **Continue** already creates them, and you can also run
 `python3 -m kit.cli ppc <campaign>` anytime. Everything lands in
-`campaigns/<campaign>/delivery/ppc/`, as **CSV** (direct import) and **XLSX** (review in
-Excel/Google Sheets):
+`~/Desktop/Campaign Kit/<campaign>/ppc/` (on your Desktop), as **CSV** (direct import) and
+**XLSX** (review in Excel/Google Sheets):
 
 | File | Where to import | What it is |
 |---|---|---|

@@ -283,11 +283,11 @@ Everything ships PAUSED/Paused for review before going live. Check copy and limi
 
 
 def export(root, all_pieces=False, lang="pt"):
-    """Gera as planilhas em delivery/ppc/. Devolve um resumo (contagens + arquivos)."""
+    """Gera as planilhas em ppc/ na pasta de entrega (Desktop). Devolve um resumo (contagens + arquivos)."""
     state_path = os.path.join(root, "state.json")
     if not os.path.isfile(state_path):
-        return {"dir": "delivery/ppc", "files": [], "meta": 0, "google_display": 0,
-                "google_rsa": 0, "manifest": 0, "xlsx": _HAS_XLSX}
+        return {"dir": os.path.join(C.delivery_dir(root), "ppc"), "files": [], "meta": 0,
+                "google_display": 0, "google_rsa": 0, "manifest": 0, "xlsx": _HAS_XLSX}
     import json
     with open(state_path, encoding="utf-8") as f:
         state = json.load(f)
@@ -301,7 +301,7 @@ def export(root, all_pieces=False, lang="pt"):
     want_meta = bool(meta) or "meta" in channels
     want_google = bool(google) or "google" in channels
 
-    outdir = os.path.join(root, "delivery", "ppc")
+    outdir = os.path.join(C.delivery_dir(root), "ppc")
     os.makedirs(outdir, exist_ok=True)
     files, counts = [], {"meta": 0, "google_display": 0, "google_rsa": 0, "manifest": 0}
 
@@ -325,4 +325,4 @@ def export(root, all_pieces=False, lang="pt"):
     with open(notes, "w", encoding="utf-8") as f:
         f.write(_NOTES.get(lang, _NOTES["en"]))
     files.append("README.txt")
-    return {"dir": "delivery/ppc", "files": files, "xlsx": _HAS_XLSX, **counts}
+    return {"dir": outdir, "files": files, "xlsx": _HAS_XLSX, **counts}

@@ -105,13 +105,14 @@ python3 -m kit.cli video campaigns/acme-launch
 #    --no-open para headless. A URL também aparece no topo da tela e no fim de render/video.
 python3 -m kit.cli review campaigns/acme-launch
 
-# 7. Entrega — equivalent headless do "Continuar". Exporta as aprovadas para delivery/<conceito>/
-#    e enfileira rejeitadas (recriar) + refazer (com a nota) em requests.json. A regeneração é
-#    SUA (agente): cumpra o lote e rode `render --ids`. Ver "Etapa 6 — Entrega e regeneração".
-#    Com as aprovadas exportadas, gera também as planilhas de PPC em delivery/ppc/ (Meta + Google).
+# 7. Entrega — equivalent headless do "Continuar". Exporta as aprovadas para a pasta de entrega
+#    no Desktop (~/Desktop/Campaign Kit/<campanha>/<conceito>/) e enfileira rejeitadas (recriar) +
+#    refazer (com a nota) em requests.json. A regeneração é SUA (agente): cumpra o lote e rode
+#    `render --ids`. Ver "Etapa 6 — Entrega e regeneração". Com as aprovadas exportadas, gera
+#    também as planilhas de PPC em ppc/ na mesma pasta de entrega (Meta + Google).
 python3 -m kit.cli deliver campaigns/acme-launch
 
-# 8. Planilhas de bulk upload p/ o time de PPC (Meta + Google), CSV + XLSX, em delivery/ppc/.
+# 8. Planilhas de bulk upload p/ o time de PPC (Meta + Google), CSV + XLSX, em ppc/ na pasta de entrega (Desktop).
 #    Determinístico: cada peça aprovada vira linha nas colunas de import de cada plataforma.
 #    --all exporta todas as peças (não só as aprovadas). Ver "Etapa 6b — Planilhas de PPC".
 python3 -m kit.cli ppc campaigns/acme-launch
@@ -129,10 +130,12 @@ python3 -m kit.cli ppc campaigns/acme-launch
 - `brands/<id>/` — `brand.yaml` (paleta, papéis tipográficos com fallback de SO, voz,
   eixos, naming, compliance, safe zones, locales) + `assets/logo.png` + `intake.json`.
 - `campaigns/<slug>/` — `campaign.json` (brand, channels, concepts, axes, cta, copy,
-  provider, asset_jobs) + `assets/` + `out/<concept>/` + `review/` + `delivery/<concept>/`
-  (aprovadas exportadas pelo Continuar) + `delivery/ppc/` (planilhas de bulk upload Meta +
-  Google, CSV + XLSX) + `styles/<concept>.yaml` (ajuste de cores/fontes do conceito, opcional)
+  provider, asset_jobs) + `assets/` + `out/<concept>/` (render de trabalho) + `review/`
+  + `styles/<concept>.yaml` (ajuste de cores/fontes do conceito, opcional)
   + `state.json` (decisões) + `requests.json` (lote de regeneração).
+- `~/Desktop/Campaign Kit/<campanha>/` — **pasta de entrega final**, fora do kit, no Desktop
+  do usuário: `<concept>/` com as aprovadas exportadas pelo Continuar + `ppc/` (planilhas de
+  bulk upload Meta + Google, CSV + XLSX). O botão **Abrir pasta** na revisão abre esta pasta.
 - `brands/acme` + `campaigns/acme-launch` — exemplo genérico que acompanha o repo.
 
 ## Documentos de apoio do briefing (`<inbox>/briefing/`)
@@ -261,18 +264,19 @@ Python re-renderiza e a UI atualiza. A revisão é **em lote** — decidir não 
 
 **O que cada clique faz (só marca, no `state.json`):**
 - **Aprovar** → `status:"approved"`. A peça sai da grade de trabalho e fica **só na lista
-  de aprovadas**, marcada para ir para a pasta de entrega.
+  de aprovadas**, marcada para ir para a pasta de entrega (Desktop).
 - **Rejeitar** → `status:"rejected"`. Marcada para **recriar** (sem nota).
 - **Refazer** → `status:"redo"` + `note` (o que ajustar). Marcada para **refazer com a nota**.
 - **Ajustar estilo** (por conceito, ao filtrar um conceito) → grava `styles/<concept>.yaml`
   (cores/fontes/nota) e marca **todas** as peças daquele conceito como `redo`. Ver abaixo.
 
 **O botão "Continuar" (ou `kit.cli deliver`) executa o lote:**
-1. **Exporta** as aprovadas de `out/` para `delivery/<conceito>/` (cópia local, imediata) e
-   marca `delivered:true` + `delivery_path`.
+1. **Exporta** as aprovadas de `out/` para `~/Desktop/Campaign Kit/<campanha>/<conceito>/`
+   (cópia local, imediata) e marca `delivered:true` + `delivery_path` (caminho absoluto).
 2. **Enfileira** rejeitadas + refazer em `requests.json` — um lote com
    `{id, concept, format, axes, path, kind, asset, reason:"rejected"|"redo", note}`.
-3. A UI avisa o que foi exportado/enfileirado e avança o stepper para a etapa 6 (Entregar).
+3. A UI avisa o que foi exportado/enfileirado, mostra o botão **Abrir pasta** (abre a pasta de
+   entrega no Desktop) e avança o stepper para a etapa 6 (Entregar).
 
 **SEU TRABALHO como agente — cumprir o lote `requests.json`:**
 1. Para cada peça: `reason:"redo"` → aplique a `note` (ajuste o template/copy/asset);
@@ -287,7 +291,10 @@ Python re-renderiza e a UI atualiza. A revisão é **em lote** — decidir não 
    reaparecem como pendentes com a imagem nova, na mesma página; as aprovadas seguem só na
    lista de aprovadas. O usuário revisa de novo e clica Continuar outra vez até fechar.
 
-`delivery/` é a pasta de entrega final (aprovadas). `out/` continua sendo o render de trabalho.
+A pasta de entrega final (aprovadas + PPC) fica em `~/Desktop/Campaign Kit/<campanha>/`, no
+Desktop do usuário — o botão **Abrir pasta** na revisão a abre. `out/` (dentro de
+`campaigns/<slug>/`) continua sendo o render de trabalho. Nada no kit lê a entrega de volta:
+o merge e o PPC usam `state.json`/`out/`, então a entrega no Desktop não afeta a regeneração.
 
 ## Ajuste de estilo por conceito (`styles/<concept>.yaml`)
 
@@ -320,7 +327,8 @@ note: mais contraste
 
 Quando a demanda é alta, Meta e Google aceitam importar anúncios em lote por planilha. O
 `kit.cli ppc` (e o **Continuar**, que já chama o export) gera essas planilhas em
-`delivery/ppc/`, **uma por plataforma**, em **CSV** (import direto) e **XLSX** (revisão no
+`ppc/` na pasta de entrega (`~/Desktop/Campaign Kit/<campanha>/ppc/`), **uma por plataforma**,
+em **CSV** (import direto) e **XLSX** (revisão no
 Excel/Sheets). É determinístico: cada peça aprovada (criativo + copy) vira uma linha nas
 colunas de import da plataforma, conforme formato/tamanho/canal.
 

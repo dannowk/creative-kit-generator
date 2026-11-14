@@ -12,6 +12,8 @@ dados (slots, gaps, achados de compliance) também saem localizados.
 import json
 import os
 import re
+import subprocess
+import sys
 import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -250,6 +252,7 @@ def review_page(lang):
 <p class="desc">{i18n.t('rv.p6.desc', lang)}</p>
 <div class="stats" id="deliver-summary"></div>
 <div class="row" style="align-items:center"><button class="btn primary" onclick="continuar()">{i18n.t('rv.js.continue', lang)}</button>
+<button class="btn" id="opendelivery" onclick="openDelivery()" style="display:none">{i18n.t('rv.js.openfolder', lang)}</button>
 <span class="meta">{i18n.t('rv.p6.hint', lang)}</span></div>
 <div id="deliver-result"></div></div>
 </div>
@@ -283,6 +286,7 @@ function applyState(s){
   document.getElementById("stylebtn").style.display = cfilter==="all" ? "none" : "";
   document.getElementById("deliver-summary").innerHTML = fill(T["deliver.summary"],
     {approved:c("approved"),regen:c("rejected")+c("redo")});
+  document.getElementById("opendelivery").style.display = delivered>0 ? "" : "none";
   if(delivered>0) setStep(6);
   draw();
 }
@@ -387,6 +391,12 @@ async function continuar(){
   }
   notify(fill(T["continue.toast"],{n:j.exported,m:j.regen}));
   setStep(6);
+}
+async function openDelivery(){
+  const r=await fetch("/open-delivery",{method:"POST",body:"{}"});
+  const j=await r.json();
+  if(!r.ok){await tell(j.error||"erro");return;}
+  notify(fill(T["openfolder.toast"],{dir:j.path}));
 }
 async function poll(){
   if(document.querySelector("dialog[open]")) return;
@@ -588,6 +598,16 @@ dd.addEventListener("dragleave",()=>dd.classList.remove("drag"));
 dd.addEventListener("drop",e=>{e.preventDefault();dd.classList.remove("drag");uploadDocs(e.dataTransfer.files);});
 load();
 </script></body></html>"""
+
+
+def _open_folder(path):
+    """Abre a pasta no gerenciador de arquivos do SO (Finder/Explorer/xdg). Servidor local."""
+    if sys.platform == "darwin":
+        subprocess.Popen(["open", path])
+    elif sys.platform == "win32":
+        os.startfile(path)
+    else:
+        subprocess.Popen(["xdg-open", path])
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -844,6 +864,12 @@ class Handler(BaseHTTPRequestHandler):
             if not os.path.isfile(state_path):
                 return self._send(400, {"error": i18n.t("rv.err.nostate", self._lang())})
             self._send(200, campaign.deliver(self.root, lang=self._lang()))
+        elif self.path == "/open-delivery":
+            dest = campaign.delivery_dir(self.root)
+            if not os.path.isdir(dest):
+                return self._send(400, {"error": i18n.t("rv.js.openfolder.empty", self._lang())})
+            _open_folder(dest)
+            self._send(200, {"ok": True, "path": dest})
         else:
             self._send(404, {"error": "not found"})
 

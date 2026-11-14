@@ -105,8 +105,8 @@ Antes de gerar qualquer asset pago, o agente mostra o aviso de ≈ créditos.
 O `review` **abre o navegador sozinho** em `http://127.0.0.1:8765` (ou a próxima porta
 livre). Na tela você decide peça por peça — **cada clique só marca, nada executa na hora**:
 
-- **✓ aprovar** → a peça fica marcada para ir para a pasta de entrega e sai da grade de
-  trabalho (vai só para a lista **Aprovadas**).
+- **✓ aprovar** → a peça fica marcada para ir para a pasta de entrega (na Área de Trabalho)
+  e sai da grade de trabalho (vai só para a lista **Aprovadas**).
 - **✕ rejeitar** → marcada para o sistema **recriar** outra automaticamente.
 - **↻ refazer** → você escreve o que ajustar; a nota fica guardada.
 - **Ajustar estilo (o conceito inteiro)** → filtre um conceito e clique **Ajustar estilo**
@@ -116,17 +116,20 @@ livre). Na tela você decide peça por peça — **cada clique só marca, nada e
   look (e ele vale para as próximas renderizações também).
 
 Quando terminar de marcar, clique no botão **Continuar** (etapa 6). Aí sim tudo executa de
-uma vez: as aprovadas são **exportadas para a pasta de entrega** e as rejeitadas/refazer
-entram na fila de regeneração. O **agente recria/refaz** essas peças e elas **atualizam
-nesta mesma página** sozinhas, prontas para revisar de novo. As aprovadas continuam só na
-lista de aprovadas. Repita até fechar a campanha.
+uma vez: as aprovadas são **exportadas para a pasta de entrega na sua Área de Trabalho**
+(`~/Desktop/Campaign Kit/<campanha>/`) e as rejeitadas/refazer entram na fila de regeneração.
+O botão **Abrir pasta** aparece ao lado do Continuar e abre essa pasta no seu computador
+(Finder no Mac, Explorer no Windows). O **agente recria/refaz** as peças da fila e elas
+**atualizam nesta mesma página** sozinhas, prontas para revisar de novo. As aprovadas
+continuam só na lista de aprovadas. Repita até fechar a campanha.
 
 - Perdeu o link? Atalho clicável **`ABRIR-REVISAO.html`** dentro da pasta da campanha;
   o endereço também fica no topo da tela e no fim de `render` / `video` no terminal.
-- Peças entregues (aprovadas): `campaigns/<campanha>/delivery/<conceito>/` (png/mp4). O
-  render de trabalho fica em `out/<conceito>/` + contact sheet `review/sheet_<conceito>.png`.
+- Peças entregues (aprovadas): `~/Desktop/Campaign Kit/<campanha>/<conceito>/` (png/mp4), na
+  sua Área de Trabalho. O render de trabalho fica em `campaigns/<campanha>/out/<conceito>/`
+  + contact sheet `review/sheet_<conceito>.png`.
 - **Planilhas p/ o time de PPC (Meta + Google):** o Continuar também gera
-  `campaigns/<campanha>/delivery/ppc/` com o bulk upload de cada plataforma em **CSV + XLSX**
+  `~/Desktop/Campaign Kit/<campanha>/ppc/` com o bulk upload de cada plataforma em **CSV + XLSX**
   (Meta Ads Manager, Google Search RSA e Google Display) + um manifesto dos criativos. Já
   vem com nomes, copy, CTA, placements e tamanho; o time de tráfego completa URL, orçamento
   e IDs. Tudo sai pausado para revisão. Veja [Planilhas de PPC](#planilhas-de-ppc-meta--google).
@@ -187,7 +190,8 @@ variável de ambiente, nunca no briefing**).
 | código do kit | onde você baixou/abriu (ex.: `~/Documents/creative-kit-generator`) |
 | seus arquivos | inbox que o agente criou (ex.: `~/Desktop/minha-campanha`) |
 | marca derivada | `<kit>/brands/<id>/` |
-| peças entregues (aprovadas) | `<kit>/campaigns/<id>-<slug>/delivery/<conceito>/` |
+| peças entregues (aprovadas) | `~/Desktop/Campaign Kit/<campanha>/<conceito>/` (na Área de Trabalho) |
+| planilhas de PPC | `~/Desktop/Campaign Kit/<campanha>/ppc/` (CSV + XLSX) |
 | render de trabalho | `<kit>/campaigns/<id>-<slug>/out/<conceito>/` + `review/sheet_<conceito>.png` |
 | revisão | navegador `127.0.0.1:8765+` · atalho `ABRIR-REVISAO.html` |
 | lote de regeneração | `<kit>/campaigns/<id>-<slug>/requests.json` (rejeitadas + refazer) |
@@ -216,7 +220,7 @@ python3 -m kit.cli review  campaigns/acme-launch   # abre o navegador sozinho; a
 python3 -m kit.cli deliver campaigns/acme-launch   # etapa 6: o "Continuar" — exporta aprovadas + enfileira recriação/refazer
 #  o agente cumpre requests.json e re-renderiza só as peças do lote (preserva as aprovadas):
 python3 -m kit.cli render  campaigns/acme-launch --ids <id1> <id2>
-python3 -m kit.cli ppc     campaigns/acme-launch   # planilhas de bulk upload (Meta + Google), CSV + XLSX, em delivery/ppc/
+python3 -m kit.cli ppc     campaigns/acme-launch   # planilhas de bulk upload (Meta + Google), CSV + XLSX, em ppc/ na pasta de entrega (Desktop)
 python3 -m kit.cli ppc     campaigns/acme-launch --all   # exporta todas as peças, não só as aprovadas
 ```
 
@@ -225,8 +229,8 @@ python3 -m kit.cli ppc     campaigns/acme-launch --all   # exporta todas as peç
 Para campanhas com muitos anúncios, Meta e Google aceitam **importar em lote por planilha**.
 O kit gera essas planilhas sozinho — o **Continuar** já cria, e você também pode rodar
 `python3 -m kit.cli ppc <campanha>` a qualquer momento. Tudo cai em
-`campaigns/<campanha>/delivery/ppc/`, em **CSV** (import direto) e **XLSX** (revisão no
-Excel/Google Sheets):
+`~/Desktop/Campaign Kit/<campanha>/ppc/` (na sua Área de Trabalho), em **CSV** (import direto)
+e **XLSX** (revisão no Excel/Google Sheets):
 
 | Arquivo | Onde importar | O que é |
 |---|---|---|
