@@ -238,3 +238,111 @@ class CliReview(unittest.TestCase):
             with redirect_stdout(buf):
                 self.assertEqual(cli.main(["content", d, "--import", ret]), 0)
             self.assertEqual(content.review_payload(d)["rows"][0]["status"], "rejected")
+
+
+class Endpoints(unittest.TestCase):
+    def _server(self, d):
+        import threading
+        from http.server import ThreadingHTTPServer
+        from kit import ui
+        ui.Handler.root = d
+        ui.Handler.mode = "review"
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), ui.Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        return srv
+
+    def _setup(self, d):
+        with open(os.path.join(d, "campaign.json"), "w", encoding="utf-8") as f:
+            json.dump({"slug": "t", "brand": "b", "concepts": ["clean"]}, f)
+        cdir = os.path.join(d, "content")
+        os.makedirs(cdir)
+        with open(os.path.join(cdir, "base.csv"), "w", encoding="utf-8") as f:
+            f.write("concept,hook\nclean,Hi\n")
+        content.ingest({"_root": d, "concepts": ["clean"]})
+
+    def test_state_fallback_and_content(self):
+        import urllib.request
+        with tempfile.TemporaryDirectory() as d:
+            self._setup(d)  # no state.json yet
+            srv = self._server(d)
+            try:
+                base = f"http://127.0.0.1:{srv.server_address[1]}"
+                with urllib.request.urlopen(base + "/state") as r:
+                    state = json.load(r)
+                self.assertEqual(state["pieces"], [])
+                self.assertEqual(state["content"]["counts"]["approved"], 1)
+            finally:
+                srv.shutdown()
+
+    def test_copy_decision_and_apply(self):
+        import urllib.request
+        with tempfile.TemporaryDirectory() as d:
+            self._setup(d)
+            srv = self._server(d)
+            try:
+                base = f"http://127.0.0.1:{srv.server_address[1]}"
+                req = urllib.request.Request(base + "/copy-decision",
+                                             data=json.dumps({"id": "c01", "status": "rejected"}).encode(),
+                                             headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(req) as r:
+                    self.assertEqual(r.status, 200)
+                self.assertEqual(content.review_payload(d)["rows"][0]["status"], "rejected")
+                req = urllib.request.Request(base + "/copy-decision",
+                                             data=json.dumps({"id": "c01", "status": "approved"}).encode(),
+                                             headers={"Content-Type": "application/json"})
+                urllib.request.urlopen(req).close()
+                req = urllib.request.Request(base + "/copy-apply", data=b"{}",
+                                             headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(req) as r:
+                    self.assertEqual(json.load(r)["merged"], 1)
+            finally:
+                srv.shutdown()
+
+    def test_copy_decision_bad_status_400(self):
+        import urllib.request
+        import urllib.error
+        with tempfile.TemporaryDirectory() as d:
+            self._setup(d)
+            srv = self._server(d)
+            try:
+                base = f"http://127.0.0.1:{srv.server_address[1]}"
+                req = urllib.request.Request(base + "/copy-decision",
+                                             data=json.dumps({"id": "c01", "status": "bogus"}).encode(),
+                                             headers={"Content-Type": "application/json"})
+                with self.assertRaises(urllib.error.HTTPError) as cm:
+                    urllib.request.urlopen(req)
+                self.assertEqual(cm.exception.code, 400)
+            finally:
+                srv.shutdown()
+
+    def test_copy_export_download(self):
+        import urllib.request
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            self._setup(d)
+            srv = self._server(d)
+            try:
+                base = f"http://127.0.0.1:{srv.server_address[1]}"
+                with mock.patch("kit.campaign.delivery_dir",
+                                return_value=os.path.join(d, "delivery")):
+                    with urllib.request.urlopen(base + "/copy-export") as r:
+                        self.assertEqual(r.status, 200)
+                        self.assertTrue(r.read(2) == b"PK")
+            finally:
+                srv.shutdown()
+
+    def test_copy_import_round_trip(self):
+        import urllib.request
+        with tempfile.TemporaryDirectory() as d:
+            self._setup(d)
+            srv = self._server(d)
+            try:
+                base = f"http://127.0.0.1:{srv.server_address[1]}"
+                body = b"id,decision\nc01,reject\n"
+                req = urllib.request.Request(base + "/copy-import", data=body,
+                                             headers={"X-Filename": "return.csv"})
+                with urllib.request.urlopen(req) as r:
+                    self.assertEqual(json.load(r)["rejected"], 1)
+                self.assertEqual(content.review_payload(d)["rows"][0]["status"], "rejected")
+            finally:
+                srv.shutdown()

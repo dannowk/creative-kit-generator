@@ -775,8 +775,19 @@ class Handler(BaseHTTPRequestHandler):
         elif url.path == "/state":
             if self.mode == "onboard":
                 return self._send(200, onboard.status(self.root, lang))
-            with open(os.path.join(self.root, "state.json"), encoding="utf-8") as f:
-                self._send(200, json.load(f))
+            state_path = os.path.join(self.root, "state.json")
+            if os.path.isfile(state_path):
+                with open(state_path, encoding="utf-8") as f:
+                    state = json.load(f)
+            else:
+                camp = campaign.load_campaign(self.root)
+                state = {"campaign": camp.get("slug"), "brand": camp.get("brand"),
+                         "pieces": [], "blocked_count": 0,
+                         "concepts": camp.get("concepts") or []}
+            cp = content.review_payload(self.root)
+            if cp is not None:
+                state["content"] = cp
+            self._send(200, state)
         elif url.path == "/img":
             rel = parse_qs(url.query).get("path", [""])[0]
             path = self._safe(rel)
@@ -815,13 +826,50 @@ class Handler(BaseHTTPRequestHandler):
                             if p.lower().endswith((".ttf", ".otf", ".ttc"))})
             self._send(200, {"concept": concept, "palette": palette, "type": type_cfg,
                              "fonts": fonts, "override": campaign.load_style(self.root, concept)})
+        elif url.path == "/copy-export":
+            try:
+                summary = content.export_review(self.root, self._lang())
+            except ValueError:
+                return self._send(404, {"error": "content.json ausente"})
+            with open(summary["path"], "rb") as f:
+                data = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type",
+                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            self.send_header("Content-Disposition", 'attachment; filename="content_review.xlsx"')
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
         else:
             self._send(404, {"error": "not found"})
+
+    def _copy_import(self, length):
+        import tempfile
+        lang = self._lang()
+        if length > 20 * 1024 * 1024:
+            return self._send(413, {"error": i18n.t("rv.copy.err.big", lang)})
+        data = self.rfile.read(length)
+        name = self.headers.get("X-Filename", "upload.xlsx")
+        ext = os.path.splitext(name)[1].lower()
+        if ext not in content.SHEET_EXT:
+            return self._send(400, {"error": i18n.t("rv.copy.err.ext", lang)})
+        fd, tmp = tempfile.mkstemp(suffix=ext)
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(data)
+            summary = content.import_decisions(self.root, tmp)
+        finally:
+            os.unlink(tmp)
+        if summary.get("errors"):
+            return self._send(400, {"error": "; ".join(summary["errors"])})
+        self._send(200, summary)
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         if self.mode == "onboard":
             return self._onboard_post(length)
+        if self.path == "/copy-import":
+            return self._copy_import(length)
         payload = json.loads(self.rfile.read(length) or b"{}")
         state_path = os.path.join(self.root, "state.json")
         if self.path in ("/decision", "/regen"):
@@ -896,6 +944,19 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, {"error": i18n.t("rv.js.openfolder.empty", self._lang())})
             _open_folder(dest)
             self._send(200, {"ok": True, "path": dest})
+        elif self.path == "/copy-decision":
+            lang = self._lang()
+            status = payload.get("status")
+            if status not in content.STATUSES:
+                return self._send(400, {"error": i18n.t("rv.copy.err.status", lang)})
+            if not content.decide(self.root, payload.get("id"), status, payload.get("note", "")):
+                return self._send(400, {"error": i18n.t("rv.copy.err.id", lang)})
+            self._send(200, {"ok": True})
+        elif self.path == "/copy-apply":
+            summary = content.apply(campaign.load_campaign(self.root))
+            if summary.get("errors"):
+                return self._send(400, {"error": "; ".join(summary["errors"])})
+            self._send(200, summary)
         else:
             self._send(404, {"error": "not found"})
 
