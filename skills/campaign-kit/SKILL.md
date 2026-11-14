@@ -33,6 +33,12 @@ e o navegador.**
    outro cliente. Briefing
    livre (prosa/PDF/docx)? `brief --normalize <fonte>` → preencha o skeleton (visão
    p/ PDF; o que faltar fica vazio, vira gap) → `brief <out> --apply`.
+5b. **Conteúdo base**: se o inbox tem `content/` (planilha .xlsx/.csv) ou
+   `content_link.txt`, copie para `campaigns/<slug>/content/` (só link: baixe a
+   planilha uma vez pelo navegador — o kit não fala com SharePoint), rode `content`,
+   aplique as regras da seção 11 do briefing em `content.json` (versões por destino
+   `use: image/ppc/both`; nunca invente copy) e rode `content --apply`. Sem planilha,
+   o passo é opcional. Ver "Conteúdo base" no AGENTS.md.
 6. **Custo é aviso**: mostre ≈ créditos antes de jobs de provider e siga.
 7. **Revisão + entrega (etapa 6)**: suba `review` (abre o navegador sozinho; atalho
    `ABRIR-REVISAO.html` na pasta da campanha). Aprovar/rejeitar/refazer só **marcam** a peça;

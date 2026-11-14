@@ -67,8 +67,10 @@ python -m kit.cli content <campaign>          # ingest + validate → content.js
 python -m kit.cli content <campaign> --apply  # validate + merge → campaign.json.copy
 ```
 
-1. **Ingest** (`content`): read the sheet from the campaign's `content/` dir (copied
-   there by intake, like other slots), parse with openpyxl (already a dependency) /
+1. **Ingest** (`content`): read the sheet from the campaign's `content/` dir (the
+   agent copies it from the inbox — collected by `intake.inventory` — into the
+   campaign's `content/` dir before running `content`, same agent-mediated pattern
+   as provider drop_dir), parse with openpyxl (already a dependency) /
    csv, normalize headers, validate rows (concept declared, hook present, `use`
    enum). Write `campaigns/<slug>/content.json`:
    `{source: {file, link}, rows: [...], gaps: [...]}`. Print rows + briefing §11

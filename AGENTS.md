@@ -87,6 +87,12 @@ python3 -m kit.cli plan campaigns/acme-launch
 #    com visão (PDF/imagem): as regras dele (cores, tipografia, uso do logo, voz)
 #    prevalecem sobre a paleta proposta do logo; conflito com o briefing vira pergunta.
 
+# 3b. Conteúdo base da planilha do time de conteúdo (opcional)
+python3 -m kit.cli content campaigns/acme-launch          # ingest + valida → content.json
+#    SEU TRABALHO: aplique as regras da seção 11 do briefing em content.json
+#    (versões, adaptação por destino use: image/ppc/both). Nunca invente copy.
+python3 -m kit.cli content campaigns/acme-launch --apply  # mescla em campaign.json.copy
+
 # 4. Assets de IA (imagem e vídeo) — aviso de custo informativo, sem porteiro
 python3 -m kit.cli assets campaigns/acme-launch
 #    imprime "≈ X créditos (N imagem(ns) + M vídeo(s))" e gera/coleta.
@@ -155,6 +161,34 @@ CTA por conceito×eixo, e o copy do RSA no export de PPC); regras de layout, saf
 segurança do logo viram `geometry`/`safe_zones` e `compliance` no `brand.yaml` e nos
 templates. As regras do brandbook e destes documentos prevalecem sobre a paleta proposta;
 conflito com o briefing vira pergunta — nunca chute silencioso.
+
+## Conteúdo base (planilha do time de conteúdo)
+
+O time de conteúdo mantém o copy base numa planilha — online (SharePoint) ou arquivo
+local. O wizard tem o slot `content/` (.xlsx/.csv) + campo **Link do SharePoint**; o
+link vai para `content_link.txt`. **O kit nunca fala com SharePoint**: se só há link,
+você (agente) baixa a planilha uma vez pelo navegador e salva em `content/`. Antes de
+rodar `content`, copie a planilha do inbox para `campaigns/<slug>/content/` (o
+`intake.inventory` recolhe em `content`; mesmo padrão agent-mediated do drop_dir).
+
+Colunas canônicas (aliases PT/EN aceitos): `concept` (obrigatório), `axis` (opcional),
+`hook` (obrigatório), `kicker`, `program`, `cta`, `use`, `lang`. Uma linha = um copy
+base. **`use` roteia**: `image` → só nas peças; `ppc` → só nas planilhas de PPC;
+`both`/vazio → ambos (comportamento atual). Planilha livre? Você mapeia para as
+colunas canônicas (como no normalize) — o kit valida a forma canônica, não a planilha
+bruta.
+
+Fluxo (normalize pattern): `content` faz ingest + validate → `content.json` (rows +
+gaps + errors). **SEU TRABALHO**: aplique as regras da **seção 11 do briefing**
+("15 versões a mais, hooks mais curtos para Stories") em `content.json` — expanda
+versões, adapte por destino, nunca invente o que a planilha/briefing não dizem.
+`content --apply` revalida e mescla em `campaign.json.copy`: primeira linha por
+(eixo, conceito) = entry base; demais = `versions`. O render pula `use: ppc`; o PPC
+pula `use: image`, exporta uma linha por versão (Meta/Display) e alimenta o pool de
+headlines/descriptions do RSA; entries `ppc` sem peça viram linhas de anúncio extras
+(criativo em branco para o time de PPC). Variantes de **imagem** usam o mecanismo
+existente de eixos: adicione um eixo de versão em `campaign.json.axes` e keyed o copy
+por ele — `lookup` resolve por valor de eixo, a matriz expande sozinha.
 
 ## Specs de template (declarativo)
 
