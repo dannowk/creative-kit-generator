@@ -208,3 +208,33 @@ class ImportDecisions(unittest.TestCase):
             self.assertEqual(summary["errors"], [])
             self.assertEqual(summary["approved"], 1)
             self.assertEqual(summary["rejected"], 1)
+
+
+class CliReview(unittest.TestCase):
+    def test_export_then_import(self):
+        import io
+        from contextlib import redirect_stdout
+        from unittest import mock
+        from kit import cli
+        with tempfile.TemporaryDirectory() as d:
+            cdir = os.path.join(d, "content")
+            os.makedirs(cdir)
+            with open(os.path.join(cdir, "base.csv"), "w", encoding="utf-8") as f:
+                f.write("concept,hook\nclean,Hi\n")
+            with open(os.path.join(d, "campaign.json"), "w", encoding="utf-8") as f:
+                json.dump({"concepts": ["clean"]}, f)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                self.assertEqual(cli.main(["content", d]), 0)
+            with mock.patch("kit.campaign.delivery_dir",
+                            return_value=os.path.join(d, "delivery")):
+                with redirect_stdout(buf):
+                    self.assertEqual(cli.main(["content", d, "--export"]), 0)
+            self.assertTrue(os.path.isfile(os.path.join(
+                d, "delivery", "content_review", "content_review.xlsx")))
+            ret = os.path.join(d, "return.csv")
+            with open(ret, "w", encoding="utf-8") as f:
+                f.write("id,decision\nc01,reject\n")
+            with redirect_stdout(buf):
+                self.assertEqual(cli.main(["content", d, "--import", ret]), 0)
+            self.assertEqual(content.review_payload(d)["rows"][0]["status"], "rejected")

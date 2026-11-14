@@ -72,6 +72,10 @@ def main(argv=None):
     p = sub.add_parser("content", help="copy base da planilha do time de conteúdo (ingest → agente adapta → --apply)")
     p.add_argument("campaign")
     p.add_argument("--apply", action="store_true", help="valida content.json e mescla em campaign.json.copy")
+    p.add_argument("--export", action="store_true",
+                   help="exporta planilha de revisão p/ o time (content_review.xlsx)")
+    p.add_argument("--import", dest="import_path", metavar="PATH",
+                   help="importa decisões da planilha devolvida pelo time")
 
     p = sub.add_parser("onboard", help="prepara a pasta da campanha (briefing, refs, fontes, logo, fotos, vídeos)")
     p.add_argument("inbox")
@@ -209,7 +213,16 @@ def main(argv=None):
         return 0
 
     if args.cmd == "content":
-        summary = content.apply(camp) if args.apply else content.ingest(camp)
+        if args.export:
+            try:
+                summary = content.export_review(camp["_root"], lang)
+            except ValueError as e:
+                print(str(e), file=sys.stderr)
+                return 1
+        elif args.import_path:
+            summary = content.import_decisions(camp["_root"], os.path.expanduser(args.import_path))
+        else:
+            summary = content.apply(camp) if args.apply else content.ingest(camp)
         print(json.dumps(summary, indent=2, ensure_ascii=False))
         return 1 if summary.get("errors") else 0
 
