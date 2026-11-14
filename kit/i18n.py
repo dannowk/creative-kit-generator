@@ -273,6 +273,7 @@ _PT = {
     "ob.content.linkph": "Link do SharePoint (opcional)",
     "ob.content.linksave": "salvar link",
     "ob.content.linknote": "O agente baixa a planilha uma vez; o kit lê o arquivo local.",
+    "ob.content.sample": "↓ planilha modelo (.xlsx) — com aba de exemplos",
 
     # ── achados de compliance (message/message_en gerados no render) ─
     "cmp.subject_safe": "{op} cobre {frac:.0%} do rosto (máx {tol:.0%}).",
@@ -527,6 +528,7 @@ _EN = {
     "ob.content.linkph": "SharePoint link (optional)",
     "ob.content.linksave": "save link",
     "ob.content.linknote": "The agent downloads the sheet once; the kit reads the local file.",
+    "ob.content.sample": "↓ sample spreadsheet (.xlsx) — with examples tab",
 
     "cmp.subject_safe": "{op} covers {frac:.0%} of the face (max {tol:.0%}).",
     "cmp.palette_forbidden": "Forbidden color rgb{color} in {frac:.1%} of the piece (max {min_area:.1%}).",

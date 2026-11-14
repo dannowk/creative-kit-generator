@@ -73,6 +73,69 @@ def validate(rows, concepts):
     return errs
 
 
+_SAMPLE_ROWS = {
+    "pt": [
+        ("clean", "", "Sua semana, planejada em minutos.", "NOVO", "Teste grátis por 14 dias", "Começar grátis", "both", "pt"),
+        ("clean", "", "Chega de abas abertas. Comece a entregar.", "NOVO", "Teste grátis por 14 dias", "Experimente agora", "both", "pt"),
+        ("clean", "urgencia", "Última chamada: preço de lançamento acaba sexta.", "LIMITADO", "Oferta de lançamento", "Aproveitar", "image", "pt"),
+        ("editorial", "", "A história por trás da sua agenda.", "", "", "Saiba mais", "ppc", "pt"),
+        ("cinema", "beneficio", "Veja sua semana sob outra luz.", "", "", "Assistir", "", "pt"),
+    ],
+    "en": [
+        ("clean", "", "Your week, planned in minutes.", "NEW", "Free 14-day trial", "Start free", "both", "en"),
+        ("clean", "", "Stop juggling tabs. Start shipping.", "NEW", "Free 14-day trial", "Try it now", "both", "en"),
+        ("clean", "urgency", "Last call: launch pricing ends Friday.", "LIMITED", "Launch offer", "Get the deal", "image", "en"),
+        ("editorial", "", "The story behind your calendar.", "", "", "Read more", "ppc", "en"),
+        ("cinema", "benefit", "See your week in a new light.", "", "", "Watch now", "", "en"),
+    ],
+}
+_SAMPLE_NOTES = {
+    "pt": {"concept": "obrigatório — um dos conceitos pedidos no briefing (seção 7)",
+           "axis": "opcional — eixo da campanha; linhas repetidas (mesmo concept+axis) viram versões",
+           "hook": "obrigatório — texto principal da peça",
+           "use": "image = só nas peças · ppc = só nas planilhas · both/vazio = ambos",
+           "lang": "opcional — pt ou en",
+           "_ex": "referência: preencha a aba Modelo — o kit lê a primeira aba"},
+    "en": {"concept": "required — one of the concepts requested in the briefing (section 7)",
+           "axis": "optional — campaign axis; repeated rows (same concept+axis) become versions",
+           "hook": "required — main text of the piece",
+           "use": "image = pieces only · ppc = spreadsheets only · both/blank = both",
+           "lang": "optional — pt or en",
+           "_ex": "reference: fill the Template tab — the kit reads the first tab"},
+}
+
+
+def sample_xlsx(lang="pt"):
+    """Modelo .xlsx para o time de conteúdo: aba limpa + aba de exemplos."""
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.comments import Comment
+    from openpyxl.styles import Font
+    from openpyxl.utils import get_column_letter
+
+    key = "pt" if lang == "pt" else "en"
+    notes = _SAMPLE_NOTES[key]
+    wb = Workbook()
+    tpl = wb.active
+    tpl.title = "Modelo" if key == "pt" else "Template"
+    ex = wb.create_sheet("Exemplos" if key == "pt" else "Examples")
+    for ws in (tpl, ex):
+        ws.append(list(COLUMNS))
+        for c in ws[1]:
+            c.font = Font(bold=True)
+        for i, w in enumerate((12, 12, 46, 12, 26, 18, 8, 6), 1):
+            ws.column_dimensions[get_column_letter(i)].width = w
+        ws.freeze_panes = "A2"
+    for col, text in notes.items():
+        target = ex["A1"] if col == "_ex" else tpl.cell(row=1, column=COLUMNS.index(col) + 1)
+        target.comment = Comment(text, "campaign-kit")
+    for row in _SAMPLE_ROWS[key]:
+        ex.append(list(row))
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 def find_sheet(root):
     d = os.path.join(root, "content")
     if not os.path.isdir(d):

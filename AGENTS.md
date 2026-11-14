@@ -166,7 +166,9 @@ conflito com o briefing vira pergunta — nunca chute silencioso.
 
 O time de conteúdo mantém o copy base numa planilha — online (SharePoint) ou arquivo
 local. O wizard tem o slot `content/` (.xlsx/.csv) + campo **Link do SharePoint**; o
-link vai para `content_link.txt`. **O kit nunca fala com SharePoint**: se só há link,
+link vai para `content_link.txt`. O wizard também oferece **↓ planilha modelo**
+(`/content-sample`): .xlsx com aba limpa (colunas canônicas) + aba de exemplos
+(`use` image/ppc/both, eixo, linhas repetidas = versões), PT/EN. **O kit nunca fala com SharePoint**: se só há link,
 você (agente) baixa a planilha uma vez pelo navegador e salva em `content/`. Antes de
 rodar `content`, copie a planilha do inbox para `campaigns/<slug>/content/` (o
 `intake.inventory` recolhe em `content`; mesmo padrão agent-mediated do drop_dir).

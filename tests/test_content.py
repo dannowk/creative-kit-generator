@@ -228,6 +228,63 @@ class RenderRouting(unittest.TestCase):
         self.assertTrue(state["pieces"])
 
 
+class Sample(unittest.TestCase):
+    def _book(self, lang):
+        from io import BytesIO
+        from openpyxl import load_workbook
+        return load_workbook(BytesIO(content.sample_xlsx(lang)))
+
+    def _example_rows(self, wb):
+        tab = wb["Exemplos"] if "Exemplos" in wb.sheetnames else wb["Examples"]
+        dicts = [dict(zip(content.COLUMNS, [c.value for c in row]))
+                 for row in tab.iter_rows(min_row=2)]
+        return content._rows_from_dicts(dicts)
+
+    def test_tabs_and_clean_template(self):
+        wb = self._book("en")
+        self.assertEqual(wb.sheetnames, ["Template", "Examples"])
+        tpl = wb["Template"]
+        self.assertEqual([c.value for c in tpl[1]], list(content.COLUMNS))
+        self.assertEqual(tpl.max_row, 1)
+
+    def test_examples_valid_and_cover_routing(self):
+        rows = self._example_rows(self._book("en"))
+        self.assertEqual(content.validate(rows, ["clean", "editorial", "cinema"]), [])
+        self.assertEqual({r["use"] for r in rows}, {"image", "ppc", "both"})
+        pairs = [(r["concept"], r.get("axis", "")) for r in rows]
+        self.assertTrue(len(pairs) != len(set(pairs)))  # repeated pair = versions demo
+
+    def test_pt_localized(self):
+        wb = self._book("pt")
+        self.assertEqual(wb.sheetnames, ["Modelo", "Exemplos"])
+        rows = self._example_rows(wb)
+        self.assertTrue(all(r["lang"] == "pt" for r in rows))
+        self.assertEqual(content.validate(rows, ["clean", "editorial", "cinema"]), [])
+
+    def test_wizard_link_and_endpoint(self):
+        import threading
+        import urllib.request
+        from http.server import ThreadingHTTPServer
+        from kit import ui
+        for lang in ("pt", "en"):
+            self.assertIn("/content-sample", ui.onboard_page(lang))
+        with tempfile.TemporaryDirectory() as d:
+            ui.Handler.root, ui.Handler.mode = d, "onboard"
+            srv = ThreadingHTTPServer(("127.0.0.1", 0), ui.Handler)
+            threading.Thread(target=srv.serve_forever, daemon=True).start()
+            try:
+                url = f"http://127.0.0.1:{srv.server_address[1]}/content-sample?lang=en"
+                with urllib.request.urlopen(url) as r:
+                    data = r.read()
+                    self.assertEqual(r.status, 200)
+                    self.assertIn("attachment", r.headers["Content-Disposition"])
+                    self.assertIn("spreadsheetml", r.headers["Content-Type"])
+            finally:
+                srv.shutdown()
+                srv.server_close()
+        self.assertTrue(data.startswith(b"PK"))
+
+
 class PpcRouting(unittest.TestCase):
     def _brand(self):
         from kit import campaign as C

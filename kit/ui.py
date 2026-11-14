@@ -21,7 +21,7 @@ from urllib.parse import urlparse, parse_qs
 
 import yaml
 
-from . import campaign, i18n, intake, onboard
+from . import campaign, content, i18n, intake, onboard
 
 _STYLE = """<style>
 :root{color-scheme:light;
@@ -424,6 +424,7 @@ def onboard_page(lang):
 <p class="desc">{i18n.t('ob.p1.desc', lang)}</p>
 <span class="meta" id="slotprog"></span>
 <div class="grid" id="slots"></div>
+<p class="desc" style="margin-top:10px"><a href="/content-sample" download>{i18n.t('ob.content.sample', lang)}</a></p>
 <div class="row" style="margin-top:10px"><input type="text" id="contentlink"
   placeholder="{i18n.t('ob.content.linkph', lang)}">
 <button class="btn" onclick="saveLink()">{i18n.t('ob.content.linksave', lang)}</button></div>
@@ -786,6 +787,16 @@ class Handler(BaseHTTPRequestHandler):
                      }.get(os.path.splitext(path)[1].lower(), "application/octet-stream")
             with open(path, "rb") as f:
                 self._send(200, f.read(), ctype)
+        elif url.path == "/content-sample" and self.mode == "onboard":
+            data = content.sample_xlsx(lang)
+            name = "modelo-conteudo.xlsx" if lang == "pt" else "content-sample.xlsx"
+            self.send_response(200)
+            self.send_header("Content-Type",
+                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            self.send_header("Content-Disposition", f'attachment; filename="{name}"')
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
         elif url.path == "/style":
             from .brand import rgb_hex, font_dirs
             import glob as _glob

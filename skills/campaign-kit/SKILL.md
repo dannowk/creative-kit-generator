@@ -38,7 +38,8 @@ e o navegador.**
    planilha uma vez pelo navegador — o kit não fala com SharePoint), rode `content`,
    aplique as regras da seção 11 do briefing em `content.json` (versões por destino
    `use: image/ppc/both`; nunca invente copy) e rode `content --apply`. Sem planilha,
-   o passo é opcional. Ver "Conteúdo base" no AGENTS.md.
+   o passo é opcional. O wizard tem **↓ planilha modelo** (.xlsx com aba de exemplos)
+   para o time de conteúdo começar. Ver "Conteúdo base" no AGENTS.md.
 6. **Custo é aviso**: mostre ≈ créditos antes de jobs de provider e siga.
 7. **Revisão + entrega (etapa 6)**: suba `review` (abre o navegador sozinho; atalho
    `ABRIR-REVISAO.html` na pasta da campanha). Aprovar/rejeitar/refazer só **marcam** a peça;
