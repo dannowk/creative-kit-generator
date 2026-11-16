@@ -1,34 +1,34 @@
 ---
-description: Gera só o COPY da campanha (texto para PPC + overlay) a partir de briefing + textos de exemplo, com aprovação linha a linha numa tabela no navegador. Independente do visual — sem logo/brandbook. Sem o usuário abrir terminal.
+description: Generates only the campaign COPY (text for PPC + overlay) from a briefing + example texts, with row-by-row approval in a browser table. Independent of the visual — no logo/brandbook. Without the user opening a terminal.
 ---
 
-O usuário **não abre terminal nem digita comando**. Você (agente) roda tudo; ele só
-conversa no chat e usa o navegador. Este comando é o **copy kit** (independente do
-`/campaign-kit:start`, que é o visual). Siga a skill `copy-kit` nesta ordem:
+The user **does not open a terminal or type a command**. You (the agent) run everything; they only
+chat and use the browser. This command is the **copy kit** (independent of
+`/campaign-kit:start`, which is the visual). Follow the `copy-kit` skill in this order:
 
-1. Ache a raiz do kit (a pasta com `AGENTS.md` + `install.sh`).
-2. **Crie a pasta automaticamente**, sem perguntar caminho: default
-   `~/Desktop/minha-campanha-copy` (ou `~/Desktop/<marca>-copy` se o usuário já disse o nome).
-3. Rode `./install.sh <inbox> --copy` (Mac/Linux) ou `Instalar.bat <inbox> --copy`
-   (Windows) em **background**. Baixa `uv` + Python 3.12 gerenciado (sem admin), instala
-   as deps e **abre o wizard de copy no navegador**, criando só `briefing.md` +
-   `examples.txt` (sem logo/brandbook/refs). Se `.venv/` já existe, só reabre o wizard.
-4. Diga no chat: *"Abri o wizard de copy no navegador. Preencha o briefing (objetivo,
-   público, tom, oferta, conceitos) e cole textos de exemplo no campo de exemplos.
-   Me avise quando terminar."* Espere o OK.
-5. `copy plan <pasta>` → leia briefing + exemplos → **autore `copy.json`** (concepts +
+1. Find the kit root (the folder with `AGENTS.md` + `install.sh`).
+2. **Create the folder automatically**, without asking for a path: default
+   `~/Desktop/my-campaign-copy` (or `~/Desktop/<brand>-copy` if the user already said the name).
+3. Run `./install.sh <inbox> --copy` (Mac/Linux) or `Install.bat <inbox> --copy`
+   (Windows) in the **background**. Downloads `uv` + managed Python 3.12 (no admin), installs
+   the deps and **opens the copy wizard in the browser**, creating only `briefing.md` +
+   `examples.txt` (no logo/brandbook/refs). If `.venv/` already exists, it just reopens the wizard.
+4. Say in the chat: *"I opened the copy wizard in the browser. Fill in the briefing (goal,
+   audience, tone, offer, concepts) and paste example texts into the examples field.
+   Let me know when you're done."* Wait for the OK.
+5. `copy plan <folder>` → read the briefing + examples → **author `copy.json`** (concepts +
    rows: id, destination ppc/overlay, concept, axis, kind, text, lang, status pending,
    origin agent, updated_at/by). PPC: headline/description/primary_text. Overlay:
-   hook/kicker/program/cta. **Nunca invente copy** fora do briefing+exemplos; **nunca
-   marque approved** (é do usuário).
-6. `copy validate <pasta>` → corrija erros (nada gravado se erro).
-7. `copy review <pasta>` → abre a **tabela** (atalho `ABRIR-COPY-REVISAO.html`). O usuário
-   aprova/rejeita/refazer+nota por linha. Cumpra rejected/redo reescrevendo o text,
-   voltando a pending e recarimbando updated_at/by; a tabela atualiza sozinha.
-8. Tudo aprovado → o usuário clica **Exportar aprovadas** (ou você roda `copy deliver
-   <pasta>`): planilhas CSV+XLSX (Meta / Google RSA / overlay / manifest) em
-   `~/Desktop/Copy Kit/<pasta>/`, só aprovadas, com download + **Abrir pasta**. Limites
-   RSA (≤30/≤90) viram aviso. URL/orçamento/IDs em branco pro time de PPC — não invente.
+   hook/kicker/program/cta. **Never invent copy** beyond the briefing+examples; **never
+   mark approved** (it's the user's).
+6. `copy validate <folder>` → fix errors (nothing written on error).
+7. `copy review <folder>` → opens the **table** (shortcut `OPEN-COPY-REVIEW.html`). The user
+   approves/rejects/redo+note per row. Fulfill rejected/redo by rewriting the text,
+   setting pending back and re-stamping updated_at/by; the table updates by itself.
+8. Everything approved → the user clicks **Export approved** (or you run `copy deliver
+   <folder>`): CSV+XLSX sheets (Meta / Google RSA / overlay / manifest) in
+   `~/Desktop/Copy Kit/<folder>/`, approved only, with download + **Open folder**. RSA
+   limits (≤30/≤90) become a warning. URL/budget/IDs blank for the PPC team — do not invent.
 
-**Um fluxo por vez na UI:** não suba o wizard/review visual e o de copy na mesma sessão.
-Independente do visual: não toca campaign/render/ppc visual.
+**One flow at a time in the UI:** do not start the visual wizard/review and the copy one in the same session.
+Independent of the visual: does not touch the visual campaign/render/ppc.

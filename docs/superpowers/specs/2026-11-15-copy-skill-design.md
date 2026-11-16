@@ -1,122 +1,122 @@
-# Copy Kit — skill independente de copy (design)
+# Copy Kit — independent copy skill (design)
 
-**Data:** 2026-11-15
-**Status:** aprovado em conversa (Dann), aguardando review desta spec
+**Date:** 2026-11-15
+**Status:** approved in chat (Dann), awaiting review of this spec
 **Repo:** creative-kit-generator · branch `main`
 
-## Problema / contexto
+## Problem / context
 
-A feature de conteúdo (planilha do time + painel Revisar copy) foi **removida** da main
-(commit `3195e3d`) a pedido do Dann: copy/conteúdo deve ser um **sistema independente**,
-não um passo dentro do kit visual. Ele quer esse sistema como uma **segunda skill no
-mesmo repositório**, com comando de start próprio, pra poupar esforço (instalador e
-infra compartilhados). O hub online ficou parked (branch `online-collaboration`); este
-design NÃO depende dele.
+The content feature (team spreadsheet + Review copy panel) was **removed** from main
+(commit `3195e3d`) at Dann's request: copy/content must be an **independent system**,
+not a step inside the visual kit. He wants that system as a **second skill in the
+same repository**, with its own start command, to save effort (shared installer and
+infra). The online hub is parked (branch `online-collaboration`); this
+design does NOT depend on it.
 
-## O que é
+## What it is
 
-Um fluxo guiado, local, agent-driven — espelho do kit visual, mas **só para copy**:
+A guided, local, agent-driven flow — a mirror of the visual kit, but **copy only**:
 
-1. **Onboarding enxuto** no navegador: **briefing** + um **campo de texto** onde o usuário
-   cola **textos de exemplo**. **Sem logo, sem brandbook, sem refs de arquivo, sem
-   fotos/vídeos.** Mesmo estilo passo a passo do visual, slots diferentes.
-2. **Geração (agente):** o agente lê briefing + exemplos e **cria o copy** — tanto para
-   **PPC (só texto)** quanto para **overlay** (hook/kicker/program/CTA). Volume alto
-   (conceitos × eixos × destinos × versões). O kit **valida a forma**, não inventa copy
-   (padrão normalize: agente gera, Python valida).
-3. **Revisão em tabela** no navegador: cada linha aprovar / rejeitar / refazer+nota.
-   Disciplina mark-then-batch; **nada não-aprovado segue adiante**. Tabela porque o
-   volume pode ser grande.
-4. **Entrega:** tudo aprovado → o agente gera **arquivo pra download** (planilha) e/ou
-   solta na **pasta de entrega no Desktop** (`~/Desktop/Copy Kit/<campanha>/`), mesmo
-   padrão do visual (botão Abrir pasta).
-5. **Independente:** o kit visual fica intacto. O copy entrega o arquivo dele; não há
-   acoplamento nem import automático pelo visual (handoff = passo futuro, se ele quiser).
+1. **Lean onboarding** in the browser: **briefing** + a **text field** where the user
+   pastes **example texts**. **No logo, no brandbook, no file refs, no
+   photos/videos.** Same step-by-step style as the visual, different slots.
+2. **Generation (agent):** the agent reads the briefing + examples and **writes the copy** — both for
+   **PPC (text only)** and for **overlay** (hook/kicker/program/CTA). High volume
+   (concepts × axes × destinations × versions). The kit **validates the shape**, does not invent copy
+   (normalize pattern: agent generates, Python validates).
+3. **Table review** in the browser: each row approve / reject / redo+note.
+   Mark-then-batch discipline; **nothing non-approved moves forward**. A table because the
+   volume can be large.
+4. **Delivery:** everything approved → the agent generates a **file for download** (spreadsheet) and/or
+   drops it in the **delivery folder on the Desktop** (`~/Desktop/Copy Kit/<campaign>/`), same
+   pattern as the visual (Open folder button).
+5. **Independent:** the visual kit stays intact. The copy delivers its own file; there is
+   no coupling or automatic import by the visual (handoff = a future step, if he wants it).
 
-## Contrato de comando / skill
+## Command / skill contract
 
-- Plugin `campaign-kit` ganha um segundo comando: **`/campaign-kit:copy`** (`commands/copy.md`)
-  e uma segunda skill **`skills/copy-kit/SKILL.md`**. O `/campaign-kit:start` atual segue
-  só para o visual.
-- **Um fluxo por vez na UI do navegador:** cada comando sobe seu próprio servidor em
-  loopback; rodar um ou outro, nunca os dois na mesma sessão. (Wizard visual 8766 /
-  review 8765; copy usa portas próprias a partir de 8767/8768 — sem colidir.)
-- CLI: novo subcomando **`copy`** com ações (`python3 -m kit.cli copy <ação> <caminho>`):
-  - `copy onboard <inbox>` — scaffold enxuto (briefing.md + examples.txt) + wizard leve.
-  - `copy plan <campaign>` — imprime briefing + exemplos + vocabulário de destinos/kinds
-    pro agente autorar o copy.
-  - `copy validate <campaign>` — valida `copy.json` (forma canônica; gaps/erros).
-  - `copy review <campaign>` — servidor da tabela de revisão (abre navegador; atalho
-    `ABRIR-COPY.html`).
-  - `copy deliver <campaign>` — exporta aprovadas → planilha(s) + pasta Desktop.
+- The `campaign-kit` plugin gains a second command: **`/campaign-kit:copy`** (`commands/copy.md`)
+  and a second skill **`skills/copy-kit/SKILL.md`**. The current `/campaign-kit:start` stays
+  visual-only.
+- **One flow at a time in the browser UI:** each command starts its own server on
+  loopback; run one or the other, never both in the same session. (Visual wizard 8766 /
+  review 8765; copy uses its own ports starting at 8767/8768 — no collision.)
+- CLI: new **`copy`** subcommand with actions (`python3 -m kit.cli copy <action> <path>`):
+  - `copy onboard <inbox>` — lean scaffold (briefing.md + examples.txt) + light wizard.
+  - `copy plan <campaign>` — prints briefing + examples + destinations/kinds vocabulary
+    for the agent to author the copy.
+  - `copy validate <campaign>` — validates `copy.json` (canonical shape; gaps/errors).
+  - `copy review <campaign>` — review table server (opens the browser; shortcut
+    `OPEN-COPY-REVIEW.html`).
+  - `copy deliver <campaign>` — exports approved → spreadsheet(s) + Desktop folder.
 
-## Modelo de dados (`campaigns/<slug>/copy.json`)
+## Data model (`campaigns/<slug>/copy.json`)
 
-Lista de linhas; cada linha:
+List of rows; each row:
 
 ```json
 {
   "id": "k01",
   "destination": "ppc",            // "ppc" | "overlay"
   "concept": "clean",
-  "axis": "default",               // opcional
+  "axis": "default",               // optional
   "kind": "headline",              // ppc: headline|description|primary_text
                                     // overlay: hook|kicker|program|cta
   "text": "...",
-  "lang": "pt",                    // pt|en
-  "use": "both",                   // opcional p/ overlay: image|ppc|both (roteamento futuro)
+  "lang": "en",                    // en
+  "use": "both",                   // optional for overlay: image|ppc|both (future routing)
   "status": "pending",             // pending|approved|rejected|redo
   "note": "",
-  "origin": "agent",               // sempre agent aqui (gerado); sheet se vier de planilha
+  "origin": "agent",               // always agent here (generated); sheet if it came from a spreadsheet
   "updated_at": "ISO-UTC",
-  "updated_by": "nome"
+  "updated_by": "name"
 }
 ```
 
-- `copy validate`: destinos/kinds/status/lang válidos; `text` não-vazio; ids únicos.
-  Erro → nada gravado (atômico). Gaps (ex.: conceito sem hook) viram pergunta.
-- `decide(id, status, note)`: marca a linha (intenção). `redo` exige nota. Recarimba
-  `updated_at`/`updated_by`. **Agente nunca marca `approved`** — é do usuário.
-- Re-ingest/geração nova preserva decisões por id quando o texto não mudou; texto novo
-  volta a `pending`.
+- `copy validate`: valid destinations/kinds/status/lang; non-empty `text`; unique ids.
+  Error → nothing written (atomic). Gaps (e.g. concept without a hook) become a question.
+- `decide(id, status, note)`: marks the row (intent). `redo` requires a note. Re-stamps
+  `updated_at`/`updated_by`. **The agent never marks `approved`** — it's the user's.
+- Re-ingest/new generation preserves decisions by id when the text did not change; new text
+  goes back to `pending`.
 
-## Entrega (arquivo)
+## Delivery (file)
 
-`copy deliver` exporta **só as aprovadas**:
-- **PPC** → planilha(s) no formato de import (Meta primary text/headline; Google RSA
-  headlines ≤30 / descriptions ≤90), CSV + XLSX. URL/orçamento/IDs em branco (time PPC).
-- **Overlay** → planilha conceito × eixo × kind (hook/kicker/program/CTA), CSV + XLSX.
-- Vai pra `~/Desktop/Copy Kit/<campanha>/` + botão **Abrir pasta** e **download** na UI.
-- Limites de caractere do RSA validados no export (aviso, não porteiro).
+`copy deliver` exports **only the approved**:
+- **PPC** → spreadsheet(s) in import format (Meta primary text/headline; Google RSA
+  headlines ≤30 / descriptions ≤90), CSV + XLSX. URL/budget/IDs blank (PPC team).
+- **Overlay** → concept × axis × kind spreadsheet (hook/kicker/program/CTA), CSV + XLSX.
+- Goes to `~/Desktop/Copy Kit/<campaign>/` + **Open folder** button and **download** in the UI.
+- RSA character limits validated at export (notice, not gatekeeper).
 
-## O que reaproveita do kit (DRY)
+## What it reuses from the kit (DRY)
 
-- `kit/i18n.py` (PT/EN), padrão de servidor HTTP de `kit/ui.py` (`_serve`,
-  `ThreadingHTTPServer`, toggle de idioma, abrir navegador, atalho HTML).
-- Padrão de pasta de entrega no Desktop + `_open_folder`.
-- `openpyxl`/csv já usados pelo `ppc.py` pro XLSX.
-- Instalador (`install.sh`/`Instalar.bat`) e venv gerenciado — iguais.
+- `kit/i18n.py`, the HTTP server pattern from `kit/ui.py` (`_serve`,
+  `ThreadingHTTPServer`, browser opening, HTML shortcut).
+- Desktop delivery folder pattern + `_open_folder`.
+- `openpyxl`/csv already used by `ppc.py` for the XLSX.
+- Installer (`install.sh`/`Install.bat`) and managed venv — identical.
 
-## O que é NEW (independente do visual)
+## What is NEW (independent of the visual)
 
-- `kit/copy.py` — modelo + validate + decide + export (sem tocar campaign/render/ppc visual).
-- `kit/copy_ui.py` — wizard leve (briefing + exemplos) + página de tabela + rotas
-  (`/state`, `/decide`, `/deliver`, `/download`, `/open-folder`). Servidor próprio.
+- `kit/copy.py` — model + validate + decide + export (without touching the visual campaign/render/ppc).
+- `kit/copy_ui.py` — light wizard (briefing + examples) + table page + routes
+  (`/state`, `/decide`, `/deliver`, `/download`, `/open-folder`). Own server.
 - `commands/copy.md`, `skills/copy-kit/SKILL.md`.
-- Subcomando `copy` no `kit/cli.py` (só adiciona; não muda os existentes).
+- `copy` subcommand in `kit/cli.py` (additive only; does not change the existing ones).
 - README.md (English-only): "Copy Kit" section + `/campaign-kit:copy` command.
-- Testes do módulo copy (TDD).
+- Tests for the copy module (TDD).
 
-## Regras invioláveis (herdadas)
+## Inviolable rules (inherited)
 
-- **Nunca invente copy** — agente gera do briefing + exemplos; kit valida a forma.
-- **Nada não-aprovado sai** — deliver/export só com `approved`.
-- **Agente nunca marca approved** — decisão é do usuário na tabela.
-- **Arquivos e controle locais** — sem URL pública/deploy sem pedir.
-- **Um fluxo por vez na UI.**
+- **Never invent copy** — the agent generates from the briefing + examples; the kit validates the shape.
+- **Nothing non-approved ships** — deliver/export only with `approved`.
+- **The agent never marks approved** — the decision is the user's in the table.
+- **Local files and control** — no public URL/deploy without asking.
+- **One flow at a time in the UI.**
 
-## Limites honestos
+## Honest limits
 
-- A criatividade (escrever o copy) é do agente; o Python valida forma e exporta.
-- Sem logo/brandbook: a voz vem do briefing + exemplos colados.
-- Independente do visual: não renderiza imagem, não fala com provider, não toca PPC visual.
+- The creativity (writing the copy) belongs to the agent; Python validates the shape and exports.
+- No logo/brandbook: the voice comes from the briefing + pasted examples.
+- Independent of the visual: does not render images, does not talk to providers, does not touch the visual PPC.

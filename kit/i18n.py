@@ -1,285 +1,12 @@
-"""Idioma PT/EN do kit: catálogo central + resolução.
+"""Single English catalog for the kit.
 
-O português é a fonte; o inglês é overlay. Strings de dados (slots, perguntas do
-schema, gaps do intake, achados de compliance) também têm versão EN — sem isso o
-usuário inglês veria botões em EN e hints em PT. AGENTS.md/skills ficam PT: são
-contrato do agente, não UI.
+All user-facing strings live here: UI chrome, wizard, review, CLI, intake/brief
+gaps, onboarding slots and compliance findings. `t(key, **kw)` formats; `js_dict`
+exports a prefix subset for injection into pages.
 """
 
-import os
-
-LANGS = ("pt", "en")
-DEFAULT = "pt"
-
-
-def resolve_lang(flag=None):
-    """--lang > env KIT_LANG > pt.
-
-    PT é o idioma fonte do kit; o inglês é opt-in (flag/env ou toggle na UI, que
-    grava cookie). Não uso o locale do SO: ele é inconsistente e tornaria o default
-    imprevisível — melhor PT fixo com toggle visível.
-    """
-    for cand in (flag, os.environ.get("KIT_LANG")):
-        if cand:
-            c = str(cand).strip().lower()
-            if c in LANGS:
-                return c
-            if c.startswith("pt"):
-                return "pt"
-            if c.startswith("en"):
-                return "en"
-    return DEFAULT
-
-
-_PT = {
-    # ── chrome comum ────────────────────────────────────────────────
-    "step.files": "Arquivos",
-    "step.briefing": "Briefing",
-    "step.brand": "Marca",
-    "step.generate": "Gerar",
-    "step.review": "Revisar",
-    "btn.refresh": "↻ atualizar",
-    "modal.cancel": "cancelar",
-    "modal.ok": "ok",
-
-    # ── wizard (onboarding) ─────────────────────────────────────────
-    "ob.title": "Preparar campanha",
-    "ob.meta.steps": "etapas 1–3 nesta tela · 4 e 5 o agente continua depois",
-    "ob.p1.title": "Arquivos da marca",
-    "ob.p1.desc": "Solte os arquivos em cada slot (clique em adicionar ou arraste). Só o logo é obrigatório; o resto melhora o resultado.",
-    "ob.p2.title": "Briefing",
-    "ob.p2.desc": "Suba um arquivo de briefing (.md, .txt, .rtf, .pdf, .docx) ou escreva/cole abaixo. O que ficar em branco vira uma pergunta única na etapa 3.",
-    "ob.p2.upload": "+ subir arquivo de briefing",
-    "ob.p2.drop": "ou arraste um arquivo aqui (.md, .txt, .rtf, .pdf, .docx)",
-    "ob.p2.filenote": "PDF/Word: o agente normaliza o arquivo para o modelo.",
-    "ob.p2.save": "salvar briefing",
-    "ob.p2.legend": "✓ = seção preenchida · • = ainda em branco",
-    "ob.p2.docs.title": "Documentos de apoio",
-    "ob.p2.docs.desc": "anexe quantos arquivos quiser: conteúdo/copy dos anúncios (em arquivos separados), regras de layout, safe areas, segurança do logo do brandbook. Texto, PDF/Word, imagens ou planilha (.csv/.xlsx). O agente lê tudo no plan.",
-    "ob.p2.docs.upload": "+ adicionar arquivos",
-    "ob.p2.docs.drop": "ou arraste vários aqui — eles se somam, não substituem o briefing",
-    "ob.p3.title": "Derivar marca",
-    "ob.p3.desc": "Gera a paleta a partir do logo e abre a rodada única de perguntas.",
-    "ob.p3.idph": "id da marca (ex. acme)",
-    "ob.p3.run": "rodar intake",
-    "ob.p4.title": "Próximas etapas (o agente continua)",
-    "ob.p4.desc": "Depois da marca, o agente roda:",
-    "ob.p4.pipe": "<code>plan</code> direção de arte a partir do briefing + refs → "
-                  "<code>assets</code> gera imagem/vídeo com aviso de ≈ custo → "
-                  "<code>render</code> monta as peças → "
-                  "<code>review</code> você aprova / rejeita / refaz (etapa 5).",
-    "ob.p4.paste": "Cole isto no seu agente (Claude, Codex, Qoder…) aberto na pasta do kit:",
-    "ob.p4.copy": "copiar frase",
-    # JS dinâmico do wizard
-    "ob.js.agentline": "leia o AGENTS.md e rode a campanha de {inbox}",
-    "ob.js.slotprog": "{n}/{total} slots com arquivo · briefing {sec}/{sectotal} seções",
-    "ob.js.missing": "Faltam: {items}",
-    "ob.js.missingbrief": "briefing: {title}",
-    "ob.js.ready": "✓ Pronto para derivar a marca (etapa 3).",
-    "ob.js.tagok": "ok",
-    "ob.js.tagmissing": "faltando",
-    "ob.js.tagoptional": "opcional",
-    "ob.js.empty": "vazio",
-    "ob.js.add": "+ adicionar",
-    "ob.js.drag": "ou arraste aqui",
-    "ob.js.concepts.ok": "Conceitos reconhecidos:",
-    "ob.js.concepts.none": "Liste os conceitos na seção 7 (ex.: clean, editorial, cinema) — cada um vira uma entrega e um filtro na revisão.",
-    "ob.js.brief.binary": "✓ {name} salvo na pasta — o agente normaliza (visão/Word) na etapa seguinte.",
-    "ob.js.brief.binarytoast": "Briefing {name} salvo. O agente normaliza para o modelo.",
-    "ob.js.brief.text": "✓ {name} carregado no editor abaixo.",
-    "ob.js.brief.texttoast": "Briefing carregado no editor.",
-    "ob.js.docs.empty": "Nenhum documento de apoio ainda — anexe copy, regras de layout, safe areas ou segurança do logo.",
-    "ob.js.docs.count": "{n} documento(s)",
-    "ob.js.docs.remove": "remover",
-    "ob.js.docs.added": "{n} arquivo(s) anexado(s) ao briefing.",
-    "ob.js.docs.removed": "Removido: {name}",
-    "ob.js.copied": "Frase copiada — cole no agente aberto na pasta do kit.",
-    "ob.js.needid": "Dá um id pra marca (ex. acme)",
-    "ob.js.palette": "paleta proposta:",
-    "ob.js.nologo": "sem logo",
-    "ob.js.counts": "· {refs} refs · {photos} fotos · {videos} vídeos · {fonts} fontes",
-    "ob.js.conceptsreq": "conceitos pedidos:",
-    "ob.js.noconcepts": "nenhum — responda abaixo",
-    "ob.js.answerph": "sua resposta",
-    "ob.js.saveanswers": "salvar respostas",
-    "ob.js.oneround": "uma rodada só; o agente aplica no brand.yaml",
-    "ob.js.saved": "Respostas salvas em brands/{brand}/answers.json — o agente aplica em uma rodada.",
-    # erros do servidor (onboard)
-    "ob.err.slot": "slot ou nome inválido",
-    "ob.err.ext": "{label} aceita {exts}",
-    "ob.err.big": "arquivo > 300 MB: solte direto na pasta pelo Finder",
-    "ob.err.briefext": "briefing aceita .md, .txt, .rtf, .pdf, .docx",
-    "ob.err.briefbig": "briefing > 20 MB: solte direto na pasta",
-    "ob.err.docext": "documento de apoio aceita: {exts}",
-    "ob.err.docbig": "documento > 20 MB: solte direto na pasta briefing/",
-    "ob.err.brandid": "id da marca: letras minúsculas, números e hífen",
-    "ob.err.intakefirst": "rode o intake primeiro",
-
-    # ── revisão ─────────────────────────────────────────────────────
-    "rv.title": "Revisão",
-    "rv.meta": "etapa 5 de 6 · revisar e entregar · {origin}",
-    "rv.p5.title": "Revisar peças",
-    "rv.p5.desc": "Clique numa peça para ampliar. Aprove, rejeite ou peça refazer — cada clique só MARCA a peça; nada executa até o Continuar (etapa 6). Bloqueios de compliance aparecem no card. "
-                  "Perdeu o endereço? Ele fica no topo desta tela e no arquivo <b>ABRIR-REVISAO.html</b> da pasta da campanha.",
-    "rv.concept": "Conceito:",
-    "rv.legend": "Legenda:",
-    "rv.legend.approved": "aprovada = vai para a pasta de entrega (Desktop)",
-    "rv.legend.pending": "pendente = aguarda você",
-    "rv.legend.rejected": "rejeitada = recriar no Continuar",
-    "rv.legend.redo": "refazer = ajuste pedido (com a sua nota)",
-    "rv.legend.blocked": "bloqueada = regra de compliance violada",
-    "rv.p6.title": "Entregar campanha",
-    "rv.p6.desc": "Continuar executa o lote: exporta as aprovadas para a pasta de entrega na Área de Trabalho (Desktop/Campaign Kit) e enfileira a recriação (rejeitadas) e o ajuste (refazer, com a sua nota). O agente executa a regeneração e as peças atualizam nesta mesma página; as aprovadas ficam só na lista de aprovadas. Use Abrir pasta para ver os arquivos no Desktop.",
-    "rv.p6.hint": "Aprovar/rejeitar/refazer apenas marcam — nada executa até você clicar Continuar.",
-    "rv.err.nostate": "Sem state.json — rode o render primeiro.",
-    "rv.err.concept": "Conceito inválido.",
-    "rv.adjust": "Ajustar estilo",
-    "rv.applystyle": "Aplicar a todas as peças do conceito",
-    "rv.stylenote": "Nota (opcional) — qualquer outra regra de look",
-    "rv.restyle.defaultnote": "ajuste de estilo do conceito (cores/fontes)",
-    "rv.js.lbl.working": "A revisar",
-    "rv.js.lbl.pending": "Pendentes",
-    "rv.js.lbl.approved": "Aprovadas",
-    "rv.js.lbl.rejected": "Rejeitadas",
-    "rv.js.lbl.redo": "Refazer",
-    "rv.js.lbl.blocked": "Bloqueadas",
-    "rv.js.meta": "etapa 5 de 6 · revisar e entregar · {origin}",
-    "rv.js.sing.pending": "Pendente",
-    "rv.js.sing.approved": "Aprovada",
-    "rv.js.sing.rejected": "Rejeitada",
-    "rv.js.sing.redo": "Refazer",
-    "rv.js.sing.blocked": "Bloqueada",
-    "rv.js.stats": '<span class="stat"><b>{total}</b> peças</span>'
-                   '<span class="stat"><b>{approved}</b> aprovadas</span>'
-                   '<span class="stat"><b>{delivered}</b> entregues</span>'
-                   '<span class="stat"><b>{pending}</b> pendentes</span>'
-                   '<span class="stat"><b>{blocked}</b> bloqueadas</span>',
-    "rv.js.allconcepts": "Todos ({n})",
-    "rv.js.empty": "Nenhuma peça neste filtro.",
-    "rv.js.block": "Bloqueio: ",
-    "rv.js.warn": "Atenção: ",
-    "rv.js.video": "vídeo",
-    "rv.js.approve": "✓ aprovar",
-    "rv.js.reject": "✕ rejeitar",
-    "rv.js.redo": "↻ refazer",
-    "rv.js.continue": "Continuar",
-    "rv.js.delivered": "entregue",
-    "rv.js.queued": "na fila",
-    "rv.js.approvetoast": "Marcada para entrega — Continuar exporta para a pasta no Desktop.",
-    "rv.js.rejecttoast": "Marcada para recriar — Continuar executa.",
-    "rv.js.regenask": "O que ajustar nesta peça? (guardado para o Continuar)",
-    "rv.js.regentoast": "Ajuste guardado — clique Continuar para executar.",
-    "rv.js.style.desc": "Mude cores e fontes de TODAS as peças de {concept} de uma vez. O ajuste é salvo em styles/{concept}.yaml e o agente re-renderiza o conceito com ele (também vale para as próximas renderizações).",
-    "rv.js.style.colors": "Cores (papéis da paleta)",
-    "rv.js.style.fonts": "Fontes (papéis tipográficos)",
-    "rv.js.style.fontph": "arquivo .ttf/.otf (vazio = substituta)",
-    "rv.js.style.confirm": "Isto enfileira todas as {n} peça(s) de {concept} para re-renderizar com o novo estilo (as aprovadas voltam a pendente). Continuar?",
-    "rv.js.style.applied": "{n} peça(s) de {concept} enfileirada(s) — clique Continuar para o agente re-renderizar.",
-    "rv.js.deliver.summary": '<span class="stat"><b>{approved}</b> aprovadas → pasta de entrega (Desktop)</span>'
-                             '<span class="stat"><b>{regen}</b> para recriar/refazer</span>',
-    "rv.js.continue.done": "{n} aprovada(s) exportada(s) para <b>{dir}/</b> · {m} enfileirada(s) em <b>{req}</b> — o agente recria/refaz e esta página atualiza sozinha.",
-    "rv.js.continue.toast": "{n} entregue(s) · {m} para recriar/refazer",
-    "rv.js.continue.empty": "Nada para executar: aprove, rejeite ou peça refazer primeiro.",
-    "rv.js.continue.ppc": "Planilhas de bulk upload p/ o PPC em <b>{dir}/</b> ({n} arquivos): {meta} Meta · {display} Google Display · {rsa} Google Search. CSV + XLSX; o time preenche URL, orçamento e IDs.",
-    "rv.js.openfolder": "Abrir pasta",
-    "rv.js.openfolder.toast": "Pasta de entrega aberta: {dir}",
-    "rv.js.openfolder.empty": "Nada entregue ainda — clique Continuar primeiro.",
-
-    # ── CLI ─────────────────────────────────────────────────────────
-    "cli.folder": "pasta em {inbox}",
-    "cli.mark.ok": "ok",
-    "cli.mark.missing": "FALTA",
-    "cli.mark.optional": "opcional",
-    "cli.slotline": "[{mark}] {label}: {n} arquivo(s) — {hint}",
-    "cli.briefline": "briefing: {path} · {n} seção(ões) obrigatória(s) em branco",
-    "cli.ctrlc": "Ctrl+C para fechar o servidor",
-    "cli.gaps.one": "{n} perguntas para uma única rodada:",
-    "cli.appliable": "APLICÁVEL",
-    "cli.notappliable": "NÃO APLICÁVEL",
-    "cli.briefsummary": "{status} · {errors} erro(s) · {reqgaps} gap(s) obrigatório(s) · {optgaps} pergunta(s) opcional(is)",
-    "cli.err": "ERRO [{field}] {message}",
-    "cli.gap.req": "FALTA",
-    "cli.gap.opt": "opcional",
-    "cli.normalize.header": "NORMALIZE MEDIADO PELO AGENTE: leia {contract}, preencha {skeleton}{extract}; "
-                            "o que não souber fica vazio (vira gap). Depois: brief {skeleton} --apply",
-    "cli.normalize.extract": " (extraia a fonte com visão/docx)",
-    "cli.brief.next": "próximos passos: plan campaigns/{campaign} → render → review  (review abre o navegador sozinho)",
-    "cli.palette.proposed": "paleta derivada do logo é PROPOSTA — confirme com o designer antes de veicular.",
-    "cli.brief.needfile": "brief precisa de um arquivo (ou --template)",
-    "cli.provider.agent": "PROVIDER MEDIADO PELO AGENTE: cumpra os jobs em {path}",
-    "cli.render.summary": "{n} peças · {blocked} bloqueadas · conceitos: {concepts}",
-    "cli.render.blocked": "BLOQUEADA {id}: {message}",
-    "cli.render.fonts": "fontes substitutas: {fonts}",
-    "cli.render.next": "próximo passo: python3 -m kit.cli review {campaign}  (abre o navegador)",
-    "cli.deliver.summary": "{exported} aprovada(s) → {dir}/ · {regen} para recriar/refazer em {req}",
-    "cli.deliver.next": "o agente cumpre {req} (recria/refaz), roda render --ids e a revisão atualiza sozinha",
-    "cli.deliver.empty": "nada para entregar: aprove/rejeite/peça refazer na revisão primeiro",
-    "cli.deliver.nostate": "sem state.json — rode o render antes do deliver",
-    "cli.deliver.ppc": "planilhas de PPC (Meta + Google) em {dir}/ — {n} arquivos (CSV + XLSX)",
-    "cli.ppc.summary": "{meta} Meta · {display} Google Display · {rsa} Google Search · {manifest} no manifesto → {dir}/ ({n} arquivos)",
-    "cli.ppc.empty": "nenhuma peça aprovada — aprove na revisão, ou use --all para exportar todas",
-    "cli.ppc.nostate": "sem state.json — rode o render antes do ppc",
-    "cli.ppc.xlsxoff": "openpyxl ausente: exportei só CSV (pip install openpyxl para também gerar XLSX)",
-    "cli.video.none": "campanha sem bloco video",
-    "cli.video.summary": "{n} peças de vídeo · {blocked} bloqueadas · conceitos: {concepts}",
-    "cli.serve.shortcut": "atalho: {name} na pasta da campanha",
-    "cli.shortcut.opening": "Abrindo {url} …",
-    "cli.shortcut.manual": "Se o navegador não abrir sozinho, clique no link.",
-    "cli.lang": "idioma das mensagens (default: env KIT_LANG, senão pt)",
-
-    # ── gaps do intake (tkeys) ──────────────────────────────────────
-    "gap.intake.logo.q": "Qual arquivo é o logo da marca?",
-    "gap.intake.logo.w": "Sem logo não há paleta nem assinatura nas peças.",
-    "gap.intake.type.q": "Qual fonte é o título e qual é o destaque (itálico pesado)?",
-    "gap.intake.type.w": "Não se identifica tipografia com confiança só pelo nome do arquivo.",
-    "gap.intake.type_missing.q": "Pode jogar os arquivos de fonte (.otf/.ttf) na pasta? Se não, uso uma substituta do sistema.",
-    "gap.intake.type_missing.w": "Fonte da marca não é inferível de imagens; sem ela o resultado não é fiel.",
-    "gap.intake.voice.q": "Qual o tom de voz e o que a marca nunca pode prometer?",
-    "gap.intake.voice.w": "Voz e restrições de copy vêm do briefing, não dos pixels.",
-    "gap.intake.compliance.q": "Há disclaimer obrigatório, cor proibida ou termo que não pode quebrar linha?",
-    "gap.intake.compliance.w": "Regra de compliance não é inferível; em educação/saúde/financeiro é onde mora o risco.",
-    "gap.intake.channels.q": "Onde a campanha veicula (Meta, Google, LinkedIn, impresso, web)?",
-    "gap.intake.channels.w": "Os aspect ratios e safe zones dependem do canal.",
-    "gap.intake.assets.q": "Tem fotos próprias para as peças ou gero com o provider? (mostro a estimativa de custo antes)",
-    "gap.intake.assets.w": "Sem foto na pasta, a imagem sai de geração paga — o aviso de ≈ créditos aparece antes de gerar.",
-    "gap.intake.concepts.q": "Quantas direções visuais (conceitos) você quer? Liste os nomes — ex.: clean, editorial, cinema.",
-    "gap.intake.concepts.w": "Cada conceito vira um template, uma pasta de entrega e um filtro na revisão.",
-
-    # ── gaps dinâmicos do briefing.validate ─────────────────────────
-    "gap.brief.hook.q": "Qual o hook (chamada) do conceito '{c}'?",
-    "gap.brief.hook.w": "Sem copy.hook por conceito o render pula o conceito.",
-    "gap.brief.videosource.q": "A seção vídeo foi preenchida mas sem fonte: qual arquivo (ou concat) edito?",
-    "gap.brief.videosource.w": "Trim/reframe/overlay precisam de um vídeo-fonte local.",
-    "gap.brief.segments.q": "Legendas manuais: quais os segmentos ({start, end, text})?",
-    "gap.brief.segments.w": "Não invento texto falado; legenda manual precisa das janelas de tempo.",
-    "gap.brief.apiurl.q": "Provider http: qual a URL da API?",
-    "gap.brief.apiurl.w": "Sem URL não há contrato de geração.",
-
-    # ── slots do onboarding ─────────────────────────────────────────
-    "slot.logo.label": "Logo",
-    "slot.logo.hint": "PNG com fundo transparente, de preferência. É dele que sai a paleta proposta.",
-    "slot.refs.label": "Referências de look",
-    "slot.refs.hint": "2 a 6 imagens de anúncios/posts do look desejado. O agente olha com visão e cruza com o briefing para escrever a direção de arte.",
-    "slot.brandbook.label": "Brandbook (manual da marca)",
-    "slot.brandbook.hint": "Opcional. PDF, imagens ou docx com as regras da marca (cores, tipografia, uso do logo, voz). O agente lê com visão e segue junto com o briefing e as referências.",
-    "slot.fonts.label": "Fontes da marca",
-    "slot.fonts.hint": ".otf / .ttf. Sem elas, uso substitutas do sistema e aviso exatamente quais.",
-    "slot.photos.label": "Fotos para as peças",
-    "slot.photos.hint": "Fotos que podem virar peça. Sem elas, o provider gera — e a estimativa de custo aparece antes de gerar.",
-    "slot.videos.label": "Vídeos",
-    "slot.videos.hint": "Clipes fonte ou referência de movimento. Vídeos novos são gerados pelo provider (ex. Magnific via MCP), com estimativa de custo antes de gerar.",
-
-    # ── achados de compliance (message/message_en gerados no render) ─
-    "cmp.subject_safe": "{op} cobre {frac:.0%} do rosto (máx {tol:.0%}).",
-    "cmp.palette_forbidden": "Cor proibida rgb{color} em {frac:.1%} da peça (máx {min_area:.1%}).",
-    "cmp.min_font_size": "Chamada encolheu para {size:.0f}px, mínimo {floor:.0f}px. Encurte o texto: \"{text}\"",
-    "cmp.contrast_min": "Contraste {ratio:.1f}:1 abaixo de {minimum:.1f}:1 em \"{text}\"",
-    "cmp.disclaimer_required": "Disclaimer obrigatório ausente: \"{text}\".",
-    "cmp.nobreak": "\"{t}\" protegido contra quebra de linha.",
-    "cmp.unknown": "Check desconhecido: {check}",
-}
-
-_EN = {
+_CATALOG = {
+    # ── common chrome ───────────────────────────────────────────────
     "step.files": "Files",
     "step.briefing": "Briefing",
     "step.brand": "Brand",
@@ -289,6 +16,7 @@ _EN = {
     "modal.cancel": "cancel",
     "modal.ok": "ok",
 
+    # ── wizard (onboarding) ─────────────────────────────────────────
     "ob.title": "Prepare campaign",
     "ob.meta.steps": "steps 1–3 on this screen · the agent continues with 4 and 5",
     "ob.p1.title": "Brand files",
@@ -316,6 +44,7 @@ _EN = {
                   "<code>review</code> you approve / reject / redo (step 5).",
     "ob.p4.paste": "Paste this into your agent (Claude, Codex, Qoder…) opened on the kit folder:",
     "ob.p4.copy": "copy phrase",
+    # dynamic wizard JS
     "ob.js.agentline": "read AGENTS.md and run the campaign for {inbox}",
     "ob.js.slotprog": "{n}/{total} slots with files · briefing {sec}/{sectotal} sections",
     "ob.js.missing": "Missing: {items}",
@@ -349,6 +78,7 @@ _EN = {
     "ob.js.saveanswers": "save answers",
     "ob.js.oneround": "single round; the agent applies them to brand.yaml",
     "ob.js.saved": "Answers saved to brands/{brand}/answers.json — the agent applies them in one round.",
+    # server errors (onboard)
     "ob.err.slot": "invalid slot or name",
     "ob.err.ext": "{label} accepts {exts}",
     "ob.err.big": "file > 300 MB: drop it straight into the folder via Finder",
@@ -359,11 +89,12 @@ _EN = {
     "ob.err.brandid": "brand id: lowercase letters, numbers and hyphen",
     "ob.err.intakefirst": "run intake first",
 
+    # ── review ──────────────────────────────────────────────────────
     "rv.title": "Review",
     "rv.meta": "step 5 of 6 · review and deliver · {origin}",
     "rv.p5.title": "Review pieces",
     "rv.p5.desc": "Click a piece to enlarge. Approve, reject or ask for a redo — each click only MARKS the piece; nothing runs until Continue (stage 6). Compliance blocks show on the card. "
-                  "Lost the address? It is at the top of this screen and in the <b>ABRIR-REVISAO.html</b> file in the campaign folder.",
+                  "Lost the address? It is at the top of this screen and in the <b>OPEN-REVIEW.html</b> file in the campaign folder.",
     "rv.concept": "Concept:",
     "rv.legend": "Legend:",
     "rv.legend.approved": "approved = goes to the delivery folder (Desktop)",
@@ -429,6 +160,7 @@ _EN = {
     "rv.js.openfolder.empty": "Nothing delivered yet — click Continue first.",
     "rv.js.secs": "s",
 
+    # ── CLI ─────────────────────────────────────────────────────────
     "cli.folder": "folder at {inbox}",
     "cli.mark.ok": "ok",
     "cli.mark.missing": "MISSING",
@@ -468,17 +200,8 @@ _EN = {
     "cli.serve.shortcut": "shortcut: {name} in the campaign folder",
     "cli.shortcut.opening": "Opening {url} …",
     "cli.shortcut.manual": "If the browser does not open by itself, click the link.",
-    "cli.lang": "message language (default: env KIT_LANG, else pt)",
 
-    # ── achados de compliance (message_en gerado no render) ─────────
-    "cmp.subject_safe": "{op} covers {frac:.0%} of the face (max {tol:.0%}).",
-    "cmp.palette_forbidden": "Forbidden color rgb{color} in {frac:.1%} of the piece (max {min_area:.1%}).",
-    "cmp.min_font_size": "Headline shrank to {size:.0f}px, minimum {floor:.0f}px. Shorten the text: \"{text}\"",
-    "cmp.contrast_min": "Contrast {ratio:.1f}:1 below {minimum:.1f}:1 in \"{text}\"",
-    "cmp.disclaimer_required": "Mandatory disclaimer missing: \"{text}\".",
-    "cmp.nobreak": "\"{t}\" protected against line breaks.",
-    "cmp.unknown": "Unknown check: {check}",
-
+    # ── intake gaps ─────────────────────────────────────────────────
     "gap.intake.logo.q": "Which file is the brand logo?",
     "gap.intake.logo.w": "Without a logo there is no palette and no signature on the pieces.",
     "gap.intake.type.q": "Which font is the title and which is the highlight (heavy italic)?",
@@ -496,6 +219,7 @@ _EN = {
     "gap.intake.concepts.q": "How many visual directions (concepts) do you want? List the names — e.g. clean, editorial, cinema.",
     "gap.intake.concepts.w": "Each concept becomes a template, a delivery folder and a review filter.",
 
+    # ── dynamic gaps from briefing.validate ─────────────────────────
     "gap.brief.hook.q": "What is the hook for concept '{c}'?",
     "gap.brief.hook.w": "Without copy.hook per concept the render skips the concept.",
     "gap.brief.videosource.q": "The video section is filled but has no source: which file (or concat) do I edit?",
@@ -505,6 +229,7 @@ _EN = {
     "gap.brief.apiurl.q": "http provider: what is the API URL?",
     "gap.brief.apiurl.w": "Without a URL there is no generation contract.",
 
+    # ── onboarding slots ────────────────────────────────────────────
     "slot.logo.label": "Logo",
     "slot.logo.hint": "PNG with transparent background, preferably. The proposed palette comes from it.",
     "slot.refs.label": "Look references",
@@ -518,6 +243,7 @@ _EN = {
     "slot.videos.label": "Videos",
     "slot.videos.hint": "Source clips or motion references. New videos are generated by the provider (e.g. Magnific via MCP), with a cost estimate before generating.",
 
+    # ── compliance findings ─────────────────────────────────────────
     "cmp.subject_safe": "{op} covers {frac:.0%} of the face (max {tol:.0%}).",
     "cmp.palette_forbidden": "Forbidden color rgb{color} in {frac:.1%} of the piece (max {min_area:.1%}).",
     "cmp.min_font_size": "Headline shrank to {size:.0f}px, minimum {floor:.0f}px. Shorten the text: \"{text}\"",
@@ -527,99 +253,13 @@ _EN = {
     "cmp.unknown": "Unknown check: {check}",
 }
 
-# ── perguntas/porquês dos campos do briefing.schema.yaml em EN ──────
-# (o PT vive no próprio schema; aqui só o overlay inglês)
-FIELD_EN = {
-    "marca.nome": ("What is the brand name?",
-                   "It becomes the brands/ folder id, the signature on pieces and the file naming."),
-    "marca.logo": ("Which file is the logo? (PNG with transparent background preferred)",
-                   "Without a logo there is no derived palette and no signature on the pieces."),
-    "marca.paleta": ("What are the brand colors (primary, accent, ink, paper, dark in #RRGGBB)?",
-                     "Without a declared palette I derive a proposal from the logo pixels — the designer confirms."),
-    "marca.fontes": ("Which font files are the title (display), the highlight (accent) and the body (text)?",
-                     "Brand fonts are not inferable from images; without the files I use a system substitute and tell you."),
-    "marca.voz.tom": ("What is the brand's tone of voice? (e.g. direct and warm, technical and sober)",
-                      "Voice comes from the briefing, not from pixels — it guides all generated copy."),
-    "marca.voz.nunca_prometer": ("What can the brand never promise in copy? (e.g. job guarantee, cure, financial result)",
-                                 "Copy restrictions are a brand compliance rule, not a renderer decision."),
-    "marca.idiomas": ("Which languages does the campaign run in? (e.g. en, pt-BR, fr-CA)",
-                      "Defines the copy locale and the language of automatic video transcription."),
-    "campanha.objetivo": ("What is the campaign goal in one sentence? (e.g. launch product X for clinics)",
-                          "It gives the campaign slug and the north for copy and art direction."),
-    "campanha.slug": ("Short campaign name for folders and files? (optional; derived from the goal)",
-                      "Controls the name of campaigns/<brand>-<slug>/ and the piece naming."),
-    "campanha.oferta": ("What is the offer or central message? (e.g. 30 days free, enrollment open)",
-                        "It becomes the kicker on pieces; without an offer the copy is just the hook."),
-    "campanha.cta": ("What is the call-to-action? (e.g. Book a demo, Enroll now)",
-                     "Every template has a button/CTA; without declared text there is nothing to draw."),
-    "campanha.canais": ("Where does the campaign run? (meta, google, linkedin, x, tiktok, youtube, print, email, web — or exact formats like meta_story)",
-                        "A channel expands into a bundle of aspect ratios; safe zones depend on it."),
-    "campanha.eixos": ("Does the campaign vary by axes? (e.g. product: [A, B], region: [SP, RJ], audience: [junior, senior])",
-                       "The cartesian product of the axes multiplies the pieces; each combo can have its own photo and copy."),
-    "campanha.conceitos": ("How many visual directions (concepts) do you want? List the names — e.g. clean, editorial, cinema.",
-                           "Each concept becomes a template, a delivery folder and a review filter."),
-    "campanha.copy": ("What is the hook for each concept? May include a kicker. (e.g. clean: {hook: Less phone tag. More [care].})",
-                      "Without copy.hook per concept the render skips the concept — text is a brand decision, not the engine's."),
-    "video.fonte": ("Which source video should I edit? (file path; concat lists several)",
-                    "Trim, subject-aware reframe and brand overlay come from this local file."),
-    "video.concat": ("Multiple clips to splice into one master? List them in order.",
-                     "The local concat becomes the single source before cutting per format."),
-    "video.duracoes": ("Duration per format in seconds? (e.g. meta_story: 15, default: 6)",
-                       "Each placement has its own length; without a declaration I use the kit default."),
-    "video.legendas": ("Burned-in captions: auto (I transcribe locally), manual (you provide the segments) or off?",
-                       "Auto downloads the whisper model on first use; manual needs segments with start/end/text."),
-    "video.segmentos": ("If captions=manual, what are the segments? ({start: s, end: s, text: ...})",
-                        "Manual captions need the time windows; I do not invent spoken text."),
-    "video.formatos": ("Which video formats? (optional; default: story, feed and thumbnail of the main placements)",
-                       "Restricts the video matrix without touching the image formats."),
-    "assets.fotos": ("Do you have your own photos for the pieces? List the files.",
-                     "Your own photo avoids paid generation; without it images come from the provider (I show ≈ credits first)."),
-    "assets.videos": ("Do you have your own video clips? List the files.",
-                      "Local clips are edited by the kit (trim/reframe/overlay/captions) with no generation cost."),
-    "assets.refs": ("Which images are art-direction references? (they do not go into the piece, they guide the plan)",
-                    "The design follows this campaign's briefing and references, not another brand's library."),
-    "assets.direitos_uso": ("What are the usage rights of the assets? (e.g. paid stock, own photo, provider generation)",
-                            "Provenance record for the end client; the kit does not verify licenses by itself."),
-    "compliance.disclaimer": ("Is there a mandatory disclaimer on every piece? (exact text)",
-                              "It becomes an executable check: a piece without the text is blocked before review."),
-    "compliance.cores_proibidas": ("Are there forbidden colors? (#RRGGBB)",
-                                   "It becomes a minimum-area check per forbidden color in the render."),
-    "compliance.nobreak": ("Are there terms that cannot break lines? (e.g. product name, 'CDI College')",
-                           "The renderer protects the term; the check confirms it is present in the copy."),
-    "compliance.tolerancia_rosto": ("Text/logo overlap tolerance on the face (0–1)? (default 0.02)",
-                                    "Unbreakable rule: never cover faces; the tolerance calibrates the block."),
-    "provider.nome": ("How should missing assets be generated? manual (you drop the files), magnific-mcp (agent via MCP) or http (API)?",
-                      "Defines the generation contract; the ≈ credits notice appears before any job."),
-    "provider.creditos_imagem": ("How many credits per generated image? (for the cost notice)",
-                                 "The notice is informational, not blocking — but it needs the right number."),
-    "provider.creditos_video": ("How many credits per generated video?",
-                                "Video is a provider job, not local render; the cost is per clip."),
-    "provider.drop_dir": ("Where do you drop the generated files (manual/MCP)? (default ~/Downloads)",
-                          "The kit matches the file by the job prefix in this folder."),
-    "provider.api_url": ("If provider=http, what is the API URL?",
-                         "Without a URL there is no HTTP contract; the key lives in an environment variable, never in the file."),
-    "provider.api_key_env": ("If provider=http, which environment variable holds the key? (e.g. MAGNIFIC_API_KEY)",
-                             "Secrets never go into the briefing or brand.yaml."),
-}
 
-
-def field_strings(field, meta, lang="pt"):
-    """pergunta/porque do campo do schema no idioma (PT = o próprio schema)."""
-    if lang == "en":
-        q, w = FIELD_EN.get(field, (meta.get("pergunta", ""), meta.get("porque", "")))
-        return q, w
-    return meta.get("pergunta", ""), meta.get("porque", "")
-
-_CAT = {"pt": _PT, "en": {**_PT, **_EN}}
-
-
-def t(key, lang="pt", **kw):
-    s = _CAT.get(lang, _PT).get(key) or _PT[key]
+def t(key, **kw):
+    s = _CATALOG[key]
     return s.format(**kw) if kw else s
 
 
-def js_dict(lang, prefix):
-    """{jsKey: string} para injetar na página — só as chaves do prefixo, sem ele."""
-    cat = _CAT.get(lang, _PT)
+def js_dict(prefix):
+    """{jsKey: string} to inject into the page — only keys under the prefix, without it."""
     p = prefix + "."
-    return {k[len(p):]: v for k, v in cat.items() if k.startswith(p)}
+    return {k[len(p):]: v for k, v in _CATALOG.items() if k.startswith(p)}

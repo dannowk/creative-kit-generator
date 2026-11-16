@@ -1,12 +1,11 @@
-"""UI local (onboarding + revisão): http.server da stdlib + páginas claras. Zero npm, zero build.
+"""Local UI (onboarding + review): stdlib http.server + clear pages. Zero npm, zero build.
 
-Sobe em 127.0.0.1. Tema claro com passos numerados e legenda de status para a pessoa se
-localizar; onboarding prepara a pasta, revisão deixa aprovar/rejeitar/refazer por clique e
-enfileira pedidos de regeneração que o agente executa. Morre quando você fecha.
+Runs on 127.0.0.1. Light theme with numbered steps and a status legend so people can
+orient themselves; onboarding prepares the folder, review lets you approve/reject/redo
+by click and queues regeneration requests that the agent executes. Dies when you close it.
 
-Bilíngue PT/EN: o toggle no header grava cookie `lang` e recarrega; as páginas são
-montadas por idioma (chrome server-side + dicionário T injetado pro JS dinâmico) e os
-dados (slots, gaps, achados de compliance) também saem localizados.
+English-only: pages are assembled server-side plus a T dictionary injected for the
+dynamic JS; data (slots, gaps, compliance findings) is English too.
 """
 
 import json
@@ -49,7 +48,6 @@ button:hover,.btn:hover{background:#f2f4f7}
 .btn.ok{background:var(--ok-bg);border-color:var(--ok-line);color:var(--ok)}
 .btn.no{background:var(--bad-bg);border-color:var(--bad-line);color:var(--bad)}
 a.btn{text-decoration:none}
-.langbtn{min-height:30px;padding:3px 10px;font-size:12.5px;font-weight:600}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .banner{max-width:1160px;margin:18px auto 0;padding:0 24px;display:grid;gap:10px}
 .stepper{display:flex;align-items:center;flex-wrap:wrap;gap:0}
@@ -134,45 +132,34 @@ dialog .msgbody p{margin:0;font-size:14px}
  padding:10px 16px;font-size:14px;box-shadow:0 4px 16px rgba(16,24,32,.15);max-width:90vw}
 </style>"""
 
-_STEPS = {
-    "pt": ["Arquivos", "Briefing", "Marca", "Gerar", "Revisar", "Entregar"],
-    "en": ["Files", "Briefing", "Brand", "Generate", "Review", "Deliver"],
-}
+_STEPS = ["Files", "Briefing", "Brand", "Generate", "Review", "Deliver"]
 
 
-def _head(title, lang):
-    return ('<!doctype html><html lang="' + lang + '"><head><meta charset="utf-8">'
+def _head(title):
+    return ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1">'
             '<title>campaign-kit · ' + title + '</title>' + _STYLE + '</head><body>')
 
 
-def _stepper(current, done, lang):
-    steps = _STEPS.get(lang, _STEPS["pt"])
+def _stepper(current, done):
     out = ['<div class="stepper">']
-    for i, label in enumerate(steps, 1):
+    for i, label in enumerate(_STEPS, 1):
         cls = "done" if i <= done else ("current" if i == current else "")
         mark = "✓" if i <= done else str(i)
         out.append(f'<span class="step {cls}" data-step="{i}"><span class="n">{mark}</span>{label}</span>')
-        if i < len(steps):
+        if i < len(_STEPS):
             out.append('<span class="bar"></span>')
     out.append("</div>")
     return "".join(out)
 
 
-def _lang_toggle(lang):
-    def a(code):
-        cls = "btn langbtn primary" if code == lang else "btn langbtn"
-        return f'<a class="{cls}" href="/lang?set={code}">{code.upper()}</a>'
-    return f'<div class="row" style="gap:4px">{a("pt")}{a("en")}</div>'
-
-
-def _modal(lang):
+def _modal():
     return f"""
 <dialog id="msgbox"><div class="msgbody"><p id="msgtext"></p>
 <input type="text" id="msginput" hidden>
 <div class="row"><span class="sp"></span>
-<button class="btn" id="msgcancel">{i18n.t('modal.cancel', lang)}</button>
-<button class="btn primary" id="msgok">{i18n.t('modal.ok', lang)}</button></div></div></dialog>
+<button class="btn" id="msgcancel">{i18n.t('modal.cancel')}</button>
+<button class="btn primary" id="msgok">{i18n.t('modal.ok')}</button></div></div></dialog>
 <div id="toast" class="toast" hidden></div>
 """
 
@@ -207,62 +194,60 @@ function confirmBox(msg){return new Promise(res=>{const d=document.getElementByI
 """
 
 
-def _inject(lang, group):
-    """`const LANG` + dicionário `T` com as strings JS do grupo (prefixo no catálogo)."""
-    d = i18n.js_dict(lang, group)
-    return ('<script>const LANG="' + lang + '";const T='
-            + json.dumps(d, ensure_ascii=False) + ';</script>')
+def _inject(group):
+    """`T` dictionary with the group's JS strings (prefix in the catalog)."""
+    d = i18n.js_dict(group)
+    return '<script>const T=' + json.dumps(d, ensure_ascii=False) + ';</script>'
 
 
-def review_page(lang):
-    return _head(i18n.t("rv.title", lang), lang) + f"""
-<header><span class="brand">campaign-kit</span><h1 id="title">{i18n.t('rv.title', lang)}</h1>
+def review_page():
+    return _head(i18n.t("rv.title")) + f"""
+<header><span class="brand">campaign-kit</span><h1 id="title">{i18n.t('rv.title')}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
-{_lang_toggle(lang)}
-<button class="btn primary" onclick="continuar()">{i18n.t('rv.js.continue', lang)}</button>
-<button onclick="load()">{i18n.t('btn.refresh', lang)}</button></header>
+<button class="btn primary" onclick="continueBatch()">{i18n.t('rv.js.continue')}</button>
+<button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
-""" + _stepper(5, 4, lang) + f"""
+""" + _stepper(5, 4) + f"""
 <div class="stats" id="stats"></div>
-<div class="legend"><b>{i18n.t('rv.legend', lang)}</b>
-<span class="tag approved"><span class="dot"></span>{i18n.t('rv.legend.approved', lang)}</span>
-<span class="tag"><span class="dot"></span>{i18n.t('rv.legend.pending', lang)}</span>
-<span class="tag rejected"><span class="dot"></span>{i18n.t('rv.legend.rejected', lang)}</span>
-<span class="tag redo"><span class="dot"></span>{i18n.t('rv.legend.redo', lang)}</span>
-<span class="tag blocked"><span class="dot"></span>{i18n.t('rv.legend.blocked', lang)}</span></div>
+<div class="legend"><b>{i18n.t('rv.legend')}</b>
+<span class="tag approved"><span class="dot"></span>{i18n.t('rv.legend.approved')}</span>
+<span class="tag"><span class="dot"></span>{i18n.t('rv.legend.pending')}</span>
+<span class="tag rejected"><span class="dot"></span>{i18n.t('rv.legend.rejected')}</span>
+<span class="tag redo"><span class="dot"></span>{i18n.t('rv.legend.redo')}</span>
+<span class="tag blocked"><span class="dot"></span>{i18n.t('rv.legend.blocked')}</span></div>
 </div>
 <div class="wrap">
-<div class="panel"><h2><span class="n">5</span>{i18n.t('rv.p5.title', lang)}</h2>
-<p class="desc">{i18n.t('rv.p5.desc', lang)}</p>
+<div class="panel"><h2><span class="n">5</span>{i18n.t('rv.p5.title')}</h2>
+<p class="desc">{i18n.t('rv.p5.desc')}</p>
 <div class="filters" id="filters"></div>
-<div class="row" style="align-items:center"><span class="meta">{i18n.t('rv.concept', lang)}</span><div class="filters" id="cfilters"></div>
-<button class="btn" id="stylebtn" onclick="toggleStyle()" style="display:none">{i18n.t('rv.adjust', lang)}</button></div>
+<div class="row" style="align-items:center"><span class="meta">{i18n.t('rv.concept')}</span><div class="filters" id="cfilters"></div>
+<button class="btn" id="stylebtn" onclick="toggleStyle()" style="display:none">{i18n.t('rv.adjust')}</button></div>
 <div id="stylepanel" class="stylepanel" hidden>
 <p class="desc" id="styledesc"></p>
-<div><div class="stylelabel">{i18n.t('rv.js.style.colors', lang)}</div><div class="stylegrid" id="stylecolors"></div></div>
-<div><div class="stylelabel">{i18n.t('rv.js.style.fonts', lang)}</div><div class="stylegrid" id="stylefonts"></div></div>
+<div><div class="stylelabel">{i18n.t('rv.js.style.colors')}</div><div class="stylegrid" id="stylecolors"></div></div>
+<div><div class="stylelabel">{i18n.t('rv.js.style.fonts')}</div><div class="stylegrid" id="stylefonts"></div></div>
 <datalist id="fontlist"></datalist>
-<div><label class="stylelabel" for="stylenote">{i18n.t('rv.stylenote', lang)}</label>
+<div><label class="stylelabel" for="stylenote">{i18n.t('rv.stylenote')}</label>
 <textarea id="stylenote" class="stylenote" rows="2"></textarea></div>
-<div class="row"><button class="btn primary" onclick="applyStyle()">{i18n.t('rv.applystyle', lang)}</button>
+<div class="row"><button class="btn primary" onclick="applyStyle()">{i18n.t('rv.applystyle')}</button>
 <span class="meta" id="stylemsg"></span></div>
 </div>
 <div class="rgrid" id="grid"></div></div>
-<div class="panel"><h2><span class="n">6</span>{i18n.t('rv.p6.title', lang)}</h2>
-<p class="desc">{i18n.t('rv.p6.desc', lang)}</p>
+<div class="panel"><h2><span class="n">6</span>{i18n.t('rv.p6.title')}</h2>
+<p class="desc">{i18n.t('rv.p6.desc')}</p>
 <div class="stats" id="deliver-summary"></div>
-<div class="row" style="align-items:center"><button class="btn primary" onclick="continuar()">{i18n.t('rv.js.continue', lang)}</button>
-<button class="btn" id="opendelivery" onclick="openDelivery()" style="display:none">{i18n.t('rv.js.openfolder', lang)}</button>
-<span class="meta">{i18n.t('rv.p6.hint', lang)}</span></div>
+<div class="row" style="align-items:center"><button class="btn primary" onclick="continueBatch()">{i18n.t('rv.js.continue')}</button>
+<button class="btn" id="opendelivery" onclick="openDelivery()" style="display:none">{i18n.t('rv.js.openfolder')}</button>
+<span class="meta">{i18n.t('rv.p6.hint')}</span></div>
 <div id="deliver-result"></div></div>
 </div>
 <dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
-""" + _modal(lang) + _JS_UTIL + _inject(lang, "rv.js") + """
+""" + _modal() + _JS_UTIL + _inject("rv.js") + """
 <script>
 let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null;
 const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"],blocked:T["lbl.blocked"]};
 const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"],blocked:T["sing.blocked"]};
-const fmsg=f=>(LANG==="en"&&f.message_en)?f.message_en:f.message;
+const fmsg=f=>f.message;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fill=(s,o)=>s.replace(/\\{(\\w+)\\}/g,(m,k)=>(k in o?o[k]:m));
 async function load(){applyState(await (await fetch("/state")).json());}
@@ -302,7 +287,7 @@ async function toggleStyle(){
 async function openStyle(concept){
   const r=await fetch("/style?concept="+encodeURIComponent(concept));
   const j=await r.json();
-  if(!r.ok){await tell(j.error||"erro");return;}
+  if(!r.ok){await tell(j.error||"error");return;}
   styleConcept=concept;styleOpen=true;
   document.getElementById("styledesc").textContent=fill(T["style.desc"],{concept});
   const ov=j.override||{}, pal=Object.assign({},j.palette,ov.palette||{});
@@ -324,7 +309,7 @@ async function applyStyle(){
   if(!await confirmBox(fill(T["style.confirm"],{n,concept:styleConcept})))return;
   const r=await fetch("/concept-style",{method:"POST",body:JSON.stringify({concept:styleConcept,palette,type,note})});
   const j=await r.json();
-  if(!r.ok){await tell(j.error||"erro");return;}
+  if(!r.ok){await tell(j.error||"error");return;}
   await load();
   notify(fill(T["style.applied"],{n:j.count,concept:styleConcept}));
   closeStyle();}
@@ -378,10 +363,10 @@ async function regen(id){
   await load();
   notify(T.regentoast);
 }
-async function continuar(){
+async function continueBatch(){
   const r=await fetch("/continue",{method:"POST",body:"{}"});
   const j=await r.json();
-  if(!r.ok){await tell(j.error||"erro");return;}
+  if(!r.ok){await tell(j.error||"error");return;}
   await load();
   const box=document.getElementById("deliver-result");
   if(j.exported===0&&j.regen===0){box.innerHTML="";notify(T["continue.empty"]);return;}
@@ -395,7 +380,7 @@ async function continuar(){
 async function openDelivery(){
   const r=await fetch("/open-delivery",{method:"POST",body:"{}"});
   const j=await r.json();
-  if(!r.ok){await tell(j.error||"erro");return;}
+  if(!r.ok){await tell(j.error||"error");return;}
   notify(fill(T["openfolder.toast"],{dir:j.path}));
 }
 async function poll(){
@@ -408,56 +393,55 @@ setInterval(poll,4000);
 </script></body></html>"""
 
 
-def onboard_page(lang):
-    return _head(i18n.t("ob.title", lang), lang) + f"""
-<header><span class="brand">campaign-kit</span><h1>{i18n.t('ob.title', lang)}</h1>
+def onboard_page():
+    return _head(i18n.t("ob.title")) + f"""
+<header><span class="brand">campaign-kit</span><h1>{i18n.t('ob.title')}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
-{_lang_toggle(lang)}
-<button onclick="load()">{i18n.t('btn.refresh', lang)}</button></header>
+<button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
-""" + _stepper(1, 0, lang) + f"""
-<span class="meta">{i18n.t('ob.meta.steps', lang)}</span>
+""" + _stepper(1, 0) + f"""
+<span class="meta">{i18n.t('ob.meta.steps')}</span>
 <div class="callout warn" id="ready"></div>
 </div>
 <div class="wrap">
-<div class="panel"><h2><span class="n">1</span>{i18n.t('ob.p1.title', lang)}</h2>
-<p class="desc">{i18n.t('ob.p1.desc', lang)}</p>
+<div class="panel"><h2><span class="n">1</span>{i18n.t('ob.p1.title')}</h2>
+<p class="desc">{i18n.t('ob.p1.desc')}</p>
 <span class="meta" id="slotprog"></span>
 <div class="grid" id="slots"></div></div>
-<div class="panel"><h2><span class="n">2</span>{i18n.t('ob.p2.title', lang)}</h2>
-<p class="desc">{i18n.t('ob.p2.desc', lang)}</p>
+<div class="panel"><h2><span class="n">2</span>{i18n.t('ob.p2.title')}</h2>
+<p class="desc">{i18n.t('ob.p2.desc')}</p>
 <div class="dropzone" id="briefdrop">
-<label class="btn">{i18n.t('ob.p2.upload', lang)}<input type="file"
+<label class="btn">{i18n.t('ob.p2.upload')}<input type="file"
   accept=".md,.txt,.rtf,.pdf,.docx" hidden onchange="uploadBrief(this.files)"></label>
-<span class="meta">{i18n.t('ob.p2.drop', lang)}</span>
-<span class="meta" id="brieffile">{i18n.t('ob.p2.filenote', lang)}</span></div>
+<span class="meta">{i18n.t('ob.p2.drop')}</span>
+<span class="meta" id="brieffile">{i18n.t('ob.p2.filenote')}</span></div>
 <div class="chips" id="sections"></div>
 <div class="chips" id="concepts"></div>
 <textarea id="brief"></textarea>
-<div class="row"><button class="btn primary" onclick="saveBrief()">{i18n.t('ob.p2.save', lang)}</button>
-<span class="meta">{i18n.t('ob.p2.legend', lang)}</span></div>
+<div class="row"><button class="btn primary" onclick="saveBrief()">{i18n.t('ob.p2.save')}</button>
+<span class="meta">{i18n.t('ob.p2.legend')}</span></div>
 <div class="docsblock">
-<p class="desc"><b>{i18n.t('ob.p2.docs.title', lang)}</b> — {i18n.t('ob.p2.docs.desc', lang)}</p>
+<p class="desc"><b>{i18n.t('ob.p2.docs.title')}</b> — {i18n.t('ob.p2.docs.desc')}</p>
 <div class="dropzone" id="docsdrop">
-<label class="btn">{i18n.t('ob.p2.docs.upload', lang)}<input type="file"
+<label class="btn">{i18n.t('ob.p2.docs.upload')}<input type="file"
   accept="{','.join(onboard.BRIEF_DOC_EXT)}" multiple hidden onchange="uploadDocs(this.files)"></label>
-<span class="meta">{i18n.t('ob.p2.docs.drop', lang)}</span>
+<span class="meta">{i18n.t('ob.p2.docs.drop')}</span>
 <span class="meta" id="docscount"></span></div>
 <ul class="files" id="docslist"></ul>
 </div></div>
-<div class="panel"><h2><span class="n">3</span>{i18n.t('ob.p3.title', lang)}</h2>
-<p class="desc">{i18n.t('ob.p3.desc', lang)}</p>
-<div class="row"><input type="text" id="bid" placeholder="{i18n.t('ob.p3.idph', lang)}">
-<button class="btn primary" onclick="derivar()">{i18n.t('ob.p3.run', lang)}</button></div>
+<div class="panel"><h2><span class="n">3</span>{i18n.t('ob.p3.title')}</h2>
+<p class="desc">{i18n.t('ob.p3.desc')}</p>
+<div class="row"><input type="text" id="bid" placeholder="{i18n.t('ob.p3.idph')}">
+<button class="btn primary" onclick="derive()">{i18n.t('ob.p3.run')}</button></div>
 <div id="result"></div></div>
-<div class="panel"><h2><span class="n">4</span>{i18n.t('ob.p4.title', lang)}</h2>
-<p class="desc">{i18n.t('ob.p4.desc', lang)}</p>
-<span class="meta">{i18n.t('ob.p4.pipe', lang)}</span>
-<p class="desc" style="margin-top:10px">{i18n.t('ob.p4.paste', lang)}</p>
+<div class="panel"><h2><span class="n">4</span>{i18n.t('ob.p4.title')}</h2>
+<p class="desc">{i18n.t('ob.p4.desc')}</p>
+<span class="meta">{i18n.t('ob.p4.pipe')}</span>
+<p class="desc" style="margin-top:10px">{i18n.t('ob.p4.paste')}</p>
 <div class="row"><input type="text" id="agentline" readonly>
-<button class="btn primary" onclick="copyAgent()">{i18n.t('ob.p4.copy', lang)}</button></div></div>
+<button class="btn primary" onclick="copyAgent()">{i18n.t('ob.p4.copy')}</button></div></div>
 </div>
-""" + _modal(lang) + _JS_UTIL + _inject(lang, "ob.js") + """
+""" + _modal() + _JS_UTIL + _inject("ob.js") + """
 <script>
 let S=null, INT=null;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -561,10 +545,10 @@ async function copyAgent(){
   await navigator.clipboard.writeText(document.getElementById("agentline").value);
   notify(T.copied);
 }
-async function derivar(){
+async function derive(){
   const id=document.getElementById("bid").value.trim();
   if(!id){await tell(T.needid);return;}
-  const r=await fetch("/intake?lang="+LANG,{method:"POST",body:JSON.stringify({brand_id:id})});
+  const r=await fetch("/intake",{method:"POST",body:JSON.stringify({brand_id:id})});
   if(!r.ok){await tell((await r.json()).error);return;}
   INT=await r.json(); drawResult();
 }
@@ -601,7 +585,7 @@ load();
 
 
 def _open_folder(path):
-    """Abre a pasta no gerenciador de arquivos do SO (Finder/Explorer/xdg). Servidor local."""
+    """Open the folder in the OS file manager (Finder/Explorer/xdg). Local server."""
     if sys.platform == "darwin":
         subprocess.Popen(["open", path])
     elif sys.platform == "win32":
@@ -618,16 +602,6 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
-    def _cookie_lang(self):
-        m = re.search(r"(?:^|;\s*)lang=(pt|en)", self.headers.get("Cookie", ""))
-        return m.group(1) if m else None
-
-    def _lang(self):
-        q = parse_qs(urlparse(self.path).query).get("lang", [None])[0]
-        if q in ("pt", "en"):
-            return q
-        return self._cookie_lang() or i18n.resolve_lang()
-
     def _send(self, code, body, ctype="application/json"):
         data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode()
         self.send_response(code)
@@ -643,7 +617,6 @@ class Handler(BaseHTTPRequestHandler):
         return path if os.path.isfile(path) else None
 
     def _onboard_post(self, length):
-        lang = self._lang()
         url = urlparse(self.path)
         if url.path == "/upload":
             q = parse_qs(url.query)
@@ -651,13 +624,13 @@ class Handler(BaseHTTPRequestHandler):
             name = os.path.basename(q.get("name", [""])[0])
             spec = next((s for s in onboard.SLOTS if s["key"] == slot), None)
             if not spec or not name or name.startswith("."):
-                return self._send(400, {"error": i18n.t("ob.err.slot", lang)})
+                return self._send(400, {"error": i18n.t("ob.err.slot")})
             if not name.lower().endswith(spec["ext"]):
                 return self._send(400, {"error": i18n.t(
-                    "ob.err.ext", lang,
-                    label=i18n.t(f"slot.{slot}.label", lang), exts=", ".join(spec["ext"]))})
+                    "ob.err.ext",
+                    label=i18n.t(f"slot.{slot}.label"), exts=", ".join(spec["ext"]))})
             if length > 300 * 1024 * 1024:
-                return self._send(413, {"error": i18n.t("ob.err.big", lang)})
+                return self._send(413, {"error": i18n.t("ob.err.big")})
             data = self.rfile.read(length)
             d = os.path.join(self.root, spec["dir"])
             os.makedirs(d, exist_ok=True)
@@ -674,7 +647,7 @@ class Handler(BaseHTTPRequestHandler):
             spec = next((s for s in onboard.SLOTS if s["key"] == slot), None)
             self.rfile.read(length)
             if not spec or not name or name.startswith("."):
-                return self._send(400, {"error": i18n.t("ob.err.slot", lang)})
+                return self._send(400, {"error": i18n.t("ob.err.slot")})
             p = os.path.join(self.root, spec["dir"], name)
             if os.path.isfile(p):
                 os.remove(p)
@@ -683,9 +656,9 @@ class Handler(BaseHTTPRequestHandler):
             q = parse_qs(url.query)
             name = os.path.basename(q.get("name", [""])[0])
             if not name or name.startswith(".") or not name.lower().endswith(intake.BRIEF_EXT):
-                return self._send(400, {"error": i18n.t("ob.err.briefext", lang)})
+                return self._send(400, {"error": i18n.t("ob.err.briefext")})
             if length > 20 * 1024 * 1024:
-                return self._send(413, {"error": i18n.t("ob.err.briefbig", lang)})
+                return self._send(413, {"error": i18n.t("ob.err.briefbig")})
             data = self.rfile.read(length)
             if name.lower().endswith((".md", ".txt", ".rtf")):
                 text = data.decode("utf-8", errors="replace")
@@ -700,9 +673,9 @@ class Handler(BaseHTTPRequestHandler):
             name = os.path.basename(q.get("name", [""])[0])
             if not name or name.startswith(".") or not name.lower().endswith(onboard.BRIEF_DOC_EXT):
                 return self._send(400, {"error": i18n.t(
-                    "ob.err.docext", lang, exts=", ".join(onboard.BRIEF_DOC_EXT))})
+                    "ob.err.docext", exts=", ".join(onboard.BRIEF_DOC_EXT))})
             if length > 20 * 1024 * 1024:
-                return self._send(413, {"error": i18n.t("ob.err.docbig", lang)})
+                return self._send(413, {"error": i18n.t("ob.err.docbig")})
             data = self.rfile.read(length)
             d = os.path.join(self.root, onboard.BRIEF_DOCS_DIR)
             os.makedirs(d, exist_ok=True)
@@ -714,7 +687,7 @@ class Handler(BaseHTTPRequestHandler):
             name = os.path.basename(q.get("name", [""])[0])
             self.rfile.read(length)
             if not name or name.startswith("."):
-                return self._send(400, {"error": i18n.t("ob.err.slot", lang)})
+                return self._send(400, {"error": i18n.t("ob.err.slot")})
             p = os.path.join(self.root, onboard.BRIEF_DOCS_DIR, name)
             if os.path.isfile(p):
                 os.remove(p)
@@ -727,14 +700,14 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/intake":
             bid = payload.get("brand_id", "").strip()
             if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", bid):
-                return self._send(400, {"error": i18n.t("ob.err.brandid", lang)})
-            summary, gaps = intake.run(self.root, bid, self.brands, lang)
+                return self._send(400, {"error": i18n.t("ob.err.brandid")})
+            summary, gaps = intake.run(self.root, bid, self.brands)
             return self._send(200, {"summary": summary, "gaps": gaps})
         if url.path == "/answers":
             bid = os.path.basename(payload.get("brand_id", ""))
             path = os.path.join(self.brands, bid, "answers.json")
             if not os.path.isdir(os.path.dirname(path)):
-                return self._send(400, {"error": i18n.t("ob.err.intakefirst", lang)})
+                return self._send(400, {"error": i18n.t("ob.err.intakefirst")})
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(payload.get("answers", {}), f, indent=2, ensure_ascii=False)
             return self._send(200, {"ok": True})
@@ -742,23 +715,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         url = urlparse(self.path)
-        if url.path == "/lang":
-            setl = parse_qs(url.query).get("set", ["pt"])[0]
-            if setl not in ("pt", "en"):
-                setl = "pt"
-            self.send_response(302)
-            self.send_header("Set-Cookie", f"lang={setl}; Path=/; Max-Age=31536000; SameSite=Lax")
-            self.send_header("Location", "/")
-            self.send_header("Content-Length", "0")
-            self.end_headers()
-            return
-        lang = self._lang()
         if url.path == "/":
-            page = onboard_page(lang) if self.mode == "onboard" else review_page(lang)
+            page = onboard_page() if self.mode == "onboard" else review_page()
             self._send(200, page.encode(), "text/html; charset=utf-8")
         elif url.path == "/state":
             if self.mode == "onboard":
-                return self._send(200, onboard.status(self.root, lang))
+                return self._send(200, onboard.status(self.root))
             with open(os.path.join(self.root, "state.json"), encoding="utf-8") as f:
                 self._send(200, json.load(f))
         elif url.path == "/img":
@@ -783,7 +745,7 @@ class Handler(BaseHTTPRequestHandler):
             for r in ("display", "text", "accent"):
                 e = brand.fonts.cfg.get(r)
                 type_cfg[r] = e if isinstance(e, str) else (e or {}).get("file", "")
-            dirs = font_dirs([brand.assets_dir, os.path.join(brand.root, "fontes")])
+            dirs = font_dirs([brand.assets_dir, os.path.join(brand.root, "fonts")])
             fonts = sorted({os.path.basename(p) for d in dirs
                             for p in _glob.glob(os.path.join(d, "*"))
                             if p.lower().endswith((".ttf", ".otf", ".ttc"))})
@@ -817,12 +779,11 @@ class Handler(BaseHTTPRequestHandler):
                 json.dump(state, f, indent=2, ensure_ascii=False)
             self._send(200, {"ok": True})
         elif self.path == "/concept-style":
-            lang = self._lang()
             concept = payload.get("concept", "")
             camp = campaign.load_campaign(self.root)
             known = set(campaign.available_concepts()) | set(camp.get("concepts") or [])
             if not re.fullmatch(r"[A-Za-z0-9_-]+", concept) or concept not in known:
-                return self._send(400, {"error": i18n.t("rv.err.concept", lang)})
+                return self._send(400, {"error": i18n.t("rv.err.concept")})
             pal = {}
             for r, v in (payload.get("palette") or {}).items():
                 if r in ("primary", "accent", "ink", "paper", "dark") and \
@@ -846,7 +807,7 @@ class Handler(BaseHTTPRequestHandler):
                 yaml.safe_dump(style, f, allow_unicode=True, sort_keys=False)
             with open(state_path, encoding="utf-8") as f:
                 state = json.load(f)
-            rnote = note or i18n.t("rv.restyle.defaultnote", lang)
+            rnote = note or i18n.t("rv.restyle.defaultnote")
             count = 0
             for p in state["pieces"]:
                 if p["concept"] == concept:
@@ -862,22 +823,22 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"ok": True, "concept": concept, "count": count})
         elif self.path == "/continue":
             if not os.path.isfile(state_path):
-                return self._send(400, {"error": i18n.t("rv.err.nostate", self._lang())})
-            self._send(200, campaign.deliver(self.root, lang=self._lang()))
+                return self._send(400, {"error": i18n.t("rv.err.nostate")})
+            self._send(200, campaign.deliver(self.root))
         elif self.path == "/open-delivery":
             dest = campaign.delivery_dir(self.root)
             if not os.path.isdir(dest):
-                return self._send(400, {"error": i18n.t("rv.js.openfolder.empty", self._lang())})
+                return self._send(400, {"error": i18n.t("rv.js.openfolder.empty")})
             _open_folder(dest)
             self._send(200, {"ok": True, "path": dest})
         else:
             self._send(404, {"error": "not found"})
 
 
-def _serve(root, port, open_browser=True, shortcut_name="ABRIR-REVISAO.html", lang="pt"):
-    """Sobe a UI em 127.0.0.1, grava atalho clicável na pasta e abre o navegador.
+def _serve(root, port, open_browser=True, shortcut_name="OPEN-REVIEW.html"):
+    """Start the UI on 127.0.0.1, write a clickable shortcut in the folder and open the browser.
 
-    Porta ocupada → tenta as próximas: cada campanha ganha a sua, sem conflito.
+    Port busy → try the next ones: each campaign gets its own, no conflict.
     """
     server = None
     for p in range(port, port + 20):
@@ -887,36 +848,34 @@ def _serve(root, port, open_browser=True, shortcut_name="ABRIR-REVISAO.html", la
         except OSError:
             continue
     if server is None:
-        raise OSError(f"nenhuma porta livre em {port}..{port + 19}")
+        raise OSError(f"no free port in {port}..{port + 19}")
     url = f"http://127.0.0.1:{server.server_address[1]}"
     threading.Thread(target=server.serve_forever, daemon=True).start()
     shortcut = os.path.join(root, shortcut_name)
     with open(shortcut, "w", encoding="utf-8") as f:
-        f.write('<!doctype html><html lang="' + lang + '"><head><meta charset="utf-8">'
+        f.write('<!doctype html><html lang="en"><head><meta charset="utf-8">'
                 f'<meta http-equiv="refresh" content="0;url={url}">'
                 '<title>campaign-kit</title></head>'
                 '<body style="font-family:system-ui,sans-serif;padding:40px">'
-                f'<p>{i18n.t("cli.shortcut.opening", lang, url=url)} <a href="{url}">{url}</a></p>'
-                f'<p>{i18n.t("cli.shortcut.manual", lang)}</p>'
+                f'<p>{i18n.t("cli.shortcut.opening", url=url)} <a href="{url}">{url}</a></p>'
+                f'<p>{i18n.t("cli.shortcut.manual")}</p>'
                 '</body></html>\n')
-    print(f"\n  ➜  {url}\n  ({i18n.t('cli.serve.shortcut', lang, name=shortcut_name)})\n", flush=True)
+    print(f"\n  ➜  {url}\n  ({i18n.t('cli.serve.shortcut', name=shortcut_name)})\n", flush=True)
     if open_browser:
         webbrowser.open(url)
     return server, url
 
 
-def serve(campaign_root, port=8765, open_browser=True, lang=None):
-    lang = lang or i18n.resolve_lang()
+def serve(campaign_root, port=8765, open_browser=True):
     Handler.mode = "review"
     Handler.root = os.path.abspath(campaign_root)
-    return _serve(os.path.abspath(campaign_root), port, open_browser, lang=lang)
+    return _serve(os.path.abspath(campaign_root), port, open_browser)
 
 
-def serve_onboard(inbox, brands_dir, port=8766, open_browser=True, lang=None):
-    lang = lang or i18n.resolve_lang()
+def serve_onboard(inbox, brands_dir, port=8766, open_browser=True):
     inbox = os.path.abspath(os.path.expanduser(inbox))
-    onboard.scaffold(inbox, lang)
+    onboard.scaffold(inbox)
     Handler.mode = "onboard"
     Handler.root = inbox
     Handler.brands = os.path.abspath(brands_dir)
-    return _serve(inbox, port, open_browser, shortcut_name="ABRIR-ONBOARDING.html", lang=lang)
+    return _serve(inbox, port, open_browser, shortcut_name="OPEN-ONBOARDING.html")

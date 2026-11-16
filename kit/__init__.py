@@ -1,1 +1,1 @@
-"""campaign-kit: gera peças de campanha para qualquer marca a partir de uma pasta de briefing."""
+"""campaign-kit: generates campaign pieces for any brand from a briefing folder."""

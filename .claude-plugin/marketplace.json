@@ -5,7 +5,7 @@
     {
       "name": "campaign-kit",
       "source": "./",
-      "description": "Campanhas locais a partir de pasta com logo + refs + briefing; instalador autocontido e revisão no navegador."
+      "description": "Local campaigns from a folder with logo + refs + briefing; self-contained installer and review in the browser."
     }
   ]
 }

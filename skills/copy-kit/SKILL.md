@@ -1,61 +1,61 @@
 ---
 name: copy-kit
-description: Use quando o usuário quiser gerar só o COPY de uma campanha (texto para PPC e overlay) a partir de um briefing + textos de exemplo, com aprovação linha a linha numa tabela no navegador. Independente do kit visual — sem logo, brandbook ou imagens. Conduz tudo sem o usuário abrir terminal.
+description: Use when the user wants to generate only the COPY of a campaign (text for PPC and overlay) from a briefing + example texts, with row-by-row approval in a browser table. Independent of the visual kit — no logo, brandbook or images. Drives everything without the user opening a terminal.
 ---
 
 # copy-kit
 
-Gera o copy localmente: o agente escreve a partir do briefing + exemplos, o kit valida
-a forma e exporta **só o aprovado** (planilhas Meta / Google RSA / overlay). Revisão em
-**tabela** no navegador (aprovar/rejeitar/refazer+nota por linha). **O usuário não abre
-terminal nem digita comando — você roda tudo; ele usa o chat e o navegador.**
+Generates the copy locally: the agent writes from the briefing + examples, the kit validates
+the shape and exports **only the approved** (Meta / Google RSA / overlay sheets). Review in a
+browser **table** (approve/reject/redo+note per row). **The user does not open a
+terminal or type a command — you run everything; they use the chat and the browser.**
 
-Independente do `campaign-kit` (visual): não toca campaign/render/ppc visual, não pede
-logo/brandbook/refs. **Um fluxo por vez na UI** — wizard visual 8766/review 8765; copy
-usa 8767 (wizard) / 8768 (tabela). Não suba os dois na mesma sessão.
+Independent of `campaign-kit` (visual): does not touch the visual campaign/render/ppc, does not ask for
+logo/brandbook/refs. **One flow at a time in the UI** — visual wizard 8766/review 8765; copy
+uses 8767 (wizard) / 8768 (table). Do not start both in the same session.
 
-## Passos
+## Steps
 
-1. **Ache a raiz do kit** (`AGENTS.md` + `install.sh`). Se não estiver no workspace,
-   clone você mesmo de `https://github.com/dannowk/creative-kit-generator` para
-   `~/Documents/creative-kit-generator` — não peça ao usuário para clonar.
-2. **Crie a pasta automaticamente**: default `~/Desktop/minha-campanha-copy` (ou
-   `~/Desktop/<marca>-copy` se ele já disse o nome no chat). Sem perguntar caminho.
-3. **Bootstrap + wizard de copy num comando só**, em background: `./install.sh <inbox> --copy`
-   (Mac/Linux) ou `Instalar.bat <inbox> --copy` (Windows). Baixa `uv` + Python 3.12
-   gerenciado sem admin, instala as deps e **abre o wizard de copy no navegador**,
-   criando só `briefing.md` + `examples.txt` (sem logo/brandbook/refs/fotos/vídeos).
-   `.venv/` já existe → só reabre o wizard.
-4. **Avise no chat** que o wizard de copy abriu; peça o **briefing** (objetivo, público,
-   tom de voz, oferta/produto, conceitos, eixos, restrições, idiomas) e os **textos de
-   exemplo** (campo de texto onde ele cola copy que gosta / quer usar como modelo).
-   Espere o "pronto" do usuário.
-5. **`copy plan <pasta>`** imprime briefing + exemplos + o vocabulário de destinos/kinds.
-   **SEU TRABALHO:** autore `<pasta>/copy.json` = `{"concepts":[...], "rows":[...]}`.
-   Cada row: `id` (`k01`…, próximo livre), `destination` (`ppc`/`overlay`), `concept`,
-   `axis` (opcional), `kind`, `text`, `lang` (`pt`/`en`), `status:"pending"`,
-   `origin:"agent"`, `updated_at` (ISO UTC agora), `updated_by` (seu nome/usuário).
-   - **ppc kinds:** `headline` (≤30 p/ Google RSA), `description` (≤90), `primary_text`.
+1. **Find the kit root** (`AGENTS.md` + `install.sh`). If it is not in the workspace,
+   clone it yourself from `https://github.com/dannowk/creative-kit-generator` into
+   `~/Documents/creative-kit-generator` — do not ask the user to clone.
+2. **Create the folder automatically**: default `~/Desktop/my-campaign-copy` (or
+   `~/Desktop/<brand>-copy` if they already said the name in the chat). Without asking for a path.
+3. **Bootstrap + copy wizard in a single command**, in the background: `./install.sh <inbox> --copy`
+   (Mac/Linux) or `Install.bat <inbox> --copy` (Windows). Downloads `uv` + managed Python 3.12
+   without admin, installs the deps and **opens the copy wizard in the browser**,
+   creating only `briefing.md` + `examples.txt` (no logo/brandbook/refs/photos/videos).
+   `.venv/` already exists → just reopens the wizard.
+4. **Announce in the chat** that the copy wizard opened; ask for the **briefing** (goal, audience,
+   tone of voice, offer/product, concepts, axes, constraints, languages) and the **example
+   texts** (a text field where they paste copy they like / want to use as a model).
+   Wait for the user's "ready".
+5. **`copy plan <folder>`** prints the briefing + examples + the destinations/kinds vocabulary.
+   **YOUR JOB:** author `<folder>/copy.json` = `{"concepts":[...], "rows":[...]}`.
+   Each row: `id` (`k01`…, next free), `destination` (`ppc`/`overlay`), `concept`,
+   `axis` (optional), `kind`, `text`, `lang` (`en`), `status:"pending"`,
+   `origin:"agent"`, `updated_at` (ISO UTC now), `updated_by` (your name/user).
+   - **ppc kinds:** `headline` (≤30 for Google RSA), `description` (≤90), `primary_text`.
    - **overlay kinds:** `hook`, `kicker`, `program`, `cta`.
-   Volume alto: conceitos × eixos × destinos × versões. **Nunca invente copy** fora do
-   briefing + exemplos; **nunca marque `approved`** — a decisão é do usuário na tabela.
-6. **`copy validate <pasta>`** checa a forma (destinos/kinds/status/lang válidos, text
-   não-vazio, ids únicos, conceito declarado). Erro → nada gravado; corrija e revalide.
-7. **`copy review <pasta>`** abre a **tabela** no navegador (atalho `ABRIR-COPY-REVISAO.html`
-   na pasta). Cada linha tem aprovar / rejeitar / refazer+nota; filtros por status,
-   destino (PPC/overlay) e conceito. Só **marca** a linha (intenção). **Cumpra o lote:**
-   `rejected` → reescreva o copy (nova direção a partir do briefing/exemplos); `redo` →
-   aplique a `note`. Mude o `text`, volte `status:"pending"`, limpe `note`, recarimbe
-   `updated_at`/`updated_by`. A tabela atualiza sozinha (poll de 4 s). Repita até fechar.
-8. **Entrega:** tudo aprovado → o usuário clica **Exportar aprovadas** na tabela (ou você
-   roda **`copy deliver <pasta>`**). Gera planilhas **CSV + XLSX** em
-   `~/Desktop/Copy Kit/<pasta>/`: `meta_bulk_import`, `google_search_rsa`, `overlay`
-   (conceito × eixo × kind), `copy_manifest` + README. **Só as aprovadas saem.** Limites
-   RSA (headline ≤30 / description ≤90) viram **aviso + truncamento**, não porteiro.
-   URL/orçamento/targeting/IDs ficam **em branco para o time de PPC** — não invente.
-   Tudo sai PAUSED. O botão **Abrir pasta** abre a pasta no computador do usuário; os
-   arquivos também ficam disponíveis para **download** na própria tabela.
+   High volume: concepts × axes × destinations × versions. **Never invent copy** beyond the
+   briefing + examples; **never mark `approved`** — the decision is the user's in the table.
+6. **`copy validate <folder>`** checks the shape (valid destinations/kinds/status/lang, non-empty
+   text, unique ids, declared concept). Error → nothing written; fix and revalidate.
+7. **`copy review <folder>`** opens the **table** in the browser (shortcut `OPEN-COPY-REVIEW.html`
+   in the folder). Each row has approve / reject / redo+note; filters by status,
+   destination (PPC/overlay) and concept. Only **marks** the row (intent). **Fulfill the batch:**
+   `rejected` → rewrite the copy (new direction from the briefing/examples); `redo` →
+   apply the `note`. Change the `text`, set `status:"pending"` back, clear `note`, re-stamp
+   `updated_at`/`updated_by`. The table updates by itself (4 s poll). Repeat until done.
+8. **Delivery:** everything approved → the user clicks **Export approved** in the table (or you
+   run **`copy deliver <folder>`**). Generates **CSV + XLSX** sheets in
+   `~/Desktop/Copy Kit/<folder>/`: `meta_bulk_import`, `google_search_rsa`, `overlay`
+   (concept × axis × kind), `copy_manifest` + README. **Only the approved rows ship.** RSA
+   limits (headline ≤30 / description ≤90) become a **warning + truncation**, not a gatekeeper.
+   URL/budget/targeting/IDs stay **blank for the PPC team** — do not invent.
+   Everything ships PAUSED. The **Open folder** button opens the folder on the user's computer; the
+   files are also available for **download** in the table itself.
 
-O copy é independente: entrega o arquivo dele. Não há import automático pelo kit visual
-(handoff = passo futuro, se o usuário quiser). A voz vem do briefing + exemplos colados,
-não de logo/brandbook.
+The copy is independent: it delivers its own file. There is no automatic import by the visual kit
+(handoff = a future step, if the user wants it). The voice comes from the briefing + pasted examples,
+not from a logo/brandbook.

@@ -1,375 +1,374 @@
 # AGENTS.md — campaign-kit
 
-Ponto de entrada para o agente (Claude, Codex, Qoder, etc.). Leia isto primeiro e
-execute o pipeline abaixo. Tudo roda **na máquina do usuário**, com os arquivos e o
-controle locais. **Não é um serviço hospedado** — não há backend, login, nuvem nem URL
-pública. Você (agente) é quem faz a direção de arte e a geração de IA; o motor Python é
-determinístico e só renderiza o que você especificou.
+Entry point for the agent (Claude, Codex, Qoder, etc.). Read this first and
+run the pipeline below. Everything runs **on the user's machine**, with local files and
+control. **It is not a hosted service** — there is no backend, login, cloud or public
+URL. You (the agent) do the art direction and the AI generation; the Python engine is
+deterministic and only renders what you specified.
 
-## O que é
+## What it is
 
-Um kit que transforma uma pasta (logo + referências + briefing) em uma campanha
-completa: variações visuais, vários formatos/aspect ratios, pastas de saída separadas,
-copy gerada e regras de compliance. Genérico para qualquer empresa — o design **segue o
-briefing e as referências fornecidas**, nunca um visual fixo herdado.
+A kit that turns a folder (logo + references + briefing) into a complete campaign:
+visual variations, multiple formats/aspect ratios, separate output folders,
+generated copy and compliance rules. Generic for any company — the design **follows the
+briefing and the references provided**, never an inherited fixed look.
 
-## Bootstrap (uma vez)
+## Bootstrap (once)
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Dependências: **Pillow, numpy, PyYAML, imageio-ffmpeg, faster-whisper**. Python 3.9+.
-Rode todos os comandos da raiz como `python3 -m kit.cli ...`.
+Dependencies: **Pillow, numpy, PyYAML, imageio-ffmpeg, faster-whisper**. Python 3.9+.
+Run every command from the root as `python3 -m kit.cli ...`.
 
-**Fluxo sem terminal (padrão):** o usuário não abre terminal nem digita comando — você
-roda tudo. Em vez do venv manual acima, use `./install.sh <inbox>` (Mac/Linux, sem
-`--no-open`) ou `Instalar.bat <inbox>` (Windows) em background: ele baixa `uv` + Python 3.12 gerenciado **sem admin**, instala as deps e
-**abre o wizard de onboarding no navegador**. **Crie a pasta `<inbox>` automaticamente**
-(default `~/Desktop/minha-campanha`, ou `~/Desktop/<marca>`), sem perguntar caminho ao
-usuário; o `onboard` faz o scaffold (`logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ briefing.md`).
-Avise no chat que o onboarding abriu, espere o "pronto" e siga o pipeline. Os comandos
-`python3` abaixo são o equivalente manual (porta C); no fluxo gerenciado use
-`.venv/bin/python -m kit.cli ...` (Mac/Linux) ou `.venv\Scripts\python ...` (Windows).
+**No-terminal flow (default):** the user does not open a terminal or type a command — you
+run everything. Instead of the manual venv above, use `./install.sh <inbox>` (Mac/Linux, without
+`--no-open`) or `Install.bat <inbox>` (Windows) in the background: it downloads `uv` + managed Python 3.12 **without admin**, installs the deps and
+**opens the onboarding wizard in the browser**. **Create the `<inbox>` folder automatically**
+(default `~/Desktop/my-campaign`, or `~/Desktop/<brand>`), without asking the user for a
+path; `onboard` does the scaffold (`logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ briefing.md`).
+Announce in the chat that onboarding opened, wait for the "ready" and follow the pipeline. The
+`python3` commands below are the manual equivalent (door C); in the managed flow use
+`.venv/bin/python -m kit.cli ...` (Mac/Linux) or `.venv\Scripts\python ...` (Windows).
 
-**ffmpeg / codecs:** não instale ffmpeg de sistema nem codecs. O `imageio-ffmpeg` embute
-o binário ffmpeg (usado pelo módulo de vídeo para trim/reframe/overlay/concat/legenda).
-O `faster-whisper` só é importado/baixado (modelo) quando você pede legenda **automática**;
-legenda manual ou `captions:"off"` não toca nele.
+**ffmpeg / codecs:** do not install system ffmpeg or codecs. `imageio-ffmpeg` embeds
+the ffmpeg binary (used by the video module for trim/reframe/overlay/concat/captions).
+`faster-whisper` is only imported/downloaded (model) when you ask for **automatic** captions;
+manual captions or `captions:"off"` never touch it.
 
-**Fontes:** não baixe fontes licenciadas por conta própria. Se a fonte da marca não veio
-na pasta, o intake pergunta (rodada única) e o render degrada com fallback do SO
-(macOS/Windows/Linux), avisando exatamente quais foram substituídas (`font_warnings`).
-Para apontar uma pasta de fontes, use a env `CAMPAIGN_FONTS`. Só estoura se não houver
-nem fallback de sistema (raro).
+**Fonts:** do not download licensed fonts on your own. If the brand font did not come
+in the folder, intake asks (single round) and render degrades with an OS fallback
+(macOS/Windows/Linux), reporting exactly which ones were substituted (`font_warnings`).
+To point at a fonts folder, use the `CAMPAIGN_FONTS` env var. It only fails if there is
+not even a system fallback (rare).
 
 ## Pipeline
 
 ```bash
-# 1. Preparar a pasta da campanha (scaffold + UI guiada em 127.0.0.1:8766)
+# 1. Prepare the campaign folder (scaffold + guided UI at 127.0.0.1:8766)
 python3 -m kit.cli onboard ~/inbox/acme
-#    cria logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ + briefing.md; o usuário preenche.
-#    No wizard, cada slot aceita botão + arrastar-e-soltar; o briefing também (arraste
-#    .md/.txt/.rtf/.pdf/.docx). Cada arquivo enviado tem um ✕ para remover só aquele arquivo.
-#    brandbook/ é opcional (manual da marca em PDF/imagens/docx).
-#    briefing/ = documentos de apoio (vários, acumulam): copy dos anúncios, regras de layout,
-#    safe areas, segurança do logo — texto/PDF/Word/imagem/planilha (.csv/.xlsx). O plan lista todos.
-#    --no-ui = só scaffold + checklist, sem servidor.
+#    creates logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ + briefing.md; the user fills it in.
+#    In the wizard, each slot accepts a button + drag-and-drop; so does the briefing (drag
+#    .md/.txt/.rtf/.pdf/.docx). Each uploaded file has an ✕ to remove just that file.
+#    brandbook/ is optional (brand manual as PDF/images/docx).
+#    briefing/ = supporting documents (several, they add up): ad copy, layout rules,
+#    safe areas, logo safety — text/PDF/Word/image/spreadsheet (.csv/.xlsx). plan lists them all.
+#    --no-ui = scaffold + checklist only, no server.
 
-# 2. Derivar a marca da pasta jogada (paleta, logo, análise das refs, gaps)
+# 2. Derive the brand from the dropped folder (palette, logo, refs analysis, gaps)
 python3 -m kit.cli intake ~/inbox/acme acme
-#    grava brands/acme/brand.yaml + intake.json. Gaps viram perguntas de 1 rodada;
-#    as respostas (brands/acme/answers.json) são aplicadas no brand.yaml nesta rodada.
+#    writes brands/acme/brand.yaml + intake.json. Gaps become a single round of questions;
+#    the answers (brands/acme/answers.json) are applied to brand.yaml in that round.
 
-# 2-alt. Briefing canônico (schema + validate + apply), quando o usuário preenche
-#        o modelo ou pede para adaptar um briefing existente a ele:
-python3 -m kit.cli brief --template            # markdown gerado DO schema (nunca diverge)
-python3 -m kit.cli brief ~/inbox/briefing.yaml          # valida: gaps + erros estruturais
-python3 -m kit.cli brief ~/inbox/briefing.yaml --apply  # escreve brand.yaml + campaign.json
-#    apply é determinístico: copia logo/fontes/fotos/vídeos/refs, mapeia canais→formatos,
-#    conceitos→concepts+copy, compliance→checks, provider→créditos, e o bloco video.
-#    Sem paleta declarada, deriva proposta do logo (palette_proposed=true → confirme).
+# 2-alt. Canonical briefing (schema + validate + apply), when the user fills in
+#        the template or asks to adapt an existing briefing to it:
+python3 -m kit.cli brief --template            # markdown generated FROM the schema (never diverges)
+python3 -m kit.cli brief ~/inbox/briefing.yaml          # validates: gaps + structural errors
+python3 -m kit.cli brief ~/inbox/briefing.yaml --apply  # writes brand.yaml + campaign.json
+#    apply is deterministic: copies logo/fonts/photos/videos/refs, maps channels→formats,
+#    concepts→concepts+copy, compliance→checks, provider→credits, and the video block.
+#    Without a declared palette, derives a proposal from the logo (palette_proposed=true → confirm).
 
-# 2-alt-normalize. Briefing LIVRE (prosa .md/.txt, PDF, docx) → schema canônico:
+# 2-alt-normalize. FREE-form briefing (prose .md/.txt, PDF, docx) → canonical schema:
 python3 -m kit.cli brief --normalize ~/inbox/briefing.pdf   # [--out ~/inbox/briefing.yaml]
-#    Emite um skeleton YAML do schema (campos vazios + a pergunta de cada um) e um
-#    contrato <out>.normalize.md. SEU TRABALHO: ler a fonte (visão p/ PDF/docx),
-#    mapear a prosa nos campos e preencher o skeleton. O que não souber fica VAZIO
-#    (vira gap na rodada única) — nunca chute valor, cor, canal, conceito ou copy.
-#    Depois: brief <out> --apply. A garantia determinística é o validate, não a leitura.
+#    Emits a YAML skeleton of the schema (empty fields + each field's question) and a
+#    contract <out>.normalize.md. YOUR JOB: read the source (vision for PDF/docx),
+#    map the prose into the fields and fill the skeleton. Whatever you don't know stays EMPTY
+#    (becomes a gap in the single round) — never guess a value, color, channel, concept or copy.
+#    Then: brief <out> --apply. The deterministic guarantee is the validate, not the reading.
 
-# 3. Direção de arte a partir do briefing + referências  ← SEU TRABALHO CRIATIVO
+# 3. Art direction from the briefing + references  ← YOUR CREATIVE JOB
 python3 -m kit.cli plan campaigns/acme-launch
-#    imprime briefing, respostas do onboarding, refs, brandbook (se houver),
-#    reference_analysis, os conceitos pedidos e o vocabulário de OPS. Autorais os
-#    templates/<concept>.yaml a partir DISSO — um por conceito pedido. LEIA o brandbook
-#    com visão (PDF/imagem): as regras dele (cores, tipografia, uso do logo, voz)
-#    prevalecem sobre a paleta proposta do logo; conflito com o briefing vira pergunta.
+#    prints the briefing, onboarding answers, refs, brandbook (if any),
+#    reference_analysis, the requested concepts and the OPS vocabulary. Author the
+#    templates/<concept>.yaml from THAT — one per requested concept. READ the brandbook
+#    with vision (PDF/image): its rules (colors, typography, logo usage, voice)
+#    prevail over the palette proposed from the logo; a conflict with the briefing becomes a question.
 
-# 4. Assets de IA (imagem e vídeo) — aviso de custo informativo, sem porteiro
+# 4. AI assets (image and video) — informative cost notice, no gatekeeper
 python3 -m kit.cli assets campaigns/acme-launch
-#    imprime "≈ X créditos (N imagem(ns) + M vídeo(s))" e gera/coleta.
+#    prints "≈ X credits (N image(s) + M video(s))" and generates/collects.
 
-# 5. Renderizar a matriz de peças (conceitos × formatos × eixos)
+# 5. Render the piece matrix (concepts × formats × axes)
 python3 -m kit.cli render campaigns/acme-launch
 #    --concepts clean cinema --formats Meta-Feed --limit 4 --dry
-#    --ids <id> ...  re-renderiza SÓ essas peças (etapa 6: recriar/refazer) sem perder as decisões
+#    --ids <id> ...  re-renders ONLY those pieces (stage 6: recreate/redo) without losing the decisions
 
-# 5b. Editar vídeo: trim, reframe por sujeito, overlay de marca, concat, legenda
+# 5b. Edit video: trim, subject-centered reframe, brand overlay, concat, captions
 python3 -m kit.cli video campaigns/acme-launch
 
-# 6. Revisão local (127.0.0.1, porta livre a partir de 8765): aprovar / rejeitar / refazer por peça.
-#    Cada clique só MARCA a peça (intenção); nada executa até o botão "Continuar" (etapa 6 da UI).
-#    Abre o navegador sozinho e grava ABRIR-REVISAO.html na pasta da campanha (atalho clicável).
-#    --no-open para headless. A URL também aparece no topo da tela e no fim de render/video.
+# 6. Local review (127.0.0.1, free port starting at 8765): approve / reject / redo per piece.
+#    Each click only MARKS the piece (intent); nothing runs until the "Continue" button (UI stage 6).
+#    Opens the browser by itself and writes OPEN-REVIEW.html in the campaign folder (clickable shortcut).
+#    --no-open for headless. The URL also appears at the top of the screen and at the end of render/video.
 python3 -m kit.cli review campaigns/acme-launch
 
-# 7. Entrega — equivalent headless do "Continuar". Exporta as aprovadas para a pasta de entrega
-#    no Desktop (~/Desktop/Campaign Kit/<campanha>/<conceito>/) e enfileira rejeitadas (recriar) +
-#    refazer (com a nota) em requests.json. A regeneração é SUA (agente): cumpra o lote e rode
-#    `render --ids`. Ver "Etapa 6 — Entrega e regeneração". Com as aprovadas exportadas, gera
-#    também as planilhas de PPC em ppc/ na mesma pasta de entrega (Meta + Google).
+# 7. Delivery — headless equivalent of "Continue". Exports the approved pieces to the delivery folder
+#    on the Desktop (~/Desktop/Campaign Kit/<campaign>/<concept>/) and queues rejected (recreate) +
+#    redo (with the note) in requests.json. The regeneration is YOURS (agent): fulfill the batch and run
+#    `render --ids`. See "Stage 6 — Delivery and regeneration". With the approved pieces exported, it also
+#    generates the PPC sheets in ppc/ in the same delivery folder (Meta + Google).
 python3 -m kit.cli deliver campaigns/acme-launch
 
-# 8. Planilhas de bulk upload p/ o time de PPC (Meta + Google), CSV + XLSX, em ppc/ na pasta de entrega (Desktop).
-#    Determinístico: cada peça aprovada vira linha nas colunas de import de cada plataforma.
-#    --all exporta todas as peças (não só as aprovadas). Ver "Etapa 6b — Planilhas de PPC".
+# 8. Bulk-upload sheets for the PPC team (Meta + Google), CSV + XLSX, in ppc/ in the delivery folder (Desktop).
+#    Deterministic: each approved piece becomes a row in each platform's import columns.
+#    --all exports every piece (not just the approved). See "Stage 6b — PPC sheets".
 python3 -m kit.cli ppc campaigns/acme-launch
 ```
 
-`campaign` é sempre um **caminho** (ex.: `campaigns/acme-launch`), não um slug.
+`campaign` is always a **path** (e.g. `campaigns/acme-launch`), not a slug.
 
-## Estrutura
+## Structure
 
-- `kit/` — motor (render declarativo, primitives PIL, compliance, intake, onboard,
-  providers, UI). Não hardcode visual de marca aqui.
-- `templates/` — biblioteca global de specs de conceito (`cinema.yaml`, `editorial.yaml`,
-  `poster.yaml`, `typographic.yaml`). Cada campanha pode sobrescrever em
+- `kit/` — engine (declarative render, PIL primitives, compliance, intake, onboard,
+  providers, UI). Do not hardcode brand visuals here.
+- `templates/` — global library of concept specs (`cinema.yaml`, `editorial.yaml`,
+  `poster.yaml`, `typographic.yaml`). Each campaign can override in
   `campaigns/<slug>/templates/<concept>.yaml`.
-- `brands/<id>/` — `brand.yaml` (paleta, papéis tipográficos com fallback de SO, voz,
-  eixos, naming, compliance, safe zones, locales) + `assets/logo.png` + `intake.json`.
+- `brands/<id>/` — `brand.yaml` (palette, type roles with OS fallback, voice,
+  axes, naming, compliance, safe zones, locales) + `assets/logo.png` + `intake.json`.
 - `campaigns/<slug>/` — `campaign.json` (brand, channels, concepts, axes, cta, copy,
-  provider, asset_jobs) + `assets/` + `out/<concept>/` (render de trabalho) + `review/`
-  + `styles/<concept>.yaml` (ajuste de cores/fontes do conceito, opcional)
-  + `state.json` (decisões) + `requests.json` (lote de regeneração).
-- `~/Desktop/Campaign Kit/<campanha>/` — **pasta de entrega final**, fora do kit, no Desktop
-  do usuário: `<concept>/` com as aprovadas exportadas pelo Continuar + `ppc/` (planilhas de
-  bulk upload Meta + Google, CSV + XLSX). O botão **Abrir pasta** na revisão abre esta pasta.
-- `brands/acme` + `campaigns/acme-launch` — exemplo genérico que acompanha o repo.
+  provider, asset_jobs) + `assets/` + `out/<concept>/` (working render) + `review/`
+  + `styles/<concept>.yaml` (concept color/font adjustment, optional)
+  + `state.json` (decisions) + `requests.json` (regeneration batch).
+- `~/Desktop/Campaign Kit/<campaign>/` — **final delivery folder**, outside the kit, on the
+  user's Desktop: `<concept>/` with the approved pieces exported by Continue + `ppc/` (Meta + Google
+  bulk-upload sheets, CSV + XLSX). The **Open folder** button in the review opens this folder.
+- `brands/acme` + `campaigns/acme-launch` — generic example that ships with the repo.
 
-## Documentos de apoio do briefing (`<inbox>/briefing/`)
+## Briefing supporting documents (`<inbox>/briefing/`)
 
-Além do `briefing.md` (o texto estruturado) e do `brandbook/` (manual da marca), o usuário
-pode anexar **vários documentos de apoio** na pasta `briefing/` — pelo wizard (botão ou
-arrastar-e-soltar, área "Documentos de apoio") ou soltando os arquivos direto na pasta.
-Eles **acumulam** (não substituem o briefing) e aceitam texto (.md/.txt/.rtf), PDF/Word,
-imagens (.png/.jpg/.webp — diagramas de safe area/logo) e planilha (.csv/.xlsx — tabela de
-copy). Exemplos: conteúdo/copy dos anúncios em arquivos separados, regras de layout, safe
-areas por formato, segurança/clearspace do logo extraída do brandbook.
+Besides `briefing.md` (the structured text) and `brandbook/` (the brand manual), the user
+can attach **several supporting documents** in the `briefing/` folder — via the wizard (button or
+drag-and-drop, "Supporting documents" area) or by dropping the files straight into the folder.
+They **add up** (they don't replace the briefing) and accept text (.md/.txt/.rtf), PDF/Word,
+images (.png/.jpg/.webp — safe-area/logo diagrams) and spreadsheets (.csv/.xlsx — copy
+table). Examples: ad content/copy in separate files, layout rules, safe
+areas per format, logo safety/clearspace extracted from the brandbook.
 
-O `intake` recolhe tudo em `brief_docs` no `intake.json` e o `plan` lista cada arquivo.
-**SEU TRABALHO como agente:** leia todos (visão para PDF/imagem; texto/planilha direto) e
-aplique — o copy/conteúdo dos anúncios alimenta `campaign.json.copy` (hook/kicker/program/
-CTA por conceito×eixo, e o copy do RSA no export de PPC); regras de layout, safe areas e
-segurança do logo viram `geometry`/`safe_zones` e `compliance` no `brand.yaml` e nos
-templates. As regras do brandbook e destes documentos prevalecem sobre a paleta proposta;
-conflito com o briefing vira pergunta — nunca chute silencioso.
+`intake` collects everything into `brief_docs` in `intake.json` and `plan` lists each file.
+**YOUR JOB as the agent:** read them all (vision for PDF/image; text/spreadsheet directly) and
+apply them — the ad copy/content feeds `campaign.json.copy` (hook/kicker/program/
+CTA per concept×axis, and the RSA copy in the PPC export); layout rules, safe areas and
+logo safety become `geometry`/`safe_zones` and `compliance` in `brand.yaml` and in the
+templates. The brandbook and these documents' rules prevail over the proposed palette;
+a conflict with the briefing becomes a question — never a silent guess.
 
-## Specs de template (declarativo)
+## Template specs (declarative)
 
-Um template é uma lista de `layers`; cada layer tem um `op` que é uma primitiva PIL
-(`paper`, `photo`, `text`, `rule`, `logo`, ...). Expressões usam um avaliador de AST
-restrito (variáveis como `w`, `h`, `scale`, `top`, `m`). Knobs por layer de texto:
-`underline`, `accent_upper`, `accent_scale`, `max_h`, ancoragem. Autorais a partir do
-briefing + refs — não copie o visual de outro cliente.
+A template is a list of `layers`; each layer has an `op` that is a PIL primitive
+(`paper`, `photo`, `text`, `rule`, `logo`, ...). Expressions use a restricted AST
+evaluator (variables like `w`, `h`, `scale`, `top`, `m`). Knobs per text layer:
+`underline`, `accent_upper`, `accent_scale`, `max_h`, anchoring. Author from the
+briefing + refs — do not copy another client's look.
 
-## Vários conceitos
+## Multiple concepts
 
-O briefing pede os conceitos na **seção 7** (lista separada por vírgula, ex.:
-`clean, editorial, cinema`). O `intake` extrai isso em `concepts_requested` (e pergunta
-na rodada única se ficar em branco); o `plan` imprime. Para cada conceito pedido:
+The briefing requests the concepts in **section 7** (comma-separated list, e.g.
+`clean, editorial, cinema`). `intake` extracts that into `concepts_requested` (and asks
+in the single round if left blank); `plan` prints it. For each requested concept:
 
-1. Autorei `campaigns/<slug>/templates/<concept>.yaml` (o local vence a biblioteca global).
-2. Liste-o em `campaign.json.concepts`.
-3. Dê um `copy.hook` por conceito (ou um bloco de voz `copy.<eixo>.<concept>`). **Sem
-   hook, o conceito é pulado no render** com aviso.
+1. Author `campaigns/<slug>/templates/<concept>.yaml` (the local one wins over the global library).
+2. List it in `campaign.json.concepts`.
+3. Give a `copy.hook` per concept (or a voice block `copy.<axis>.<concept>`). **Without
+   a hook, the concept is skipped in render** with a warning.
 
-A matriz é `conceitos × formatos × eixos`. Cada conceito entrega em pasta própria
-`out/<concept>/` e ganha um contact sheet próprio `review/sheet_<concept>[_<eixo>].png`.
-Na revisão, os chips de **conceito** (além dos de status) isolam uma direção por vez para
-aprovar/rejeitar/refazer sem misturar. Com um conceito filtrado, o botão **Ajustar estilo**
-muda cores/fontes de **todas** as peças daquele conceito de uma vez (ver "Ajuste de estilo
-por conceito").
+The matrix is `concepts × formats × axes`. Each concept delivers into its own folder
+`out/<concept>/` and gets its own contact sheet `review/sheet_<concept>[_<axis>].png`.
+In the review, the **concept** chips (besides the status ones) isolate one direction at a time to
+approve/reject/redo without mixing. With a concept filtered, the **Adjust style** button
+changes colors/fonts of **all** pieces of that concept at once (see "Per-concept style
+adjustment").
 
-## Vídeo
+## Video
 
-O módulo `kit/video.py` edita localmente com o ffmpeg embutido (sem ffmpeg de sistema):
+The `kit/video.py` module edits locally with the embedded ffmpeg (no system ffmpeg):
 
-- **Trim** por duração (`durations` por formato, ou `default`).
-- **Reframe** por aspect ratio com crop centrado no sujeito (`subject_center`), então o
-  rosto fica no centro do corte — nunca cortado fora.
-- **Overlay de marca** reaproveitando o spec declarativo do conceito em modo
-  transparente (`render.render(..., transparent=True)`): logo, kicker, hook, CTA nos
-  safe zones, igual aos PNG.
-- **Concat** de clipes de mesma geometria (`video.concat`, copy sem re-encode).
-- **Legenda queimada**: `"auto"` (faster-whisper, modelo baixado no 1º uso) ou uma lista
-  manual `[{start,end,text}]`. Vira PNG do PIL sobreposto por janela de tempo — não
-  depende de libass/fontconfig. Com legenda, o `bottom` do overlay sobe para a copy/CTA
-  não colidir com a faixa de legenda.
+- **Trim** by duration (`durations` per format, or `default`).
+- **Reframe** by aspect ratio with a subject-centered crop (`subject_center`), so the
+  face stays at the center of the cut — never cropped out.
+- **Brand overlay** reusing the concept's declarative spec in transparent
+  mode (`render.render(..., transparent=True)`): logo, kicker, hook, CTA in the
+  safe zones, same as the PNGs.
+- **Concat** of clips with the same geometry (`video.concat`, stream copy without re-encode).
+- **Burned-in captions**: `"auto"` (faster-whisper, model downloaded on first use) or a
+  manual list `[{start,end,text}]`. Becomes a PIL PNG overlaid per time window — does not
+  depend on libass/fontconfig. With captions, the overlay's `bottom` rises so the copy/CTA
+  does not collide with the caption strip.
 
-Config em `campaign.json.video`:
+Config in `campaign.json.video`:
 ```json
 {"source": "assets/clip.mp4", "durations": {"meta_story": 15, "default": 6},
  "captions": "auto", "concepts": ["clean"], "formats": ["meta_story", "meta_feed_square"]}
 ```
-`source` pode ser um mapping por eixo; `concat: [paths]` gera um master antes. As peças
-saem em `out/<concept>/<name>.mp4`, entram no `state.json` com `kind:"video"` e aparecem
-na revisão como player com aprovar/rejeitar/refazer. O compliance de rosto roda sobre um
-frame composto (overlay + frame do meio), igual às imagens.
+`source` can be a mapping per axis; `concat: [paths]` generates a master first. The pieces
+land in `out/<concept>/<name>.mp4`, enter `state.json` with `kind:"video"` and appear
+in the review as a player with approve/reject/redo. Face compliance runs on a
+composed frame (overlay + middle frame), same as images.
 
-## Regras (invioláveis)
+## Rules (inviolable)
 
-1. **Nunca cobrir rostos.** O check `subject_safe` compara o centro do sujeito com os
-   elementos; respeite as safe zones. Se bloquear, reposicione — não desligue o check.
-2. **Custo é aviso, não porteiro.** O usuário já espera ser cobrado pela geração
-   contratada. Mostre `≈ X créditos` (estimativa do provider) e siga. Não bloqueie.
-3. **Vídeo é job de provider** (`kind:"video"`), gerado via MCP do usuário (ex.:
-   Magnific) — não há render local de vídeo. `credits_per_video` é separado de
+1. **Never cover faces.** The `subject_safe` check compares the subject center with the
+   elements; respect the safe zones. If it blocks, reposition — do not turn the check off.
+2. **Cost is a notice, not a gatekeeper.** The user already expects to be charged for the
+   contracted generation. Show `≈ X credits` (the provider's estimate) and proceed. Do not block.
+3. **Video is a provider job** (`kind:"video"`), generated via the user's MCP (e.g.
+   Magnific) — there is no local video render. `credits_per_video` is separate from
    `credits_per_image`.
-4. **Revisão por peça, em lote:** aprovar / rejeitar / refazer apenas **marcam** a peça
-   (intenção no `state.json`); nada executa até o **Continuar** (etapa 6). Filtros de status
-   e achados de compliance no card. As **aprovadas ficam só na lista de aprovadas** (saem da
-   grade de trabalho); rejeitadas/refazer atualizam **na mesma página** após a regeneração.
-   Mantenha esse formato.
-5. **Arquivos e controle locais.** Nada de criar URL pública, remote ou deploy sem
-   pedir explicitamente ao usuário.
-6. **Design segue o briefing/refs.** `plan` te dá a matéria-prima; a direção de arte é
-   sua, não um template fixo.
+4. **Per-piece review, in batch:** approve / reject / redo only **mark** the piece
+   (intent in `state.json`); nothing runs until **Continue** (stage 6). Status filters
+   and compliance findings on the card. The **approved pieces stay only in the approved list** (they leave
+   the working grid); rejected/redo update **on the same page** after regeneration.
+   Keep this format.
+5. **Local files and control.** Do not create a public URL, remote or deploy without
+   explicitly asking the user.
+6. **Design follows the briefing/refs.** `plan` gives you the raw material; the art direction is
+   yours, not a fixed template.
 
-## Providers (contrato = pasta + manifest, não API)
+## Providers (contract = folder + manifest, not API)
 
 `campaign.json.provider.name`:
-- `manual` — você/agente deposita os arquivos em `drop_dir`; o kit coleta.
-- `magnific-mcp` (ou `mcp`) — **mediado pelo agente**. `assets` prepara
-  `campaigns/<slug>/assets/jobs.json` e levanta `NeedsAgent`; o CLI imprime os jobs.
-  Você cumpre cada job pelo seu MCP (imagem ou vídeo), salva no `drop_dir`, e roda
-  `assets` de novo para coletar + gravar `manifest.json` (com `kind` e créditos).
-- `http_api` — POST genérico configurável (`credits_per_image`, `credits_per_video`,
-  `{duration}` no body; `.mp4` para vídeo, `.png` para imagem).
+- `manual` — you/the agent drop the files into `drop_dir`; the kit collects.
+- `magnific-mcp` (or `mcp`) — **agent-mediated**. `assets` prepares
+  `campaigns/<slug>/assets/jobs.json` and raises `NeedsAgent`; the CLI prints the jobs.
+  You fulfill each job through your MCP (image or video), save into `drop_dir`, and run
+  `assets` again to collect + write `manifest.json` (with `kind` and credits).
+- `http_api` — configurable generic POST (`credits_per_image`, `credits_per_video`,
+  `{duration}` in the body; `.mp4` for video, `.png` for image).
 
-`estimate()` é obrigatório em todo provider e retorna o aviso informativo.
+`estimate()` is mandatory on every provider and returns the informative notice.
 
-## Normalize (briefing livre → schema, mediado pelo agente)
+## Normalize (free-form briefing → schema, agent-mediated)
 
-Mesma lógica dos providers: o Python prepara, o agente cumpre, o Python valida.
-`brief --normalize <fonte>` emite um **skeleton YAML** do schema (campos vazios, a
-pergunta de cada um em comentário) + um contrato `<out>.normalize.md` com a fonte
-(o texto, se `.md/.txt/.rtf`; senão a instrução de extrair).
+Same logic as the providers: Python prepares, the agent fulfills, Python validates.
+`brief --normalize <source>` emits a **YAML skeleton** of the schema (empty fields, each
+field's question as a comment) + a contract `<out>.normalize.md` with the source
+(the text, if `.md/.txt/.rtf`; otherwise the instruction to extract).
 
-Seu trabalho como agente:
-1. Ler a fonte — **visão** para PDF/imagem, leitor de docx para `.docx`.
-2. Mapear a prosa nos campos do skeleton, respeitando enums e chaves de mapa.
-3. **Não souber → deixe vazio** (`null/[]/{}`). Vazio vira pergunta na rodada única
-   do `validate`; nunca invente valor, cor, canal, conceito, copy ou caminho.
-4. Paths de arquivo relativos à base do contrato (a pasta do `--out`).
-5. `brief <out>` (valida) → `brief <out> --apply` (escreve marca + campanha).
+Your job as the agent:
+1. Read the source — **vision** for PDF/image, a docx reader for `.docx`.
+2. Map the prose into the skeleton's fields, respecting enums and map keys.
+3. **Don't know → leave empty** (`null/[]/{}`). Empty becomes a question in the single
+   round of `validate`; never invent a value, color, channel, concept, copy or path.
+4. File paths relative to the contract's base (the `--out` folder).
+5. `brief <out>` (validates) → `brief <out> --apply` (writes brand + campaign).
 
-A garantia determinística é o **validate + apply**, não a sua leitura da prosa.
+The deterministic guarantee is the **validate + apply**, not your reading of the prose.
 
-## Etapa 6 — Entrega (Continuar) e regeneração
+## Stage 6 — Delivery (Continue) and regeneration
 
-Mesma lógica dos providers/normalize: o Python prepara e exporta, o agente regenera, o
-Python re-renderiza e a UI atualiza. A revisão é **em lote** — decidir não executa nada.
+Same logic as providers/normalize: Python prepares and exports, the agent regenerates,
+Python re-renders and the UI updates. The review is **batched** — deciding runs nothing.
 
-**O que cada clique faz (só marca, no `state.json`):**
-- **Aprovar** → `status:"approved"`. A peça sai da grade de trabalho e fica **só na lista
-  de aprovadas**, marcada para ir para a pasta de entrega (Desktop).
-- **Rejeitar** → `status:"rejected"`. Marcada para **recriar** (sem nota).
-- **Refazer** → `status:"redo"` + `note` (o que ajustar). Marcada para **refazer com a nota**.
-- **Ajustar estilo** (por conceito, ao filtrar um conceito) → grava `styles/<concept>.yaml`
-  (cores/fontes/nota) e marca **todas** as peças daquele conceito como `redo`. Ver abaixo.
+**What each click does (marks only, in `state.json`):**
+- **Approve** → `status:"approved"`. The piece leaves the working grid and stays **only in the
+  approved list**, marked to go to the delivery folder (Desktop).
+- **Reject** → `status:"rejected"`. Marked to **recreate** (no note).
+- **Redo** → `status:"redo"` + `note` (what to adjust). Marked to **redo with the note**.
+- **Adjust style** (per concept, when a concept is filtered) → writes `styles/<concept>.yaml`
+  (colors/fonts/note) and marks **all** pieces of that concept as `redo`. See below.
 
-**O botão "Continuar" (ou `kit.cli deliver`) executa o lote:**
-1. **Exporta** as aprovadas de `out/` para `~/Desktop/Campaign Kit/<campanha>/<conceito>/`
-   (cópia local, imediata) e marca `delivered:true` + `delivery_path` (caminho absoluto).
-2. **Enfileira** rejeitadas + refazer em `requests.json` — um lote com
+**The "Continue" button (or `kit.cli deliver`) runs the batch:**
+1. **Exports** the approved pieces from `out/` to `~/Desktop/Campaign Kit/<campaign>/<concept>/`
+   (local copy, immediate) and marks `delivered:true` + `delivery_path` (absolute path).
+2. **Queues** rejected + redo in `requests.json` — a batch with
    `{id, concept, format, axes, path, kind, asset, reason:"rejected"|"redo", note}`.
-3. A UI avisa o que foi exportado/enfileirado, mostra o botão **Abrir pasta** (abre a pasta de
-   entrega no Desktop) e avança o stepper para a etapa 6 (Entregar).
+3. The UI reports what was exported/queued, shows the **Open folder** button (opens the
+   delivery folder on the Desktop) and advances the stepper to stage 6 (Deliver).
 
-**SEU TRABALHO como agente — cumprir o lote `requests.json`:**
-1. Para cada peça: `reason:"redo"` → aplique a `note` (ajuste o template/copy/asset);
-   `reason:"rejected"` → **recrie** (nova direção, asset novo via MCP, ou variação de layout).
-   O render é **determinístico**: re-renderizar o mesmo spec dá a mesma imagem — para mudar
-   o resultado você **precisa** mudar um insumo (template, asset, copy ou fx).
-2. Rode `render <campaign> --ids <id1> <id2> ...` para re-renderizar **só** essas peças.
-   O `run` faz **merge** com o `state.json` anterior: aprovadas/entregues são preservadas,
-   as peças re-renderizadas voltam a `pending` (sem `note`/`queued`) para nova revisão, e as
-   demais ficam intactas. **Nunca** re-renderize a matriz inteira depois de aprovar — use `--ids`.
-3. A revisão **atualiza sozinha** (poll de 4 s no `state.json`): as rejeitadas/refazer
-   reaparecem como pendentes com a imagem nova, na mesma página; as aprovadas seguem só na
-   lista de aprovadas. O usuário revisa de novo e clica Continuar outra vez até fechar.
+**YOUR JOB as the agent — fulfill the `requests.json` batch:**
+1. For each piece: `reason:"redo"` → apply the `note` (adjust the template/copy/asset);
+   `reason:"rejected"` → **recreate** (new direction, new asset via MCP, or a layout variation).
+   The render is **deterministic**: re-rendering the same spec gives the same image — to change
+   the result you **must** change an input (template, asset, copy or fx).
+2. Run `render <campaign> --ids <id1> <id2> ...` to re-render **only** those pieces.
+   `run` **merges** with the previous `state.json`: approved/delivered are preserved,
+   the re-rendered pieces go back to `pending` (no `note`/`queued`) for a new review, and the
+   rest stay intact. **Never** re-render the whole matrix after approving — use `--ids`.
+3. The review **updates by itself** (4 s poll of `state.json`): the rejected/redo pieces
+   reappear as pending with the new image, on the same page; the approved ones stay only in the
+   approved list. The user reviews again and clicks Continue again until done.
 
-A pasta de entrega final (aprovadas + PPC) fica em `~/Desktop/Campaign Kit/<campanha>/`, no
-Desktop do usuário — o botão **Abrir pasta** na revisão a abre. `out/` (dentro de
-`campaigns/<slug>/`) continua sendo o render de trabalho. Nada no kit lê a entrega de volta:
-o merge e o PPC usam `state.json`/`out/`, então a entrega no Desktop não afeta a regeneração.
+The final delivery folder (approved + PPC) lives at `~/Desktop/Campaign Kit/<campaign>/`, on the
+user's Desktop — the **Open folder** button in the review opens it. `out/` (inside
+`campaigns/<slug>/`) remains the working render. Nothing in the kit reads the delivery back:
+the merge and the PPC use `state.json`/`out/`, so the Desktop delivery does not affect regeneration.
 
-## Ajuste de estilo por conceito (`styles/<concept>.yaml`)
+## Per-concept style adjustment (`styles/<concept>.yaml`)
 
-Para mudar **cores, fontes etc. de todas as peças de um conceito de uma vez**, o usuário
-filtra o conceito na revisão e clica **Ajustar estilo**: mexe nos papéis da paleta
-(`primary/accent/ink/paper/dark`), nos papéis tipográficos (`display/text/accent`) e numa
-nota livre. Isso grava `campaigns/<slug>/styles/<concept>.yaml` e marca todas as peças do
-conceito como `redo` (as aprovadas voltam a `pending`). **Nada renderiza na hora** — igual
-ao refazer, o lote sai no **Continuar** (`requests.json`).
+To change **colors, fonts etc. of all pieces of a concept at once**, the user
+filters the concept in the review and clicks **Adjust style**: tweaks the palette roles
+(`primary/accent/ink/paper/dark`), the type roles (`display/text/accent`) and a
+free note. That writes `campaigns/<slug>/styles/<concept>.yaml` and marks all pieces of the
+concept as `redo` (approved ones go back to `pending`). **Nothing renders immediately** — same
+as redo, the batch goes out on **Continue** (`requests.json`).
 
-**O override é aplicado pelo próprio render**, por conceito: `campaign.run` mescla
-`styles/<concept>.yaml` sobre a paleta/tipografia da marca base (`styled_brand`) antes de
-renderizar e checar compliance. Ou seja:
+**The override is applied by the render itself**, per concept: `campaign.run` merges
+`styles/<concept>.yaml` over the base brand's palette/typography (`styled_brand`) before
+rendering and checking compliance. That means:
 
-- Para cumprir um lote de restyle, **basta rodar `render --ids <ids>`** — o novo estilo já
-  entra sozinho; você **não** precisa editar template nem `brand.yaml` para cor/fonte.
-- O ajuste **persiste**: vale para essa e para as próximas renderizações daquele conceito.
-- A `note` do restyle é orientação extra (ex.: "mais contraste"); se pedir algo além de
-  cor/fonte (layout, safe area), aí sim ajuste o template/`brand.yaml` como no refazer normal.
-- Conflito entre o override e o briefing/brandbook vira pergunta — não chute.
+- To fulfill a restyle batch, **just run `render --ids <ids>`** — the new style already
+  comes in by itself; you do **not** need to edit the template or `brand.yaml` for color/font.
+- The adjustment **persists**: it applies to this and to future renders of that concept.
+- The restyle `note` is extra guidance (e.g. "more contrast"); if it asks for something beyond
+  color/font (layout, safe area), then adjust the template/`brand.yaml` as in a normal redo.
+- A conflict between the override and the briefing/brandbook becomes a question — do not guess.
 
 ```yaml
-# campaigns/<slug>/styles/cinema.yaml (exemplo)
+# campaigns/<slug>/styles/cinema.yaml (example)
 palette: {dark: "#040D0B", accent: "#FC6C54"}
 type: {display: DINPro-Bold.otf}
-note: mais contraste
+note: more contrast
 ```
 
-## Etapa 6b — Planilhas de PPC (bulk upload Meta + Google)
+## Stage 6b — PPC sheets (Meta + Google bulk upload)
 
-Quando a demanda é alta, Meta e Google aceitam importar anúncios em lote por planilha. O
-`kit.cli ppc` (e o **Continuar**, que já chama o export) gera essas planilhas em
-`ppc/` na pasta de entrega (`~/Desktop/Campaign Kit/<campanha>/ppc/`), **uma por plataforma**,
-em **CSV** (import direto) e **XLSX** (revisão no
-Excel/Sheets). É determinístico: cada peça aprovada (criativo + copy) vira uma linha nas
-colunas de import da plataforma, conforme formato/tamanho/canal.
+When demand is high, Meta and Google accept importing ads in bulk via spreadsheet.
+`kit.cli ppc` (and **Continue**, which already calls the export) generates those sheets in
+`ppc/` in the delivery folder (`~/Desktop/Campaign Kit/<campaign>/ppc/`), **one per platform**,
+as **CSV** (direct import) and **XLSX** (review in
+Excel/Sheets). It is deterministic: each approved piece (creative + copy) becomes a row in the
+platform's import columns, according to format/size/channel.
 
-**Arquivos gerados:**
-- `meta_bulk_import` → Meta Ads Manager → Import/Export → **Import Ads in Bulk**. Uma linha
-  por peça Meta (feed/story/reels), com placements por formato, CTA, copy e nome do criativo.
-- `google_search_rsa` → Google Ads Editor (CSV) ou **Bulk actions → Uploads**. Responsive
-  Search Ads: até 15 headlines (≤30 car.) + 4 descriptions (≤90) derivados do copy por
-  conceito×eixo (não por peça — o RSA é texto, não imagem).
-- `google_display` → Google Ads Editor / Uploads. Responsive Display Ads: texto + **referência
-  ao arquivo de imagem/logo** (o anexo da imagem é feito no Editor, não por CSV puro).
-- `creative_manifest` → referência humana: cada peça com plataforma, formato, tamanho,
-  conceito, eixos, arquivo, caminho de entrega e copy (hook/kicker/program/CTA).
-- `README.txt` → o que já vem preenchido vs. o que o time de PPC completa, e os limites.
+**Generated files:**
+- `meta_bulk_import` → Meta Ads Manager → Import/Export → **Import Ads in Bulk**. One row
+  per Meta piece (feed/story/reels), with placements per format, CTA, copy and creative file name.
+- `google_search_rsa` → Google Ads Editor (CSV) or **Bulk actions → Uploads**. Responsive
+  Search Ads: up to 15 headlines (≤30 chars) + 4 descriptions (≤90) derived from the copy per
+  concept×axis (not per piece — RSA is text, not image).
+- `google_display` → Google Ads Editor / Uploads. Responsive Display Ads: text + **image/logo
+  file reference** (the image attachment is done in Editor, not via plain CSV).
+- `creative_manifest` → human reference: each piece with platform, format, size,
+  concept, axes, file, delivery path and copy (hook/kicker/program/CTA).
+- `README.txt` → what comes pre-filled vs. what the PPC team completes, and the limits.
 
-**Já preenchido pelo kit:** nomes de campanha/ad set/ad, criativo (nome do arquivo), copy
-(hook/primary text, headline, description), CTA (enum do Meta), placements e tamanho.
-**Fica em branco (coluna rotulada) para o time de PPC:** URL final (`Link`/`Final URL`),
-Display Link, URL Tags (UTM), objetivo, orçamento, optimization goal, billing event,
-países/targeting e IDs (Facebook Page/`Link Object ID`, Instagram Account ID, Pixel). Tudo
-sai **PAUSED/Paused** para revisão antes de ativar.
+**Pre-filled by the kit:** campaign/ad set/ad names, creative (file name), copy
+(hook/primary text, headline, description), CTA (Meta enum), placements and size.
+**Left blank (labeled column) for the PPC team:** final URL (`Link`/`Final URL`),
+Display Link, URL Tags (UTM), objective, budget, optimization goal, billing event,
+countries/targeting and IDs (Facebook Page/`Link Object ID`, Instagram Account ID, Pixel). Everything
+ships **PAUSED/Paused** for review before going live.
 
-**SEU TRABALHO como agente:** o export é mecânico e não inventa URL nem orçamento. Se o
-briefing trouxer a landing page, você pode gravar `landing_url` no `campaign.json` para o
-kit pré-preencher `Link`/`Final URL`; caso contrário, deixe em branco e sinalize ao usuário
-que o PPC completa. Não preencha IDs de Page/Pixel/Instagram nem verba — são do time de
-tráfego. O copy do RSA sai do `copy` da campanha; se faltar headline/description, melhore o
-`copy` no briefing e re-renderize/exporte, não hardcode na planilha.
+**YOUR JOB as the agent:** the export is mechanical and does not invent URL or budget. If the
+briefing includes the landing page, you can write `landing_url` into `campaign.json` so the
+kit pre-fills `Link`/`Final URL`; otherwise leave it blank and tell the user
+that PPC completes it. Do not fill Page/Pixel/Instagram IDs or budget — those belong to the
+traffic team. The RSA copy comes from the campaign's `copy`; if headline/description are missing, improve the
+`copy` in the briefing and re-render/export — do not hardcode in the sheet.
 
-## Idioma (PT/EN)
+## Language
 
-A UI (wizard + revisão) tem toggle **PT | EN** no topo, gravado em cookie, e o CLI aceita
-`--lang en` ou a env `KIT_LANG=en` (default PT). Slots, perguntas do briefing, gaps e
-achados de compliance saem localizados. **Este AGENTS.md, as skills e a saída do `plan`
-ficam em PT** — são o contrato do agente, não UI. Ao conversar com o usuário, responda no
-idioma dele; o idioma da interface é independente e o usuário escolhe no toggle.
+Everything is English-only: the UI (wizard + review), the CLI, the schema questions,
+gaps, compliance findings and the docs (this AGENTS.md, the skills, the `plan` output).
+There is no language toggle and no `--lang` flag. When chatting with the user, still
+reply in the user's own language.
 
-## Limites honestos
+## Honest limits
 
-O motor renderiza specs deterministicamente (PIL). A criatividade — autorais de
-templates, copy, análise das refs, escolha de provider — é do agente. O kit não
-"adivinha" a marca sozinho: `intake` deriva o que dá (paleta, logo) e o resto vem do
-briefing + da sua direção de arte no `plan`. No `normalize`, você adapta a prosa ao
-schema, mas o que falta continua virando pergunta — nunca chute silencioso.
+The engine renders specs deterministically (PIL). The creativity — authoring
+templates, copy, refs analysis, provider choice — belongs to the agent. The kit does not
+"guess" the brand on its own: `intake` derives what it can (palette, logo) and the rest comes from the
+briefing + your art direction in `plan`. In `normalize`, you adapt the prose to the
+schema, but what is missing still becomes a question — never a silent guess.

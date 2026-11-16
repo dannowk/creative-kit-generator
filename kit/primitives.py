@@ -1,7 +1,7 @@
-"""Primitivas de imagem e tipografia, sem nenhuma marca dentro.
+"""Image and typography primitives, with no brand inside.
 
-Portado do motor CDI (gerar_templates_v3.py / processar_campanha.py / gerar_concept4.py).
-Cores, fontes e textos entram por parâmetro — o resultado visual é o mesmo do original.
+Ported from the CDI engine (gerar_templates_v3.py / processar_campanha.py / gerar_concept4.py).
+Colors, fonts and texts come in as parameters — the visual result is the same as the original.
 """
 
 import numpy as np
@@ -10,7 +10,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFo
 LANCZOS = Image.LANCZOS
 
 
-# ---------------------------------------------------------------- geometria de foto
+# ---------------------------------------------------------------- photo geometry
 def resize_and_crop(img, size):
     tw, th = size
     ratio = max(tw / img.width, th / img.height)
@@ -21,7 +21,7 @@ def resize_and_crop(img, size):
 
 
 def subject_center(img):
-    """Centro horizontal da pessoa por energia de bordas na faixa rosto/tronco, puxado ao centro."""
+    """Horizontal center of the person via edge energy in the face/torso band, pulled toward center."""
     small = img.convert("L").resize((640, 360)).filter(ImageFilter.FIND_EDGES)
     cols = [ImageStat.Stat(small.crop((x * 16, 40, x * 16 + 16, 250))).mean[0] for x in range(40)]
     weights = [max(0, c - 6) ** 2 for c in cols]
@@ -30,7 +30,7 @@ def subject_center(img):
 
 
 def crop(img, w, h, center, subject_at=0.5):
-    """Cobre w×h com a pessoa na posição horizontal subject_at; corta mais embaixo que em cima."""
+    """Cover w×h with the person at horizontal position subject_at; crops more below than above."""
     ratio = max(w / img.width, h / img.height)
     sw, sh = round(img.width * ratio), round(img.height * ratio)
     scaled = img.resize((sw, sh), LANCZOS)
@@ -40,7 +40,7 @@ def crop(img, w, h, center, subject_at=0.5):
 
 
 def closeup(img, w, h, fx, zoom, face_at=0.38, fx_at=0.5, face_y=0.27):
-    """Janela w:h com altura zoom×altura da foto, sujeito em fx e na altura face_at."""
+    """w:h window with height zoom×photo height, subject at fx and at height face_at."""
     ch = img.height * zoom
     cw = ch * w / h
     if cw > img.width:
@@ -50,9 +50,9 @@ def closeup(img, w, h, fx, zoom, face_at=0.38, fx_at=0.5, face_y=0.27):
     return img.crop((round(x0), round(y0), round(x0 + cw), round(y0 + ch))).resize((w, h), LANCZOS)
 
 
-# ---------------------------------------------------------------- película e logo
+# ---------------------------------------------------------------- film and logo
 def multiply_overlay(base, overlay):
-    """Multiply como no Photoshop: multiplica as cores e usa o alfa da película como máscara."""
+    """Multiply as in Photoshop: multiplies the colors and uses the film's alpha as mask."""
     base = base.convert("RGBA")
     overlay = overlay.convert("RGBA")
     mult = ImageChops.multiply(base.convert("RGB"), overlay.convert("RGB")).convert("RGBA")
@@ -66,7 +66,7 @@ def multiply_color(base, color, alpha=1.0):
 
 
 def sized_logo(logo, width, max_w_ratio=0.36, max_h_ratio=0.18, canvas=None):
-    """Logo escala por √(L×A) para ocupar a mesma fração visual em qualquer formato."""
+    """Logo scales by √(W×H) to occupy the same visual fraction in any format."""
     if canvas is not None:
         w, h = canvas
         width = min(width, w * max_w_ratio, h * max_h_ratio * logo.width / logo.height)
@@ -97,7 +97,7 @@ def grade(img, vignette=0.45, grain=7, shadow=(0.02, 0.07, 0.09), light=(1.0, 0.
 
 
 def fade_to(img, color, start, end, horizontal=False, flip=False):
-    """Esmaece para `color` entre start e end (fração do comprimento, 0 = lado da foto)."""
+    """Fade to `color` between start and end (fraction of the length, 0 = photo side)."""
     w, h = img.size
     n = w if horizontal else h
     line = Image.new("L", (n, 1))
@@ -123,7 +123,7 @@ def light_leak(img, corner="tl", strength=0.35, color=(1.0, 0.5, 0.1)):
     return Image.fromarray((np.clip(a, 0, 1) * 255).astype(np.uint8))
 
 
-# ---------------------------------------------------------------- textura
+# ---------------------------------------------------------------- texture
 def _rng(seed):
     return np.random.default_rng(seed)
 
@@ -164,7 +164,7 @@ def paper(w, h, base=(244, 239, 230), seed=5):
 
 
 def halftone(size, corner, color, opacity=0.45, step=None, reach=0.9):
-    """Pontos grandes no canto que diminuem até sumir. corner: tl tr bl br. Devolve RGBA."""
+    """Large dots in the corner that shrink until they vanish. corner: tl tr bl br. Returns RGBA."""
     w, h = size
     step = step or max(10, round(min(w, h) * 0.032))
     sc = 2
@@ -185,9 +185,9 @@ def halftone(size, corner, color, opacity=0.45, step=None, reach=0.9):
     return out
 
 
-# ---------------------------------------------------------------- tipografia
+# ---------------------------------------------------------------- typography
 def tokens(text):
-    """[colchete] marca a palavra de destaque; pode abranger várias palavras."""
+    """[bracket] marks the highlight word; may span several words."""
     out, marked = [], False
     for raw in text.split():
         start = raw.startswith("[")
@@ -205,8 +205,8 @@ def ft(spec, size):
 
 def draw_copy(canvas, x, y_bottom, width, max_h, text, start, color, font_style,
               align="left", accent=(255, 158, 0), min_size=14, max_lines=4, metrics=None):
-    """Contraste de peso: palavra marcada em fonte mais pesada/condensada/itálica, na cor de acento.
-    Encolhe até caber em max_lines e max_h. Termina em y_bottom; devolve o topo."""
+    """Weight contrast: marked word in a heavier/condensed/italic font, in the accent color.
+    Shrinks until it fits max_lines and max_h. Ends at y_bottom; returns the top."""
     base_spec, acc_spec = font_style["base"], font_style["accent"]
     acc_scale = font_style.get("accent_scale", 1.2)
     acc_upper = font_style.get("accent_upper", True)
@@ -268,7 +268,7 @@ def draw_copy(canvas, x, y_bottom, width, max_h, text, start, color, font_style,
 
 
 def _apply_nobreak(words, phrases):
-    """Cola com espaço não-quebrável os termos que a marca proíbe quebrar em duas linhas."""
+    """Glue with non-breaking spaces the terms the brand forbids breaking across two lines."""
     if not phrases:
         return words
     joined = "\u00a0"
@@ -328,9 +328,9 @@ def cta_text(canvas, x, y, size, label, info_spec, color=(255, 255, 255),
         draw.rectangle([x, y + size * 0.3, x + lw, y + size * 0.3 + max(2, size * 0.09)], fill=tuple(accent))
 
 
-# ---------------------------------------------------------------- folhas de contato
+# ---------------------------------------------------------------- contact sheets
 def contact_sheet(paths, out_path, thumb_h=420, cols=None, bg=(225, 228, 232), pad=12):
-    """Grade de miniaturas com altura normalizada — serve para revisão em lote."""
+    """Thumbnail grid with normalized height — for batch review."""
     thumbs = []
     for p in paths:
         t = Image.open(p).convert("RGB")

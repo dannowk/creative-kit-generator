@@ -1,7 +1,7 @@
-"""Provider HTTP genérico (fal, Replicate, OpenAI images, Stability...) via urllib.
+"""Generic HTTP provider (fal, Replicate, OpenAI images, Stability...) via urllib.
 
-Config declarativa no campaign.json: url, headers, corpo-template e onde ler a imagem
-na resposta (url ou base64), com polling opcional para APIs assíncronas.
+Declarative config in campaign.json: url, headers, body template and where to read the
+image in the response (url or base64), with optional polling for async APIs.
 """
 
 import base64
@@ -66,7 +66,7 @@ class HttpAPI(Provider):
                     break
                 time.sleep(poll.get("interval", 3))
             else:
-                raise TimeoutError(f"Provider {self.name} não terminou o job {job['id']}.")
+                raise TimeoutError(f"Provider {self.name} did not finish job {job['id']}.")
 
         out = []
         results = _dig(resp, cfg.get("results_path", "data"))

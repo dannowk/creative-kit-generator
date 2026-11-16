@@ -1,6 +1,7 @@
-"""Marca como dado: paleta, tipografia, voz, eixos, naming e compliance.
+"""Brand as data: palette, typography, voice, axes, naming and compliance.
 
-Nada de marca vive no motor — este módulo é a única ponte entre o brand.yaml e as primitivas.
+Nothing brand-specific lives in the engine — this module is the only bridge between
+brand.yaml and the primitives.
 """
 
 import os
@@ -9,8 +10,8 @@ import yaml
 
 FONT_ENV = "CAMPAIGN_FONTS"
 
-# Degradação honesta quando a fonte da marca não veio na pasta: mantém peso/itálico
-# aproximados em vez de estourar. O intake avisa que a tipografia não foi inferida.
+# Honest degradation when the brand font did not come in the folder: keep approximate
+# weight/italic instead of blowing up. Intake warns that typography was not inferred.
 FALLBACK = {
     "display": [
         "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
@@ -58,7 +59,7 @@ def font_dirs(extra=()):
 
 
 def find_font(filename, dirs):
-    """Procura pelo nome exato, depois por stem, em qualquer pasta de fonte conhecida."""
+    """Search by exact name, then by stem, in any known font folder."""
     if not filename:
         return None
     if os.path.isabs(filename) and os.path.isfile(filename):
@@ -83,7 +84,7 @@ class FontBook:
         self.substituted = []
 
     def spec(self, role):
-        """role -> (caminho, índice TTC). Registra substituição para o intake reportar."""
+        """role -> (path, TTC index). Records substitutions for intake to report."""
         entry = self.cfg.get(role) or {}
         if isinstance(entry, str):
             entry = {"file": entry}
@@ -97,11 +98,11 @@ class FontBook:
                     if pair not in self.substituted:
                         self.substituted.append(pair)
                     return (cand, entry.get("index", 0))
-            raise FileNotFoundError(f"Sem fonte para '{role}' e sem fallback de sistema.")
+            raise FileNotFoundError(f"No font for '{role}' and no system fallback.")
         return (path, entry.get("index", 0))
 
     def style(self, role="display"):
-        """Parâmetros do contraste tipográfico que o draw_copy consome."""
+        """Parameters of the typographic contrast that draw_copy consumes."""
         accent_role = f"{role}_accent"
         return {
             "base": self.spec(role),
@@ -122,7 +123,7 @@ class Brand:
                         if k != "forbidden"}
         self.forbidden = [hex_rgb(v) for v in (data.get("palette") or {}).get("forbidden", [])]
         self.assets_dir = os.path.join(root, data.get("assets_dir", "assets"))
-        self.fonts = FontBook(data.get("type"), font_dirs([self.assets_dir, os.path.join(root, "fontes")]))
+        self.fonts = FontBook(data.get("type"), font_dirs([self.assets_dir, os.path.join(root, "fonts")]))
         self.voice = data.get("voice") or {}
         self.axes = data.get("axes") or []
         self.naming = data.get("naming", "{slug}_{concept}_{size}")
@@ -148,7 +149,7 @@ class Brand:
         return None
 
     def color(self, ref, default=(255, 255, 255)):
-        """Resolve 'palette.primary', 'white', '#FF9E00' ou [r,g,b]."""
+        """Resolve 'palette.primary', 'white', '#FF9E00' or [r,g,b]."""
         if ref is None:
             return default
         if isinstance(ref, (list, tuple)):
@@ -160,7 +161,7 @@ class Brand:
             key = s.split(".", 1)[1]
             if key in self.palette:
                 return self.palette[key]
-            raise KeyError(f"Cor '{key}' não está na paleta de {self.id}.")
+            raise KeyError(f"Color '{key}' is not in the palette of {self.id}.")
         named = {"white": (255, 255, 255), "black": (0, 0, 0),
                  "ink": self.palette.get("ink", (17, 24, 32)),
                  "dark": self.palette.get("dark", (8, 13, 17)),
@@ -170,7 +171,7 @@ class Brand:
         return named.get(s, default)
 
     def axis_values(self, axis):
-        """Eixo pode listar valores inline ou apontar para um CSV/JSON da pasta da marca."""
+        """An axis can list values inline or point to a CSV/JSON in the brand folder."""
         if "values" in axis:
             return list(axis["values"])
         src = axis.get("values_from")
@@ -195,7 +196,7 @@ class Brand:
 
 
 def load_brand(path):
-    """path = pasta da marca (com brand.yaml) ou o próprio arquivo."""
+    """path = brand folder (with brand.yaml) or the file itself."""
     if os.path.isdir(path):
         root, file = path, os.path.join(path, "brand.yaml")
     else:

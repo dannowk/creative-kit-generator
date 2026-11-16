@@ -1,10 +1,10 @@
-"""Briefing canônico: schema -> validate -> apply.
+"""Canonical briefing: schema -> validate -> apply.
 
-O briefing.schema.yaml é a fonte única: daqui saem as perguntas de gap (rodada
-única, como no intake), os erros estruturais e o template markdown. O apply é
-determinístico: escreve brands/<id>/brand.yaml e campaigns/<marca>-<slug>/campaign.json
-(bloco video incluso) e copia os assets declarados. Nada de inferência silenciosa:
-o que não é derivável com confiança (paleta do logo) é marcado como proposta.
+briefing.schema.yaml is the single source: gap questions (single round, like intake),
+structural errors and the markdown template all come from it. apply is deterministic:
+writes brands/<id>/brand.yaml and campaigns/<brand>-<slug>/campaign.json (video block
+included) and copies the declared assets. No silent inference: what can't be derived
+with confidence (palette from the logo) is marked as a proposal.
 """
 
 import json
@@ -61,9 +61,9 @@ def _fields(schema):
             yield f"{sec}.{key}", meta
 
 
-def validate(struct, base_dir=None, lang="pt"):
-    """Gaps (required/optional, rodada única) + erros estruturais. ok = aplicável.
-    Perguntas dos gaps saem no idioma lang; erros estruturais ficam PT (contrato do agente)."""
+def validate(struct, base_dir=None):
+    """Gaps (required/optional, single round) + structural errors. ok = appliable.
+    Gap questions come from the schema; structural errors are EN (agent contract)."""
     schema = load_schema()
     gaps, errors = [], []
 
@@ -71,11 +71,11 @@ def validate(struct, base_dir=None, lang="pt"):
         errors.append({"field": field, "message": msg})
 
     if not isinstance(struct, dict):
-        return {"ok": False, "gaps": [], "errors": [{"field": "$", "message": "briefing não é um mapa YAML/JSON"}]}
+        return {"ok": False, "gaps": [], "errors": [{"field": "$", "message": "briefing is not a YAML/JSON map"}]}
 
     for sec in struct:
         if sec not in schema["secoes"]:
-            err(sec, f"seção desconhecida (válidas: {', '.join(schema['secoes'])})")
+            err(sec, f"unknown section (valid: {', '.join(schema['secoes'])})")
 
     concepts_raw = _get(struct, "campanha.conceitos") or []
     concepts = [_slug(c, 24) for c in concepts_raw if not _empty(c)]
@@ -86,7 +86,7 @@ def validate(struct, base_dir=None, lang="pt"):
         v = _get(struct, field)
         tipo = meta["tipo"]
         if _empty(v):
-            q, w = i18n.field_strings(field, meta, lang)
+            q, w = meta["pergunta"], meta["porque"]
             if meta.get("obrigatorio"):
                 gaps.append({"field": field, "question": q, "why": w, "required": True})
             elif meta.get("perguntar_se_ausente"):
@@ -94,101 +94,101 @@ def validate(struct, base_dir=None, lang="pt"):
             continue
 
         if tipo == "texto" and not isinstance(v, str):
-            err(field, "esperava texto")
+            err(field, "expected text")
         elif tipo == "numero":
             if not isinstance(v, (int, float)) or isinstance(v, bool):
-                err(field, "esperava número")
+                err(field, "expected number")
             elif field == "compliance.tolerancia_rosto" and not 0 <= v <= 1:
-                err(field, "tolerância deve estar entre 0 e 1")
+                err(field, "tolerance must be between 0 and 1")
         elif tipo == "enum":
             if v not in meta["valores"]:
-                err(field, f"valor '{v}' inválido (use: {', '.join(meta['valores'])})")
+                err(field, f"invalid value '{v}' (use: {', '.join(meta['valores'])})")
         elif tipo in ("lista", "lista_hex", "lista_arquivos"):
             if not isinstance(v, list):
-                err(field, "esperava lista")
+                err(field, "expected list")
             elif tipo == "lista_hex":
                 for c in v:
                     if not HEX_RE.match(str(c)):
-                        err(field, f"cor inválida: {c} (use #RRGGBB)")
+                        err(field, f"invalid color: {c} (use #RRGGBB)")
         elif tipo == "mapa_hex":
             if not isinstance(v, dict):
-                err(field, "esperava mapa de cores")
+                err(field, "expected color map")
             else:
                 for k, c in v.items():
                     if k not in meta["chaves"]:
-                        err(field, f"chave de cor desconhecida: {k} (use: {', '.join(meta['chaves'])})")
+                        err(field, f"unknown color key: {k} (use: {', '.join(meta['chaves'])})")
                     elif not HEX_RE.match(str(c)):
-                        err(field, f"cor inválida em {k}: {c}")
+                        err(field, f"invalid color in {k}: {c}")
         elif tipo == "mapa_arquivos":
             if not isinstance(v, dict):
-                err(field, "esperava mapa papel -> arquivo")
+                err(field, "expected role -> file map")
             else:
                 for k in v:
                     if k not in meta["chaves"]:
-                        err(field, f"papel de fonte desconhecido: {k} (use: {', '.join(meta['chaves'])})")
+                        err(field, f"unknown font role: {k} (use: {', '.join(meta['chaves'])})")
         elif tipo == "mapa_listas":
             if not isinstance(v, dict) or any(not isinstance(x, list) or not x for x in v.values()):
-                err(field, "esperava mapa de listas não-vazias (ex.: produto: [A, B])")
+                err(field, "expected map of non-empty lists (e.g. product: [A, B])")
         elif tipo == "mapa_duracoes":
             if not isinstance(v, dict):
-                err(field, "esperava mapa formato -> segundos")
+                err(field, "expected format -> seconds map")
             else:
                 for k, s in v.items():
                     if k != "default" and k not in formats.FORMATS:
-                        err(field, f"formato desconhecido em duracoes: {k}")
+                        err(field, f"unknown format in duracoes: {k}")
                     elif not isinstance(s, (int, float)) or s <= 0:
-                        err(field, f"duração inválida em {k}: {s}")
+                        err(field, f"invalid duration in {k}: {s}")
         elif tipo == "copy_por_conceito":
             if not isinstance(v, dict):
-                err(field, "esperava mapa conceito -> {hook, kicker}")
+                err(field, "expected concept -> {hook, kicker} map")
             else:
                 for k in v:
                     if _slug(k, 24) not in concepts and concepts:
-                        err(field, f"copy para conceito não declarado: {k}")
+                        err(field, f"copy for undeclared concept: {k}")
         elif tipo == "lista_segmentos":
             if not isinstance(v, list):
-                err(field, "esperava lista de segmentos")
+                err(field, "expected segment list")
             else:
                 for s in v:
                     if not isinstance(s, dict) or not all(k in s for k in ("start", "end", "text")):
-                        err(field, "segmento precisa de start, end e text")
+                        err(field, "segment needs start, end and text")
                         break
 
         if tipo in ("arquivo", "lista_arquivos", "mapa_arquivos") and base_dir:
             paths = [v] if tipo == "arquivo" else (v if tipo == "lista_arquivos" else list(v.values()))
             for p in paths:
                 if isinstance(p, str) and not os.path.isfile(os.path.join(base_dir, os.path.expanduser(p))):
-                    err(field, f"arquivo não encontrado: {p}")
+                    err(field, f"file not found: {p}")
 
     canais = _get(struct, "campanha.canais") or []
     if isinstance(canais, list):
         for c in canais:
             if c not in formats.BUNDLES and c not in formats.FORMATS:
-                err("campanha.canais", f"canal/formato desconhecido: {c}")
+                err("campanha.canais", f"unknown channel/format: {c}")
 
     for c in concepts:
         entry = copy_keys.get(c) or {}
         if not isinstance(entry, dict) or _empty(entry.get("hook")):
             gaps.append({"field": f"campanha.copy.{c}.hook",
-                         "question": i18n.t("gap.brief.hook.q", lang, c=c),
-                         "why": i18n.t("gap.brief.hook.w", lang),
+                         "question": i18n.t("gap.brief.hook.q", c=c),
+                         "why": i18n.t("gap.brief.hook.w"),
                          "required": True})
 
     video_present = any(not _empty(_get(struct, f"video.{k}"))
                         for k in ("fonte", "concat", "duracoes", "legendas", "segmentos", "formatos"))
     if video_present and _empty(_get(struct, "video.fonte")) and _empty(_get(struct, "video.concat")):
         gaps.append({"field": "video.fonte",
-                     "question": i18n.t("gap.brief.videosource.q", lang),
-                     "why": i18n.t("gap.brief.videosource.w", lang), "required": True})
+                     "question": i18n.t("gap.brief.videosource.q"),
+                     "why": i18n.t("gap.brief.videosource.w"), "required": True})
     if _get(struct, "video.legendas") == "manual" and _empty(_get(struct, "video.segmentos")):
         gaps.append({"field": "video.segmentos",
-                     "question": i18n.t("gap.brief.segments.q", lang),
-                     "why": i18n.t("gap.brief.segments.w", lang),
+                     "question": i18n.t("gap.brief.segments.q"),
+                     "why": i18n.t("gap.brief.segments.w"),
                      "required": True})
     if _get(struct, "provider.nome") == "http" and _empty(_get(struct, "provider.api_url")):
         gaps.append({"field": "provider.api_url",
-                     "question": i18n.t("gap.brief.apiurl.q", lang),
-                     "why": i18n.t("gap.brief.apiurl.w", lang), "required": True})
+                     "question": i18n.t("gap.brief.apiurl.q"),
+                     "why": i18n.t("gap.brief.apiurl.w"), "required": True})
 
     return {"ok": not errors and not any(g["required"] for g in gaps),
             "gaps": gaps, "errors": errors}
@@ -204,10 +204,10 @@ def _copy_file(src, base_dir, dest_dir, name=None):
 
 
 def apply(struct, base_dir, root=ROOT):
-    """Escreve brand.yaml + campaign.json (e o briefing de proveniência). Determinístico."""
+    """Writes brand.yaml + campaign.json (and the provenance briefing). Deterministic."""
     v = validate(struct, base_dir)
     if not v["ok"]:
-        raise ValueError("briefing não aplicável: " +
+        raise ValueError("briefing not appliable: " +
                          "; ".join([f"[{e['field']}] {e['message']}" for e in v["errors"]] +
                                    [f"[{g['field']}] {g['question']}" for g in v["gaps"] if g["required"]]))
 
@@ -230,7 +230,7 @@ def apply(struct, base_dir, root=ROOT):
 
     type_cfg = {}
     for role, path in (marca.get("fontes") or {}).items():
-        fname = _copy_file(path, base_dir, os.path.join(brand_root, "fontes"))
+        fname = _copy_file(path, base_dir, os.path.join(brand_root, "fonts"))
         type_cfg[role] = {"file": fname}
 
     idiomas = marca.get("idiomas") or ["en"]
@@ -263,7 +263,7 @@ def apply(struct, base_dir, root=ROOT):
     with open(os.path.join(brand_root, "brand.yaml"), "w", encoding="utf-8") as f:
         yaml.safe_dump(brand, f, sort_keys=False, allow_unicode=True)
 
-    slug = _slug(camp.get("slug") or camp["objetivo"]) or "campanha"
+    slug = _slug(camp.get("slug") or camp["objetivo"]) or "campaign"
     camp_id = f"{brand_id}-{slug}"
     camp_root = os.path.join(root, "campaigns", camp_id)
     cassets = os.path.join(camp_root, "assets")
@@ -295,7 +295,7 @@ def apply(struct, base_dir, root=ROOT):
         "brand": brand_id, "slug": slug,
         "channels": channels, "concepts": concepts,
         "cta": camp["cta"], "copy": {"default": default_copy},
-        "objetivo": camp["objetivo"],
+        "objective": camp["objetivo"],
     }
     if explicit:
         campaign["formats"] = explicit
@@ -357,29 +357,29 @@ def apply(struct, base_dir, root=ROOT):
 
 
 def template_md():
-    """Template markdown gerado do schema — preencha ou peça ao agente para adaptar."""
+    """Markdown template generated from the schema — fill it in or ask the agent to adapt one."""
     schema = load_schema()
-    lines = ["# Briefing — modelo campaign-kit",
+    lines = ["# Briefing — campaign-kit template",
              "",
-             "Preencha os campos abaixo (ou peça ao agente para adaptar um briefing existente a este modelo).",
-             "Obrigatórios bloqueiam o apply; opcionais têm default ou viram pergunta em rodada única.",
-             "Caminhos de arquivo são relativos a este briefing.", ""]
+             "Fill in the fields below (or ask the agent to adapt an existing briefing to this template).",
+             "Required fields block apply; optional ones have a default or become a single-round question.",
+             "File paths are relative to this briefing.", ""]
     for i, (sec, body) in enumerate(schema["secoes"].items(), 1):
         lines.append(f"## {i}. {body['titulo']}")
         lines.append("")
         for key, meta in body["campos"].items():
-            req = "obrigatório" if meta.get("obrigatorio") else "opcional"
+            req = "required" if meta.get("obrigatorio") else "optional"
             extra = []
             if "valores" in meta:
-                extra.append("valores: " + ", ".join(str(v) for v in meta["valores"]))
+                extra.append("values: " + ", ".join(str(v) for v in meta["valores"]))
             if "padrao" in meta:
                 extra.append(f"default: {meta['padrao']}")
             if "chaves" in meta:
-                extra.append("chaves: " + ", ".join(meta["chaves"]))
+                extra.append("keys: " + ", ".join(meta["chaves"]))
             suffix = f" ({'; '.join(extra)})" if extra else ""
             lines.append(f"- **{sec}.{key}** [{req}] — {meta['pergunta']}{suffix}")
             lines.append(f"  - {meta['porque']}")
-            lines.append(f"  - resposta: _preencher_")
+            lines.append(f"  - answer: _fill in_")
         lines.append("")
     return "\n".join(lines)
 
@@ -406,21 +406,21 @@ def _yaml_val(v):
 
 
 def skeleton_yaml():
-    """YAML do schema com valores vazios e a pergunta de cada campo em comentário.
+    """Schema YAML with empty values and each field's question as a comment.
 
-    Vazio de propósito: o que o agente não souber preencher fica null/[]/{} e vira
-    gap na rodada única do validate — nunca um chute silencioso.
+    Empty on purpose: what the agent can't fill stays null/[]/{} and becomes a gap
+    in validate's single round — never a silent guess.
     """
     schema = load_schema()
-    lines = ["# Briefing canônico — skeleton gerado do schema (normalize).",
-             "# O agente preenche a partir do briefing-fonte; o que não souber fica vazio",
-             "# (vira pergunta na rodada única do validate). Nunca chute.",
-             "# Caminhos de arquivo são relativos a este arquivo.", ""]
+    lines = ["# Canonical briefing — skeleton generated from the schema (normalize).",
+             "# The agent fills it from the source briefing; what it doesn't know stays empty",
+             "# (becomes a question in validate's single round). Never guess.",
+             "# File paths are relative to this file.", ""]
     for sec, body in schema["secoes"].items():
         lines.append(f"{sec}:  # {body['titulo']}")
         opened = set()
         for field, meta in body["campos"].items():
-            req = "obrigatório" if meta.get("obrigatorio") else "opcional"
+            req = "required" if meta.get("obrigatorio") else "optional"
             comment = f"# [{req}] {meta['pergunta']}"
             val = _yaml_val(_placeholder(meta["tipo"]))
             parts = field.split(".")
@@ -439,18 +439,18 @@ def skeleton_yaml():
 
 
 def normalize_prepare(source, out_path, root=ROOT):
-    """Prepara a normalização de um briefing livre para o schema canônico.
+    """Prepares normalizing a free-form briefing into the canonical schema.
 
-    O Python só emite o skeleton + o contrato; quem lê a prosa (ou extrai PDF/docx
-    com visão) e preenche o YAML é o AGENTE. A garantia determinística continua
-    sendo validate (rodada única de gaps) + apply. Devolve o resumo do handoff.
+    Python only emits the skeleton + the contract; the one who reads the prose (or
+    extracts PDF/docx with vision) and fills the YAML is the AGENT. The deterministic
+    guarantee remains validate (single round of gaps) + apply. Returns the handoff summary.
     """
     source = os.path.abspath(os.path.expanduser(source))
     out_path = os.path.abspath(os.path.expanduser(out_path))
     if not os.path.isfile(source):
-        raise ValueError(f"briefing-fonte não encontrado: {source}")
+        raise ValueError(f"source briefing not found: {source}")
     if os.path.exists(out_path):
-        raise ValueError(f"já existe {out_path} — escolha outro --out para não sobrescrever")
+        raise ValueError(f"{out_path} already exists — pick another --out to avoid overwriting")
 
     low = source.lower()
     is_text = low.endswith(TEXT_EXT)
@@ -468,28 +468,28 @@ def normalize_prepare(source, out_path, root=ROOT):
 
     contract = out_path + ".normalize.md"
     base_dir = os.path.dirname(out_path)
-    lines = [f"# Normalizar briefing → schema canônico",
+    lines = ["# Normalize briefing → canonical schema",
              "",
-             f"- **fonte:** `{source}`",
-             f"- **alvo (preencha este YAML):** `{out_path}`",
-             f"- **base dos caminhos de arquivo:** `{base_dir}` (paths no YAML são relativos a ele)",
+             f"- **source:** `{source}`",
+             f"- **target (fill in this YAML):** `{out_path}`",
+             f"- **base for file paths:** `{base_dir}` (paths in the YAML are relative to it)",
              ""]
     if is_text and raw.strip():
-        lines += ["## Conteúdo da fonte (texto)", "", "```", raw.rstrip(), "```", ""]
+        lines += ["## Source content (text)", "", "```", raw.rstrip(), "```", ""]
     else:
-        lines += ["## Extração (arquivo binário)", "",
-                  "A fonte é PDF/docx/imagem: **extraia o conteúdo com a sua ferramenta**",
-                  "(visão para PDF/imagem, leitor de docx) antes de mapear para os campos.", ""]
-    lines += ["## Regras (invioláveis)", "",
-              "1. Mapeie a prosa para os campos do skeleton; cada comentário é a pergunta do campo.",
-              "2. **Não souber → deixe vazio** (null/[]/{}). Vazio vira pergunta na rodada única",
-              "   do `validate`; nunca invente valor, cor, canal, conceito ou copy.",
-              "3. Respeite os enums e as chaves de mapa indicadas no schema (briefing.schema.yaml).",
-              "4. `campanha.conceitos` + um `campanha.copy.<conceito>.hook` por conceito.",
-              "5. Caminhos de logo/fontes/fotos/vídeos/refs relativos à base acima.",
-              "", "## Depois de preencher", "",
-              f"```bash\npython3 -m kit.cli brief {out_path}          # valida (gaps + erros)\n"
-              f"python3 -m kit.cli brief {out_path} --apply   # escreve brand.yaml + campaign.json\n```", ""]
+        lines += ["## Extraction (binary file)", "",
+                  "The source is PDF/docx/image: **extract the content with your tool**",
+                  "(vision for PDF/image, docx reader) before mapping it to the fields.", ""]
+    lines += ["## Rules (inviolable)", "",
+              "1. Map the prose to the skeleton's fields; each comment is the field's question.",
+              "2. **Don't know → leave it empty** (null/[]/{}). Empty becomes a question in",
+              "   `validate`'s single round; never invent a value, color, channel, concept or copy.",
+              "3. Respect the enums and map keys indicated in the schema (briefing.schema.yaml).",
+              "4. `campanha.conceitos` + one `campanha.copy.<concept>.hook` per concept.",
+              "5. Logo/font/photo/video/ref paths relative to the base above.",
+              "", "## After filling it in", "",
+              f"```bash\npython3 -m kit.cli brief {out_path}          # validate (gaps + errors)\n"
+              f"python3 -m kit.cli brief {out_path} --apply   # write brand.yaml + campaign.json\n```", ""]
     with open(contract, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 

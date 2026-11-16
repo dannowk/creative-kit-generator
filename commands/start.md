@@ -1,39 +1,39 @@
 ---
-description: Conduz uma campanha do zero sem o usuário abrir terminal — cria a pasta, instala o Python gerenciado, abre o onboarding no navegador e segue até a revisão.
+description: Drives a campaign from scratch without the user opening a terminal — creates the folder, installs managed Python, opens the onboarding in the browser and follows through to review.
 ---
 
-O usuário **não abre terminal nem digita comando**. Você (agente) roda tudo; ele só
-conversa com você no chat e usa o navegador. Conduza nesta ordem:
+The user **does not open a terminal or type a command**. You (the agent) run everything; they only
+chat with you and use the browser. Drive in this order:
 
-1. Ache a raiz do kit (a pasta com `AGENTS.md` + `install.sh`).
-2. **Crie a pasta da campanha automaticamente**, sem perguntar caminho: default
-   `~/Desktop/minha-campanha` (ou `~/Desktop/<marca>` se o usuário já disse o nome
-   da marca no chat). Não peça para ele criar pasta nem digitar path.
-3. Rode `./install.sh <inbox>` (Mac/Linux, sem `--no-open`) ou `Instalar.bat <inbox>`
-   (Windows) em **background**. Ele baixa `uv` +
-   Python 3.12 gerenciado (sem admin), instala as dependências e **abre o wizard de
-   onboarding no navegador** do usuário, criando `logo/ refs/ brandbook/ fonts/
-   photos/ videos/ briefing/ briefing.md`. Cada slot aceita botão + arrastar-e-soltar (o briefing
-   também). Se `.venv/` já existe, só reabre o wizard.
-4. Diga no chat: *"Abri o onboarding no navegador. Suba o logo (obrigatório), fotos
-   e referências, e preencha o briefing; se tiver um brandbook, pode anexar também
-   (opcional). Na área de briefing há 'Documentos de apoio' para anexar vários arquivos:
-   copy dos anúncios, regras de layout, safe areas, segurança do logo. Me avise quando terminar."*
-   Espere o OK.
-5. Leia `AGENTS.md` e siga o pipeline: `intake (ou brief --apply) → plan → assets →
-   render → video`. Briefing livre (prosa/PDF/docx)? `brief --normalize <fonte>` →
-   preencha o skeleton (visão p/ PDF; o que faltar fica vazio, vira gap) → `brief --apply`.
-6. Avise o ≈ custo antes de jobs de provider (é aviso, não porteiro).
-7. Suba `review` (abre o navegador sozinho). Aprovar/rejeitar/refazer só **marcam**; o usuário
-   clica **Continuar** (etapa 6) — ou você roda `deliver` — para exportar as aprovadas na pasta
-   de entrega do Desktop (`~/Desktop/Campaign Kit/<campanha>/`) e enfileirar rejeitadas/refazer
-   em `requests.json`. O botão **Abrir pasta** abre essa pasta no computador do usuário. Cumpra
-   o lote (recrie/refaça de fato, mudando template/asset/copy), rode `render --ids <ids>` e a
-   revisão atualiza sozinha.
-   Se o usuário usou **Ajustar estilo** (cores/fontes de um conceito inteiro), o `styles/<concept>.yaml`
-   já é aplicado pelo render — para esse lote basta `render --ids`. Ver AGENTS.md.
-8. O Continuar/`deliver` também gera as **planilhas de PPC** (Meta + Google) em `ppc/` na pasta
-   de entrega (Desktop), CSV + XLSX, p/ o time de tráfego importar em lote. Ou rode `ppc <campanha>`. URL/orçamento/
-   targeting/IDs ficam em branco para o PPC — não invente. Ver "Etapa 6b" no AGENTS.md.
+1. Find the kit root (the folder with `AGENTS.md` + `install.sh`).
+2. **Create the campaign folder automatically**, without asking for a path: default
+   `~/Desktop/my-campaign` (or `~/Desktop/<brand>` if the user already said the brand
+   name in the chat). Do not ask them to create a folder or type a path.
+3. Run `./install.sh <inbox>` (Mac/Linux, without `--no-open`) or `Install.bat <inbox>`
+   (Windows) in the **background**. It downloads `uv` +
+   managed Python 3.12 (no admin), installs the dependencies and **opens the onboarding
+   wizard in the user's browser**, creating `logo/ refs/ brandbook/ fonts/
+   photos/ videos/ briefing/ briefing.md`. Each slot accepts a button + drag-and-drop (so does
+   the briefing). If `.venv/` already exists, it just reopens the wizard.
+4. Say in the chat: *"I opened the onboarding in the browser. Upload the logo (required), photos
+   and references, and fill in the briefing; if you have a brandbook, you can attach it too
+   (optional). In the briefing area there is 'Supporting documents' to attach several files:
+   ad copy, layout rules, safe areas, logo safety. Let me know when you're done."*
+   Wait for the OK.
+5. Read `AGENTS.md` and follow the pipeline: `intake (or brief --apply) → plan → assets →
+   render → video`. Free-form briefing (prose/PDF/docx)? `brief --normalize <source>` →
+   fill the skeleton (vision for PDF; whatever is missing stays empty, becomes a gap) → `brief --apply`.
+6. Show the ≈ cost notice before provider jobs (it is a notice, not a gatekeeper).
+7. Start `review` (opens the browser by itself). Approve/reject/redo only **mark**; the user
+   clicks **Continue** (stage 6) — or you run `deliver` — to export the approved pieces to the
+   Desktop delivery folder (`~/Desktop/Campaign Kit/<campaign>/`) and queue rejected/redo
+   in `requests.json`. The **Open folder** button opens that folder on the user's computer. Fulfill
+   the batch (actually recreate/redo, changing template/asset/copy), run `render --ids <ids>` and the
+   review updates by itself.
+   If the user used **Adjust style** (colors/fonts of a whole concept), the `styles/<concept>.yaml`
+   is already applied by the render — for that batch `render --ids` is enough. See AGENTS.md.
+8. Continue/`deliver` also generates the **PPC sheets** (Meta + Google) in `ppc/` in the
+   delivery folder (Desktop), CSV + XLSX, for the traffic team to bulk-import. Or run `ppc <campaign>`. URL/budget/
+   targeting/IDs stay blank for PPC — do not invent. See "Stage 6b" in AGENTS.md.
 
-Não pule o compliance (nunca cobrir rostos) e não hardcode visual de marca.
+Do not skip compliance (never cover faces) and do not hardcode brand visuals.

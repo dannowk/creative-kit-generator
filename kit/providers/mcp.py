@@ -1,8 +1,8 @@
-"""Magnific via MCP: o transporte é o agente, não o Python.
+"""Magnific via MCP: the transport is the agent, not Python.
 
-O Python prepara os jobs (imagem e vídeo) e coleta o que o agente baixou; a chamada à
-ferramenta MCP acontece no agente, que é quem tem a conexão (por instalação). O aviso
-de custo roda antes, com o crédito/unidade que o agente confirmou no plano.
+Python prepares the jobs (image and video) and collects what the agent downloaded; the
+MCP tool call happens in the agent, which is the one holding the connection (per install).
+The cost notice runs beforehand, with the credit/unit the agent confirmed in the plan.
 """
 
 import glob
@@ -22,8 +22,8 @@ class MagnificMCP(Provider):
         self.credits_per_video = credits_per_video
 
     def note(self):
-        return ("o agente chama a ferramenta MCP do Magnific (imagem ou vídeo) e solta os "
-                f"arquivos em {self.drop_dir} com o prefixo do job")
+        return ("the agent calls the Magnific MCP tool (image or video) and drops the "
+                f"files in {self.drop_dir} with the job prefix")
 
     def prepare(self, jobs, campaign_root):
         path = os.path.join(campaign_root, "assets", "jobs.json")

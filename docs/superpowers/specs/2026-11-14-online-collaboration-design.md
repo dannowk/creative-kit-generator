@@ -22,7 +22,7 @@ approved result back up for Dann to continue production.
 1. **Topology: hosted app + local agents** (his option 1). A hosted hub holds
    shared campaign state; each participant runs the kit + their own agent locally.
 2. **The content team gets "the visual step, but for content"** on THEIR machine
-   via THEIR agent: the existing local **Revisar copy** panel is that step. They
+   via THEIR agent: the existing local **Review copy** panel is that step. They
    ask their agent for adjustments per the briefing, approve in the panel, and
    push the result up to hand off to Dann.
 3. **Hub = common path only, never AI.** The hub stores campaigns, files and
@@ -41,7 +41,7 @@ approved result back up for Dann to continue production.
 content teammate's machine                Dann's machine
 ┌──────────────────────────┐              ┌──────────────────────────┐
 │ kit + their agent        │              │ kit + his agent + MCP    │
-│ hub pull → Revisar copy  │              │ hub pull → content --apply│
+│ hub pull → Review copy   │              │ hub pull → content --apply│
 │ panel (adjust/approve)   │              │ → plan/assets/render/video│
 │ → hub push               │              │ → review → deliver       │
 └────────────┬─────────────┘              └────────────┬─────────────┘
@@ -122,15 +122,15 @@ python -m kit.cli hub campaigns/<slug> push
   checks it against the stored value (Sites secret or hashed DB column — the plan
   verifies the exact Sites primitive). Missing/invalid token → 401.
 - **Offline:** no `hub.json` or no network → `pull`/`push` fail with a clear
-  PT/EN message; the local flow continues normally and no local work is lost.
+  message; the local flow continues normally and no local work is lost.
 
 ## Role flows
 
 **Content teammate (their machine, their agent):**
-1. Install the kit (`install.sh` / `Instalar.bat` — same bootstrap, no admin).
+1. Install the kit (`install.sh` / `Install.bat` — same bootstrap, no admin).
 2. Their agent links the campaign (`hub link` + `hub pull`) and opens the local
    review.
-3. The **Revisar copy** panel is their visual step: they ask their agent for
+3. The **Review copy** panel is their visual step: they ask their agent for
    adjustments per the briefing; the agent rewrites (`origin: agent`,
    `status: pending`, note cleared); they approve/reject/redo in the panel.
 4. `hub push` ships the reviewed copy up to the hub.
@@ -154,11 +154,11 @@ the base sheet. The hub never rewrites copy — only local agents (or humans) do
   as the local panel: deciding only marks; applying happens locally in Dann's
   `content --apply`), origin and who/when visible per row.
 - Base-sheet upload runs the same ingest contract as `kit.cli content`
-  (canonical columns + PT/EN aliases): sheet rows enter `origin: sheet,
+  (canonical columns + aliases): sheet rows enter `origin: sheet,
   status: approved` (the team's own copy is trusted). Re-uploading a base sheet
   rebuilds rows and resets decisions for that campaign — same semantics as local
   re-ingest — with a visible warning in the UI.
-- PT/EN toggle like the kit (cookie).
+- English-only UI, like the kit (no language toggle).
 - No AI, no render, no piece preview in slice 1.
 
 ## Invariants preserved

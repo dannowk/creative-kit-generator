@@ -1,6 +1,6 @@
 id: typographic
-name: Tipográfico
-description: Sem foto — só tipo, cor e logo. Serve para banners minúsculos e para campanha sem acervo fotográfico.
+name: Typographic
+description: No photo — just type, color and logo. Works for tiny banners and campaigns without a photo library.
 needs_photo: false
 
 variants:

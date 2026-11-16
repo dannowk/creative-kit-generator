@@ -1,6 +1,6 @@
 id: poster
-name: Pôster
-description: Moldura de filme — barras pretas, logo no topo, título centralizado, linha de campus espaçada.
+name: Poster
+description: Film frame — black bars, logo on top, centered title, letter-spaced campus line.
 needs_photo: true
 
 variants:

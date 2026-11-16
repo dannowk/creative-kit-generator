@@ -1,7 +1,7 @@
 #!/bin/sh
-# campaign-kit — instalador autocontido: uv + Python gerenciado + deps + wizard.
-# Não precisa de Python pré-instalado nem de admin: o uv baixa um CPython próprio
-# para dentro desta pasta. Uso: ./install.sh [pasta-da-campanha] [--no-open]
+# campaign-kit — self-contained installer: uv + managed Python + deps + wizard.
+# No pre-installed Python or admin needed: uv downloads its own CPython into this
+# folder. Usage: ./install.sh [campaign-folder] [--no-open]
 set -eu
 cd "$(dirname "$0")"
 KIT=$(pwd)
@@ -14,19 +14,19 @@ if [ ! -x .tools/uv ]; then
     Darwin/x86_64) TARGET=x86_64-apple-darwin ;;
     Linux/aarch64|Linux/arm64) TARGET=aarch64-unknown-linux-gnu ;;
     Linux/x86_64)  TARGET=x86_64-unknown-linux-gnu ;;
-    *) echo "sistema não suportado: $OS/$ARCH"; exit 1 ;;
+    *) echo "unsupported system: $OS/$ARCH"; exit 1 ;;
   esac
-  echo "baixando uv ($TARGET)…"
+  echo "downloading uv ($TARGET)…"
   curl -fsSL "https://github.com/astral-sh/uv/releases/latest/download/uv-$TARGET.tar.gz" -o .tools/uv.tar.gz
   tar -xzf .tools/uv.tar.gz -C .tools --strip-components=1 "uv-$TARGET/uv"
   rm .tools/uv.tar.gz
 fi
 
 if [ ! -x .venv/bin/python ]; then
-  echo "preparando Python 3.12 gerenciado (sem admin)…"
+  echo "preparing managed Python 3.12 (no admin)…"
   .tools/uv venv --python 3.12 .venv
 fi
-echo "instalando dependências…"
+echo "installing dependencies…"
 .tools/uv pip install --python .venv/bin/python -r requirements.txt
 
 INBOX=""
@@ -40,13 +40,13 @@ for a in "$@"; do
   esac
 done
 if [ -z "$INBOX" ]; then
-  printf "pasta da campanha (Enter = ~/Desktop/minha-campanha): "
+  printf "campaign folder (Enter = ~/Desktop/my-campaign): "
   read -r INBOX || true
-  INBOX=${INBOX:-$HOME/Desktop/minha-campanha}
+  INBOX=${INBOX:-$HOME/Desktop/my-campaign}
 fi
 if [ "$COPY" = "1" ]; then
-  echo "abrindo o wizard de copy…"
+  echo "opening the copy wizard…"
   exec .venv/bin/python -m kit.cli copy onboard "$INBOX" $FLAGS
 fi
-echo "abrindo o wizard de onboarding…"
+echo "opening the onboarding wizard…"
 exec .venv/bin/python -m kit.cli onboard "$INBOX" $FLAGS

@@ -1,12 +1,12 @@
-"""Edição de vídeo local com o ffmpeg embutido do imageio-ffmpeg (sem ffmpeg de sistema).
+"""Local video editing with imageio-ffmpeg's bundled ffmpeg (no system ffmpeg).
 
-Cobre o pacote completo: trim por duração, reframe por aspect ratio que mira o anchor
-da foto do spec (no wide, a coluna da foto — o texto fica na outra), overlay de marca
-reaproveitando os specs declarativos (render transparent), concat de clipes e legenda
-queimada — automática (faster-whisper, lazy) ou manual. Legendas viram PNG do PIL
-sobrepostos por janela de tempo, então não dependem de libass/fontconfig do ffmpeg.
-O prior de rosto sai da conta do crop (onde o sujeito caiu), mesmo contrato do
-render._record_face das imagens — não do centro fixo do frame.
+Covers the full package: trim by duration, reframe by aspect ratio aiming at the spec's
+photo anchor (on wide, the photo's column — the text lives in the other one), brand
+overlay reusing the declarative specs (render transparent), clip concat and burned-in
+captions — automatic (faster-whisper, lazy) or manual. Captions become PIL PNGs overlaid
+by time window, so they don't depend on ffmpeg's libass/fontconfig. The face prior comes
+from the crop math (where the subject landed), same contract as render._record_face for
+images — not from a fixed frame center.
 """
 
 import json
@@ -34,7 +34,7 @@ def _run(args):
     cmd = [FFMPEG, "-hide_banner", "-loglevel", "error", "-y"] + args
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
-        raise RuntimeError(f"ffmpeg falhou: {r.stderr.strip()[:500]}")
+        raise RuntimeError(f"ffmpeg failed: {r.stderr.strip()[:500]}")
     return r
 
 
@@ -52,9 +52,9 @@ def _even(n):
 
 
 def reframe_plan(sw, sh, w, h, fx, fy=0.4, tx=0.5, ty=0.4, zmax=2.2):
-    """Janela de crop que leva o sujeito a (tx, ty) do frame de destino.
-    Se o alvo não cabe na janela sem zoom, aproxima até zmax; devolve o crop e
-    onde o sujeito caiu de fato (sx, sy) — o prior de rosto sai dessa conta."""
+    """Crop window that takes the subject to (tx, ty) of the destination frame.
+    If the target doesn't fit the window without zoom, zooms in up to zmax; returns the
+    crop and where the subject actually landed (sx, sy) — the face prior comes from that."""
     tar = w / h
     if sw / sh > tar:
         ch, cw = sh, sh * tar
@@ -79,9 +79,9 @@ def reframe_filter(sw, sh, w, h, fx=0.5, fy=0.4, tx=0.5, ty=0.4):
 
 
 def _photo_anchor(spec, geo):
-    """Coluna horizontal onde o spec coloca o rosto da foto (fração da largura) + o
-    retângulo da foto. Mesmo contrato do render._record_face: no wide a foto vive
-    numa coluna e o texto na outra — o vídeo mira o sujeito nessa coluna, não no centro."""
+    """Horizontal column where the spec places the photo's face (fraction of the width) +
+    the photo rectangle. Same contract as render._record_face: on wide the photo lives in
+    one column and the text in the other — the video aims the subject at that column, not the center."""
     layers, vars_ = render._layers(spec, geo)
     v = dict(geo)
     v.update({"ratio": geo["h"] / geo["w"], "ar": geo["w"] / geo["h"],
@@ -118,7 +118,7 @@ def overlay_png(spec, brand, geo, copy, extra, logo):
 
 
 def concat(paths, dst):
-    """Concatena clipes de MESMA geometria/codec (copy, sem re-encode)."""
+    """Concatenates clips of the SAME geometry/codec (copy, no re-encode)."""
     with tempfile.TemporaryDirectory() as td:
         lst = os.path.join(td, "list.txt")
         with open(lst, "w", encoding="utf-8") as f:
@@ -129,11 +129,11 @@ def concat(paths, dst):
 
 
 def transcribe(src, model_size="tiny", language=None):
-    """Legendas automáticas. Lazy: só importa/baixa o modelo quando pedido."""
+    """Automatic captions. Lazy: only imports/downloads the model when requested."""
     try:
         from faster_whisper import WhisperModel
     except ImportError as e:
-        raise RuntimeError("faster-whisper não instalado; use legendas manuais ou "
+        raise RuntimeError("faster-whisper not installed; use manual captions or "
                            "pip install faster-whisper") from e
     model = WhisperModel(model_size, device="cpu", compute_type="int8")
     segments, _ = model.transcribe(src, language=language, vad_filter=True)
@@ -142,7 +142,7 @@ def transcribe(src, model_size="tiny", language=None):
 
 
 def caption_png(text, geo, brand):
-    """Faixa de legenda legível na base segura, sobre transparência."""
+    """Readable caption strip in the safe bottom area, over transparency."""
     w, h = geo["w"], geo["h"]
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -174,8 +174,8 @@ def caption_png(text, geo, brand):
 
 
 def overlay_geo(geo, has_captions):
-    """Com legenda, eleva o `bottom`: como os specs ancoram copy/CTA na base, tudo sobe
-    acima da faixa de legenda, que ocupa o bottom verdadeiro. Sem legenda, geo intacto."""
+    """With captions, raises `bottom`: since specs anchor copy/CTA at the base, everything
+    moves above the caption strip, which occupies the true bottom. Without captions, geo unchanged."""
     if not has_captions:
         return geo
     return {**geo, "bottom": geo["bottom"] - round(geo["scale"] * 0.16)}
@@ -183,9 +183,9 @@ def overlay_geo(geo, has_captions):
 
 def build_piece(src, dst, geo, fx, duration, overlay, segments, brand, fy=0.4,
                 target=None, face_size=None):
-    """Pass 1: trim + reframe + overlay de marca. Pass 2 (se houver): legendas.
-    `target` = coluna horizontal do sujeito (fração da largura), usada no wide para
-    pôr o sujeito na coluna da foto e o texto na outra. Devolve (dst, face_box)."""
+    """Pass 1: trim + reframe + brand overlay. Pass 2 (if any): captions.
+    `target` = subject's horizontal column (fraction of the width), used on wide to put
+    the subject in the photo's column and the text in the other. Returns (dst, face_box)."""
     info = probe(src)
     w, h = geo["w"], geo["h"]
     tx = target if target is not None else 0.5
@@ -224,11 +224,11 @@ def _burn_captions(src, dst, segments, geo, brand, td):
 
 
 def run(campaign):
-    """Monta as peças de vídeo (conceitos × formatos × eixos) e funde no state.json."""
+    """Builds the video pieces (concepts × formats × axes) and merges into state.json."""
     from . import campaign as C
     cfg = campaign.get("video")
     if not cfg:
-        return {"count": 0, "pieces": [], "note": "campanha sem bloco video"}
+        return {"count": 0, "pieces": [], "note": "campaign has no video block"}
     brand = C.brand_for(campaign)
     root = campaign["_root"]
     out_dir = os.path.join(root, "out")
@@ -254,7 +254,7 @@ def run(campaign):
             continue
         src = rel if os.path.isabs(rel) else os.path.join(root, rel)
         if not os.path.isfile(src):
-            raise FileNotFoundError(f"fonte de vídeo não encontrada: {src}")
+            raise FileNotFoundError(f"video source not found: {src}")
         fx = subject_fx(src)
         if cap_mode == "auto":
             if src not in cap_cache:

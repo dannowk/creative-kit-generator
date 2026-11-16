@@ -1,7 +1,7 @@
-"""Checagem de regras antes do export. Vocabulário agnóstico de marca.
+"""Rule checking before export. Brand-agnostic vocabulary.
 
-Cada regra do brand.yaml vira um check executável — as regras que hoje só existem
-em prosa no handoff passam a bloquear a peça de verdade.
+Each brand.yaml rule becomes an executable check — rules that today only exist as
+prose in the handoff now actually block the piece.
 """
 
 import numpy as np
@@ -45,8 +45,7 @@ def check_subject_safe(img, trace, rule, brand):
         frac = _overlap(el["box"], face)
         if frac > tolerance:
             out.append({"check": "subject_safe", "level": "fail",
-                        "message": f"{el['op']} cobre {frac:.0%} do rosto (máx {tolerance:.0%}).",
-                        "message_en": i18n.t("cmp.subject_safe", "en", op=el["op"], frac=frac, tol=tolerance)})
+                        "message": i18n.t("cmp.subject_safe", op=el["op"], frac=frac, tol=tolerance)})
     return out
 
 
@@ -63,10 +62,8 @@ def check_palette_forbidden(img, trace, rule, brand):
         frac = float((dist < threshold).mean())
         if frac > min_area:
             out.append({"check": "palette_forbidden", "level": "fail",
-                        "message": f"Cor proibida rgb{tuple(color)} em {frac:.1%} da peça "
-                                   f"(máx {min_area:.1%}).",
-                        "message_en": i18n.t("cmp.palette_forbidden", "en", color=tuple(color),
-                                             frac=frac, min_area=min_area)})
+                        "message": i18n.t("cmp.palette_forbidden", color=tuple(color),
+                                          frac=frac, min_area=min_area)})
     return out
 
 
@@ -80,10 +77,8 @@ def check_min_font_size(img, trace, rule, brand):
         floor = max(minimum, relative * trace.get("scale", 0))
         if floor and el.get("size", 999) < floor:
             out.append({"check": "min_font_size", "level": "fail",
-                        "message": f"Chamada encolheu para {el['size']:.0f}px, mínimo {floor:.0f}px. "
-                                   f"Encurte o texto: \"{el.get('text', '')[:40]}…\"",
-                        "message_en": i18n.t("cmp.min_font_size", "en", size=el["size"], floor=floor,
-                                             text=el.get("text", "")[:40] + "…")})
+                        "message": i18n.t("cmp.min_font_size", size=el["size"], floor=floor,
+                                          text=el.get("text", "")[:40] + "…")})
     return out
 
 
@@ -96,10 +91,8 @@ def check_contrast_min(img, trace, rule, brand):
         ratio = contrast_ratio(el["color"], el["under"])
         if ratio < minimum:
             out.append({"check": "contrast_min", "level": "warn",
-                        "message": f"Contraste {ratio:.1f}:1 abaixo de {minimum:.1f}:1 "
-                                   f"em \"{el.get('text', '')[:30]}…\"",
-                        "message_en": i18n.t("cmp.contrast_min", "en", ratio=ratio, minimum=minimum,
-                                             text=el.get("text", "")[:30] + "…")})
+                        "message": i18n.t("cmp.contrast_min", ratio=ratio, minimum=minimum,
+                                          text=el.get("text", "")[:30] + "…")})
     return out
 
 
@@ -110,19 +103,17 @@ def check_disclaimer_required(img, trace, rule, brand):
     haystack = " ".join(el.get("text", "") for el in trace.get("elements", []))
     if required.lower() not in haystack.lower():
         return [{"check": "disclaimer_required", "level": "fail",
-                 "message": f"Disclaimer obrigatório ausente: \"{required}\".",
-                 "message_en": i18n.t("cmp.disclaimer_required", "en", text=required)}]
+                 "message": i18n.t("cmp.disclaimer_required", text=required)}]
     return []
 
 
 def check_nobreak(img, trace, rule, brand):
-    """O não-quebra é aplicado no desenho; aqui só confirmamos que o termo está no copy."""
+    """The no-break is applied at draw time; here we only confirm the term is in the copy."""
     terms = rule.get("text", [])
     terms = terms if isinstance(terms, list) else [terms]
     haystack = " ".join(el.get("text", "") for el in trace.get("elements", []))
     return [{"check": "nobreak", "level": "info",
-             "message": f"\"{t}\" protegido contra quebra de linha.",
-             "message_en": i18n.t("cmp.nobreak", "en", t=t)}
+             "message": i18n.t("cmp.nobreak", t=t)}
             for t in terms if t.lower() in haystack.lower()]
 
 
@@ -137,15 +128,14 @@ CHECKS = {
 
 
 def run(img, trace, brand):
-    """Devolve a lista de achados. 'fail' bloqueia o export; 'warn' e 'info' só reportam."""
+    """Return the findings list. 'fail' blocks export; 'warn' and 'info' only report."""
     trace = dict(trace, scale=(img.width * img.height) ** 0.5)
     findings = []
     for rule in brand.compliance:
         fn = CHECKS.get(rule.get("check"))
         if fn is None:
             findings.append({"check": rule.get("check"), "level": "warn",
-                             "message": f"Check desconhecido: {rule.get('check')}",
-                             "message_en": i18n.t("cmp.unknown", "en", check=rule.get("check"))})
+                             "message": i18n.t("cmp.unknown", check=rule.get("check"))})
             continue
         findings += fn(img, trace, rule, brand)
     return findings

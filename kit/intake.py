@@ -1,7 +1,7 @@
-"""Intake: a pasta que o usuário jogou vira uma marca proposta + a lista do que faltou.
+"""Intake: the folder the user dropped becomes a proposed brand + the list of what is missing.
 
-O que é inferível com confiança (paleta do logo, centro do sujeito, inventário) é derivado aqui.
-O que não é (fonte exata, compliance, canais, voz) vira pergunta em lote — nunca chute silencioso.
+What is inferable with confidence (logo palette, subject center, inventory) is derived here.
+What is not (exact fonts, compliance, channels, voice) becomes a batch of questions — never a silent guess.
 """
 
 import glob
@@ -58,7 +58,7 @@ def inventory(inbox):
             else:
                 found["other"].append(p)
     if found["logo"] is None and found["refs"]:
-        # sem arquivo chamado logo: o PNG com alfa é o candidato mais provável
+        # no file named logo: the PNG with alpha is the most likely candidate
         for p in found["refs"]:
             if p.lower().endswith(".png") and Image.open(p).mode in ("RGBA", "LA", "PA"):
                 found["logo"] = p
@@ -73,7 +73,7 @@ def _sat(rgb):
 
 
 def extract_palette(logo_path):
-    """Clusters de cor dos pixels opacos do logo. Proposta, não verdade — o designer confirma."""
+    """Color clusters of the logo's opaque pixels. A proposal, not truth — the designer confirms."""
     img = Image.open(logo_path).convert("RGBA")
     a = np.asarray(img)
     opaque = a[a[..., 3] > 200][:, :3]
@@ -100,7 +100,7 @@ def _hex(rgb):
 
 
 def propose_fonts(font_files):
-    """Heurística por nome de arquivo. Se ambígua, o intake reporta e pergunta."""
+    """Filename heuristic. If ambiguous, intake reports and asks."""
     def has(name, *words):
         return any(w in name for w in words)
 
@@ -123,10 +123,9 @@ def subject_map(refs):
     return {os.path.basename(p): round(P.subject_center(Image.open(p).convert("RGB")), 4) for p in refs}
 
 
-def run(inbox, brand_id, brands_dir, lang="pt"):
-    """Cria brands/<id>/ com brand.yaml proposto, assets e fontes. Devolve (resumo, gaps).
-    Gaps são construídos em PT (o intake.json gravado é o contrato do agente) e o
-    resumo/gaps retornados são localizados para lang — cada gap carrega um tkey."""
+def run(inbox, brand_id, brands_dir):
+    """Create brands/<id>/ with proposed brand.yaml, assets and fonts. Returns (summary, gaps).
+    The written intake.json is the agent contract; each gap carries a tkey."""
     inv = inventory(inbox)
     root = os.path.join(brands_dir, brand_id)
     os.makedirs(os.path.join(root, "assets"), exist_ok=True)
@@ -142,9 +141,9 @@ def run(inbox, brand_id, brands_dir, lang="pt"):
                      "why": i18n.t("gap.intake.logo.w")})
 
     if inv["fonts"]:
-        os.makedirs(os.path.join(root, "fontes"), exist_ok=True)
+        os.makedirs(os.path.join(root, "fonts"), exist_ok=True)
         for p in inv["fonts"]:
-            shutil.copy(p, os.path.join(root, "fontes", os.path.basename(p)))
+            shutil.copy(p, os.path.join(root, "fonts", os.path.basename(p)))
         type_cfg = propose_fonts(inv["fonts"])
         if not type_cfg.get("display") or not type_cfg.get("accent"):
             gaps.append({"field": "type", "tkey": "type",
@@ -225,15 +224,4 @@ def run(inbox, brand_id, brands_dir, lang="pt"):
                                       "texture": "", "layout": "", "must_avoid": ""}}
     with open(os.path.join(root, "intake.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, ensure_ascii=False)
-    if lang == "pt":
-        return summary, gaps
-    loc = [_localize_gap(g, lang) for g in gaps]
-    return {**summary, "gaps": loc}, loc
-
-
-def _localize_gap(g, lang):
-    tk = g.get("tkey")
-    if not tk:
-        return g
-    return {**g, "question": i18n.t(f"gap.intake.{tk}.q", lang),
-            "why": i18n.t(f"gap.intake.{tk}.w", lang)}
+    return summary, gaps

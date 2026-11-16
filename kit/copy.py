@@ -1,8 +1,9 @@
-"""Copy Kit — skill independente de copy (só texto: PPC + overlay).
+"""Copy Kit — independent copy skill (text only: PPC + overlay).
 
-Padrão normalize: o agente gera o copy do briefing + exemplos, o kit valida a forma
-e exporta só o aprovado. Independente do kit visual (não toca campaign/render/ppc).
-Uma linha = um copy (destino ppc/overlay × conceito × eixo × kind).
+Normalize pattern: the agent generates copy from the briefing + examples, the kit
+validates the shape and exports only what is approved. Independent of the visual kit
+(never touches campaign/render/ppc). One row = one copy (destination ppc/overlay ×
+concept × axis × kind). English-only.
 """
 
 import json
@@ -15,7 +16,7 @@ KINDS = {
     "overlay": ("hook", "kicker", "program", "cta"),
 }
 STATUSES = ("pending", "approved", "rejected", "redo")
-LANGS = ("pt", "en")
+LANGS = ("en",)
 ORIGINS = ("agent", "sheet")
 USES = ("image", "ppc", "both")
 
@@ -47,51 +48,51 @@ def next_id(rows):
 
 
 def validate(data):
-    """Erros por linha (PT — contrato do agente). Lista vazia = aplicável."""
+    """Per-row errors (the agent contract). Empty list = appliable."""
     errs = []
     concepts = data.get("concepts") or []
     if not isinstance(concepts, list) or any(not str(c).strip() for c in concepts):
-        errs.append("concepts: lista de conceitos inválida ou vazia")
+        errs.append("concepts: invalid or empty concept list")
     seen = set()
     for i, r in enumerate(data.get("rows") or [], 1):
         rid = r.get("id")
         if not rid:
-            errs.append(f"linha {i}: id vazio")
+            errs.append(f"row {i}: empty id")
         elif rid in seen:
-            errs.append(f"linha {i}: id repetido: {rid}")
+            errs.append(f"row {i}: duplicate id: {rid}")
         else:
             seen.add(rid)
         dest = r.get("destination")
         if dest not in DESTINATIONS:
-            errs.append(f"linha {i}: destination inválido: {dest!r} (ppc/overlay)")
+            errs.append(f"row {i}: invalid destination: {dest!r} (ppc/overlay)")
         elif r.get("kind") not in KINDS[dest]:
-            errs.append(f"linha {i}: kind inválido p/ {dest}: {r.get('kind')!r} "
+            errs.append(f"row {i}: invalid kind for {dest}: {r.get('kind')!r} "
                         f"({'/'.join(KINDS[dest])})")
         if not str(r.get("text") or "").strip():
-            errs.append(f"linha {i}: text vazio")
+            errs.append(f"row {i}: empty text")
         if concepts and r.get("concept") not in concepts:
-            errs.append(f"linha {i}: conceito não declarado: {r.get('concept')!r}")
+            errs.append(f"row {i}: undeclared concept: {r.get('concept')!r}")
         if r.get("lang") not in LANGS:
-            errs.append(f"linha {i}: lang inválido: {r.get('lang')!r} (pt/en)")
+            errs.append(f"row {i}: invalid lang: {r.get('lang')!r} (en)")
         if r.get("status") not in STATUSES:
-            errs.append(f"linha {i}: status inválido: {r.get('status')!r}")
+            errs.append(f"row {i}: invalid status: {r.get('status')!r}")
         if r.get("origin") not in ORIGINS:
-            errs.append(f"linha {i}: origin inválido: {r.get('origin')!r}")
+            errs.append(f"row {i}: invalid origin: {r.get('origin')!r}")
         if r.get("use", "both") not in USES:
-            errs.append(f"linha {i}: use inválido: {r.get('use')!r} (image/ppc/both)")
+            errs.append(f"row {i}: invalid use: {r.get('use')!r} (image/ppc/both)")
     return errs
 
 
 def decide(root, row_id, status, note="", who=""):
-    """Marca uma linha (intenção). Grava status/note + carimbo. False se id desconhecido.
+    """Mark a row (intent). Writes status/note + stamp. False if the id is unknown.
 
-    redo exige nota. approve/reject limpam a nota. O agente nunca chama approved —
-    decisão é do usuário na tabela.
+    redo requires a note. approve/reject clear the note. The agent never calls approved —
+    the decision belongs to the user in the table.
     """
     if status not in STATUSES:
-        raise ValueError(f"status inválido: {status}")
+        raise ValueError(f"invalid status: {status}")
     if status == "redo" and not str(note).strip():
-        raise ValueError("redo exige uma nota (o que ajustar)")
+        raise ValueError("redo requires a note (what to adjust)")
     data = load(root)
     found = False
     for r in data.get("rows") or []:
@@ -112,7 +113,7 @@ def decide(root, row_id, status, note="", who=""):
 
 
 def review_payload(root):
-    """{rows, counts} para a tabela de revisão, ou None sem copy.json."""
+    """{rows, counts} for the review table, or None without copy.json."""
     if not os.path.isfile(_path(root)):
         return None
     rows = load(root).get("rows") or []
@@ -120,40 +121,7 @@ def review_payload(root):
     return {"rows": rows, "counts": counts}
 
 
-BRIEF_TEMPLATE = {
-    "pt": """# Briefing de copy
-
-## 1. Objetivo
-(o que a campanha quer alcançar)
-
-## 2. Público
-(quem fala, dor/desejo)
-
-## 3. Tom de voz
-(como a marca fala — ex.: direto, próximo, técnico)
-
-## 4. Oferta / produto
-(o que se anuncia, diferencial, preço se houver)
-
-## 5. Destinos
-- PPC (só texto): Meta / Google Search
-- Overlay: hook / kicker / program / CTA sobre a peça
-
-## 6. Conceitos
-(lista separada por vírgula — ex.: clean, editorial)
-
-## 7. Eixos (opcional)
-(variações — ex.: urgencia, beneficio)
-
-## 8. Restrições
-- Google RSA: headline ≤ 30 caracteres, description ≤ 90
-- CTA: verbo curto
-- (outras regras)
-
-## 9. Idiomas
-pt / en
-""",
-    "en": """# Copy briefing
+BRIEF_TEMPLATE = """# Copy briefing
 
 ## 1. Objective
 (what the campaign wants to achieve)
@@ -183,33 +151,27 @@ pt / en
 - (other rules)
 
 ## 9. Languages
-pt / en
-""",
-}
+en
+"""
 
-EXAMPLES_HEADER = {
-    "pt": "# Cole aqui textos de exemplo (copy que você gosta / quer usar como modelo).\n"
-          "# Um por linha ou bloco. O agente usa isto + o briefing para gerar o copy.\n\n",
-    "en": "# Paste example texts here (copy you like / want to use as a model).\n"
-          "# One per line or block. The agent uses this + the briefing to generate copy.\n\n",
-}
+EXAMPLES_HEADER = ("# Paste example texts here (copy you like / want to use as a model).\n"
+                   "# One per line or block. The agent uses this + the briefing to generate copy.\n\n")
 
 
-def scaffold(folder, lang="pt"):
-    """Pasta enxuta de copy: briefing.md + examples.txt (sem logo/brandbook/refs).
+def scaffold(folder):
+    """Lean copy folder: briefing.md + examples.txt (no logo/brandbook/refs).
 
-    Não sobrescreve arquivos existentes. Retorna o caminho do briefing.
+    Does not overwrite existing files. Returns the briefing path.
     """
-    key = "pt" if lang == "pt" else "en"
     os.makedirs(folder, exist_ok=True)
     brief = os.path.join(folder, "briefing.md")
     if not os.path.isfile(brief):
         with open(brief, "w", encoding="utf-8") as f:
-            f.write(BRIEF_TEMPLATE[key])
+            f.write(BRIEF_TEMPLATE)
     examples = os.path.join(folder, "examples.txt")
     if not os.path.isfile(examples):
         with open(examples, "w", encoding="utf-8") as f:
-            f.write(EXAMPLES_HEADER[key])
+            f.write(EXAMPLES_HEADER)
     return brief
 
 
@@ -222,7 +184,7 @@ def read_text(folder, name):
 
 
 def delivery_dir(root):
-    """~/Desktop/Copy Kit/<pasta>/ — mesma convenção do visual, fora da pasta de trabalho."""
+    """~/Desktop/Copy Kit/<folder>/ — same convention as the visual kit, outside the working folder."""
     from .campaign import desktop_dir, _slug
     name = _slug(os.path.basename(os.path.abspath(root)))
     return os.path.join(desktop_dir(), "Copy Kit", name)
@@ -307,20 +269,7 @@ def _manifest_rows(rows):
              "Lang": r.get("lang"), "Chars": len(ppc._clean(r.get("text")))} for r in rows]
 
 
-_NOTES = {
-    "pt": """COPY KIT — COPY APROVADO
-========================
-Arquivos (cada um em CSV e XLSX):
-  meta_bulk_import   → Meta Ads Manager → Import/Export → Import Ads in Bulk (só texto).
-  google_search_rsa  → Google Ads Editor / Bulk actions → Uploads. Responsive Search Ads.
-  overlay            → copy sobre a peça: hook / kicker / program / CTA por conceito × eixo.
-  copy_manifest      → referência humana: toda linha aprovada (destino, conceito, kind, texto, caracteres).
-
-Só sai copy APROVADO na revisão. URL final, orçamento, targeting e IDs ficam em branco
-para o time de PPC. Tudo sai PAUSED/Paused. Limites Google RSA: headline ≤ 30, description ≤ 90
-(o export trunca e avisa quais linhas excederam — confira antes de importar).
-""",
-    "en": """COPY KIT — APPROVED COPY
+_NOTES = """COPY KIT — APPROVED COPY
 ========================
 Files (each as CSV and XLSX):
   meta_bulk_import   → Meta Ads Manager → Import/Export → Import Ads in Bulk (text only).
@@ -331,15 +280,14 @@ Files (each as CSV and XLSX):
 Only APPROVED copy ships. Final URL, budget, targeting and IDs are left blank for the PPC
 team. Everything ships PAUSED/Paused. Google RSA limits: headline ≤ 30, description ≤ 90
 (the export truncates and warns which rows exceeded — check before importing).
-""",
-}
+"""
 
 
-def export(root, lang="pt"):
-    """Exporta só as aprovadas → planilhas (Meta/RSA/overlay/manifest) na pasta Desktop.
+def export(root):
+    """Export only approved rows → sheets (Meta/RSA/overlay/manifest) in the Desktop folder.
 
-    Determinístico; reusa os writers/colunas do ppc visual. Limites RSA viram aviso,
-    não porteiro. Devolve resumo (contagens + arquivos + warnings).
+    Deterministic; reuses the visual ppc writers/columns. RSA limits become warnings,
+    not gatekeepers. Returns a summary (counts + files + warnings).
     """
     from . import ppc
     rows = [r for r in load(root).get("rows") or [] if r.get("status") == "approved"]
@@ -372,13 +320,13 @@ def export(root, lang="pt"):
     emit("copy_manifest", MANIFEST_COLUMNS, _manifest_rows(rows), "Copy manifest", "manifest")
 
     with open(os.path.join(outdir, "README.txt"), "w", encoding="utf-8") as f:
-        f.write(_NOTES.get(lang, _NOTES["en"]))
+        f.write(_NOTES)
     files.append("README.txt")
     return {"dir": outdir, "files": files, "xlsx": ppc._HAS_XLSX, "warnings": warnings, **counts}
 
 
-def deliver(root, lang="pt"):
-    """O 'Continuar' do copy: exporta as aprovadas para a pasta Desktop + download."""
+def deliver(root):
+    """The copy 'Continue': exports approved rows to the Desktop folder + download."""
     empty = {"dir": delivery_dir(root), "files": [], "exported": 0, "xlsx": False,
              "warnings": [], "meta": 0, "google_rsa": 0, "overlay": 0, "manifest": 0}
     if not os.path.isfile(_path(root)):
@@ -386,6 +334,6 @@ def deliver(root, lang="pt"):
     approved = sum(1 for r in load(root).get("rows") or [] if r.get("status") == "approved")
     if approved == 0:
         return empty
-    s = export(root, lang)
+    s = export(root)
     s["exported"] = approved
     return s

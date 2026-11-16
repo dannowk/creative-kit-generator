@@ -1,7 +1,7 @@
-"""Presets de canal e formato — universais, não pertencem a nenhuma marca.
+"""Channel and format presets — universal, they belong to no brand.
 
-As safe zones de Stories/reels são regra da plataforma (perfil em cima, campo de
-resposta embaixo), por isso vivem aqui e não no brand.yaml.
+Stories/reels safe zones are a platform rule (profile on top, reply field at the
+bottom), so they live here and not in brand.yaml.
 """
 
 FORMATS = {
@@ -39,12 +39,12 @@ BUNDLES = {
     "web":      ["web_hero", "email_header"],
 }
 
-# Formatos minúsculos não comportam foto + chamada + logo: o renderer escolhe arquétipo tipográfico.
+# Tiny formats cannot fit photo + headline + logo: the renderer picks the typographic archetype.
 TIGHT = {"google_leaderboard", "google_mobile_banner", "google_skyscraper", "google_medium_rect"}
 
 
 def resolve_formats(channels=(), formats=()):
-    """Aceita nomes de canal (expande pelo bundle) e nomes de formato explícitos."""
+    """Accepts channel names (expanded via bundle) and explicit format names."""
     names = list(formats)
     for c in channels:
         names += BUNDLES.get(c, [])
@@ -58,14 +58,14 @@ def resolve_formats(channels=(), formats=()):
 
 
 def label(name):
-    """meta_feed_portrait -> Meta-Feed-Portrait_1080x1350 (compatível com o naming antigo)."""
+    """meta_feed_portrait -> Meta-Feed-Portrait_1080x1350 (compatible with the old naming)."""
     w, h = FORMATS[name]["size"]
     channel = name.rsplit("_", 1)[0] if name.count("_") > 1 else name
     return f"{channel.replace('_', '-').title()}_{w}x{h}"
 
 
 def geometry(name, brand=None):
-    """w, h, scale, margem, topo e base seguros, e se é wide — tudo proporcional à √área."""
+    """w, h, scale, margin, safe top and bottom, and whether it is wide — all proportional to √area."""
     spec = FORMATS[name]
     w, h = spec["size"]
     scale = (w * h) ** 0.5

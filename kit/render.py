@@ -1,8 +1,8 @@
-"""Interpretador de specs de template: layers declarativas -> primitivas.
+"""Template spec interpreter: declarative layers -> primitives.
 
-O vocabulário de `op` é exatamente o conjunto de primitivas que já existia no motor CDI.
-Posições aceitam aritmética sobre w/h/scale/m/top/bottom, avaliada com AST restrito —
-spec de marca é dado, não código, e não pode executar nada arbitrário.
+The `op` vocabulary is exactly the set of primitives that already existed in the CDI
+engine. Positions accept arithmetic over w/h/scale/m/top/bottom, evaluated with a
+restricted AST — a brand spec is data, not code, and cannot execute anything arbitrary.
 """
 
 import ast
@@ -20,7 +20,7 @@ _BIN = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul,
 
 OPS = ("canvas", "paper", "photo", "paste", "grade", "fade_to", "light_leak", "film_texture",
        "multiply", "halftone", "rule", "logo", "text", "kicker", "cta", "tracked")
-# Ops que pintam fundo/imagem: pulados no modo overlay (só marca/texto sobre transparência).
+# Ops that paint background/image: skipped in overlay mode (only brand/text over transparency).
 BG_OPS = {"canvas", "paper", "photo", "paste", "grade", "fade_to", "light_leak",
           "film_texture", "multiply", "halftone"}
 _UNARY = {ast.UAdd: operator.pos, ast.USub: operator.neg}
@@ -30,7 +30,7 @@ _CMP = {ast.Lt: operator.lt, ast.Gt: operator.gt, ast.LtE: operator.le,
 
 
 def evaluate(expr, vars_):
-    """Avalia número ou expressão aritmética sobre as variáveis de geometria."""
+    """Evaluate a number or an arithmetic expression over the geometry variables."""
     if isinstance(expr, (int, float)):
         return expr
     if expr is None:
@@ -45,7 +45,7 @@ def _ev(node, v):
     if isinstance(node, ast.Name):
         if node.id in v:
             return v[node.id]
-        raise KeyError(f"Variável desconhecida no spec: {node.id}")
+        raise KeyError(f"Unknown variable in spec: {node.id}")
     if isinstance(node, ast.BinOp) and type(node.op) in _BIN:
         return _BIN[type(node.op)](_ev(node.left, v), _ev(node.right, v))
     if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARY:
@@ -56,7 +56,7 @@ def _ev(node, v):
         return _ev(node.body, v) if _ev(node.test, v) else _ev(node.orelse, v)
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in _FUNCS:
         return _FUNCS[node.func.id](*[_ev(a, v) for a in node.args])
-    raise ValueError(f"Expressão não permitida em spec: {ast.dump(node)}")
+    raise ValueError(f"Expression not allowed in spec: {ast.dump(node)}")
 
 
 def load_spec(path):
@@ -74,8 +74,8 @@ def _layers(spec, geo):
 
 
 def _ref(value, ctx):
-    """copy.hook / program / cta -> texto do contexto da campanha.
-    Ref de copy não resolvido vira vazio, nunca o caminho literal na peça."""
+    """copy.hook / program / cta -> text from the campaign context.
+    An unresolved copy ref becomes empty, never the literal path on the piece."""
     if value is None:
         return ""
     cur = ctx
@@ -89,13 +89,13 @@ def _ref(value, ctx):
 
 def render(spec, brand, geo, photo=None, fx=0.5, logo=None, copy=None, extra=None, trace=None,
            transparent=False):
-    """Renderiza uma peça. `photo` é a imagem já aberta; `fx` o centro do sujeito (0..1).
+    """Render one piece. `photo` is the already-opened image; `fx` the subject center (0..1).
 
-    Se `trace` for um dict, recebe a caixa do rosto e os retângulos de cada elemento —
-    é o que permite ao compliance provar que nada cobriu o sujeito.
+    If `trace` is a dict, it receives the face box and the rectangles of each element —
+    that is what lets compliance prove nothing covered the subject.
 
-    `transparent=True` devolve só a marca/texto sobre RGBA transparente (overlay de
-    vídeo): pula os ops de fundo/imagem e não achata em RGB.
+    `transparent=True` returns only brand/text over transparent RGBA (video overlay):
+    skips background/image ops and does not flatten to RGB.
     """
     copy = copy or {}
     trace = trace if trace is not None else {}
@@ -134,7 +134,7 @@ def render(spec, brand, geo, photo=None, fx=0.5, logo=None, copy=None, extra=Non
                      "center": (w / 2, h / 2)}
             if expr in named:
                 return named[expr]
-            raise ValueError(f"Posição nomeada desconhecida: {expr}")
+            raise ValueError(f"Unknown named position: {expr}")
         return tuple(evaluate(x, v) for x in expr)
 
     def surface_for(layer):
@@ -335,7 +335,7 @@ def render(spec, brand, geo, photo=None, fx=0.5, logo=None, copy=None, extra=Non
                       evaluate(layer.get("track", "scale*0.004"), v), layer.get("anchor", "l"))
 
         else:
-            raise ValueError(f"op desconhecido no spec '{spec.get('id')}': {op}")
+            raise ValueError(f"unknown op in spec '{spec.get('id')}': {op}")
 
     return canvas.convert("RGBA") if transparent else canvas.convert("RGB")
 
@@ -347,8 +347,8 @@ def _corner_at(corner, w, h, tw, th):
 
 
 def _record_face(trace, layer, at, pw, ph, fx):
-    """Onde o rosto caiu no canvas. No closeup o sujeito é posicionado de propósito em
-    fx_at/face_at, então a caixa é conhecida sem precisar detectar nada de novo."""
+    """Where the face landed on the canvas. In closeup the subject is placed on purpose
+    at fx_at/face_at, so the box is known without detecting anything new."""
     if not layer:
         return
     fit = layer.get("fit", "cover")

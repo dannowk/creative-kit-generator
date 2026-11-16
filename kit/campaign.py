@@ -1,7 +1,7 @@
-"""Campanha: briefing estruturado -> matriz de peças em pastas distintas.
+"""Campaign: structured briefing -> matrix of pieces in distinct folders.
 
-Os eixos (produto, região, público, idioma) substituem o regions×programs chumbado:
-o produto cartesiano e o nome do arquivo vêm do brand.yaml, não do código.
+The axes (product, region, audience, language) replace the hardcoded regions×programs:
+the cartesian product and the file name come from brand.yaml, not from code.
 """
 
 import copy
@@ -38,7 +38,7 @@ def brand_for(campaign, brands_dir=None):
 
 
 def expand_axes(brand, campaign):
-    """Produto cartesiano dos eixos declarados no briefing (ou os da marca, se omitidos)."""
+    """Cartesian product of the axes declared in the briefing (or the brand's, if omitted)."""
     declared = campaign.get("axes")
     if declared:
         names = list(declared)
@@ -55,7 +55,7 @@ def expand_axes(brand, campaign):
 
 
 def lookup(mapping, combo):
-    """Aceita chave pelo combo inteiro ('BC|Course-02'), por valor isolado, ou 'default'."""
+    """Accepts a key by the whole combo ('BC|Course-02'), by a single value, or 'default'."""
     if not mapping:
         return None
     joined = "|".join(str(combo[k]) for k in sorted(combo))
@@ -81,7 +81,7 @@ class _Safe(dict):
 
 
 def load_subject_overrides(campaign):
-    """Substitui a tabela de rostos medidos à mão: o intake/agente grava o centro por arquivo."""
+    """Replaces the hand-measured face table: intake/agent writes the center per file."""
     p = os.path.join(campaign["_root"], "assets", "subject.json")
     if os.path.isfile(p):
         with open(p, encoding="utf-8") as f:
@@ -113,8 +113,8 @@ def available_concepts():
 
 
 def _spec_path(campaign, concept):
-    """Spec da campanha vence a biblioteca global: a direção de arte vem do briefing
-    e das referências desta campanha, não do acervo de outra marca."""
+    """The campaign spec wins over the global library: art direction comes from this
+    campaign's briefing and references, not another brand's archive."""
     local = os.path.join(campaign["_root"], "templates", f"{concept}.yaml")
     return local if os.path.isfile(local) else os.path.join(TEMPLATES_DIR, f"{concept}.yaml")
 
@@ -124,10 +124,10 @@ def style_path(root, concept):
 
 
 def load_style(root, concept):
-    """Override de estilo do conceito (paleta/tipografia/nota) gravado pela revisão.
+    """Concept style override (palette/typography/note) written by the review.
 
-    Vazio se não houver ajuste. O render aplica por conceito, então o ajuste vale para
-    todas as peças daquele conceito e persiste nas próximas renderizações do agente.
+    Empty if there is no adjustment. Render applies it per concept, so the adjustment
+    holds for every piece of that concept and persists across the agent's next renders.
     """
     p = style_path(root, concept)
     if not os.path.isfile(p):
@@ -137,7 +137,7 @@ def load_style(root, concept):
 
 
 def styled_brand(brand, style):
-    """Marca com a paleta/tipografia do conceito mescladas por cima da marca base."""
+    """Brand with the concept's palette/typography merged over the base brand."""
     if not style:
         return brand
     data = copy.deepcopy(brand.data)
@@ -152,18 +152,18 @@ def styled_brand(brand, style):
 
 def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None, dry=False,
         only_ids=None):
-    """Renderiza a matriz inteira. Devolve o estado que a UI local consome.
+    """Render the whole matrix. Returns the state the local UI consumes.
 
-    `only_ids` restringe a peça(s) exata(s) — usado na etapa 6 para o agente recriar só
-    as rejeitadas/refazer. As decisões anteriores (aprovadas/entregues) são preservadas
-    no merge; peças re-renderizadas voltam a `pending` para nova revisão.
+    `only_ids` restricts to the exact piece(s) — used in step 6 for the agent to recreate
+    only rejected/redo ones. Previous decisions (approved/delivered) are preserved in the
+    merge; re-rendered pieces go back to `pending` for a new review.
     """
     brand = brand or brand_for(campaign)
     root = campaign["_root"]
     out_dir = os.path.join(root, "out")
     names, unknown = formats.resolve_formats(campaign.get("channels", []), campaign.get("formats", []))
     if unknown:
-        raise ValueError(f"Formato/canal desconhecido: {', '.join(unknown)}")
+        raise ValueError(f"Unknown format/channel: {', '.join(unknown)}")
     if only_formats:
         names = [n for n in names if n in only_formats]
     concepts = only_concepts or campaign.get("concepts") or available_concepts()
@@ -192,7 +192,7 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
             voice = copy.get(concept)
             merged = {**copy, **voice} if isinstance(voice, dict) else copy
             if not merged.get("hook"):
-                print(f"  sem copy.hook para {concept} em {combo or 'campanha'} — conceito pulado")
+                print(f"  no copy.hook for {concept} in {combo or 'campaign'} — concept skipped")
                 continue
             for fmt in names:
                 name = piece_name(brand, campaign, combo, concept, fmt)
@@ -247,11 +247,11 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
 
 
 def _merge_prior(root, pieces):
-    """Preserva as decisões da revisão ao re-renderizar (etapa 6).
+    """Preserve review decisions when re-rendering (step 6).
 
-    Aprovadas/entregues continuam aprovadas; peças fora do conjunto re-renderizado são
-    mantidas intactas; as re-renderizadas (rejeitadas/refazer recriadas) voltam a pending
-    sem `note`/`queued`, para nova revisão na mesma página.
+    Approved/delivered stay approved; pieces outside the re-rendered set are kept intact;
+    re-rendered ones (recreated rejected/redo) go back to pending without `note`/`queued`,
+    for a new review on the same page.
     """
     prior_path = os.path.join(root, "state.json")
     if not os.path.isfile(prior_path):
@@ -274,10 +274,10 @@ def _merge_prior(root, pieces):
 
 
 def desktop_dir():
-    """Área de Trabalho do usuário (macOS/Windows/Linux), respeitando redirecionamento.
+    """The user's Desktop (macOS/Windows/Linux), honoring redirection.
 
-    `KIT_DESKTOP_DIR` sobrescreve (testes e setups não padrão). No Windows o Desktop
-    pode estar no OneDrive; no Linux o XDG pode apontar para um nome localizado.
+    `KIT_DESKTOP_DIR` overrides (tests and non-standard setups). On Windows the Desktop
+    may live in OneDrive; on Linux XDG may point to a localized name.
     """
     override = os.environ.get("KIT_DESKTOP_DIR")
     if override:
@@ -307,27 +307,27 @@ def desktop_dir():
 
 
 def delivery_dir(root):
-    """Pasta de entrega na Área de Trabalho: ~/Desktop/Campaign Kit/<campanha>/.
+    """Delivery folder on the Desktop: ~/Desktop/Campaign Kit/<campaign>/.
 
-    Fora da pasta de trabalho do kit de propósito: o usuário acha os arquivos finais
-    direto no Desktop. Nada no kit lê estes arquivos de volta (o merge e o PPC usam
-    `state.json`/`out/`), então mover a entrega para cá não quebra a regeneração.
+    Outside the kit's working folder on purpose: the user finds the final files straight
+    on the Desktop. Nothing in the kit reads these files back (merge and PPC use
+    `state.json`/`out/`), so moving the delivery here does not break regeneration.
     """
     camp = load_campaign(root)
     name = _slug(camp.get("slug") or os.path.basename(os.path.abspath(root)))
     return os.path.join(desktop_dir(), "Campaign Kit", name)
 
 
-def deliver(root, lang="pt"):
-    """Etapa 6 — o botão Continuar: exporta as aprovadas e enfileira a recriação/refazer.
+def deliver(root):
+    """Step 6 — the Continue button: exports approved pieces and queues recreation/redo.
 
-    Local e imediato: copia as aprovadas de `out/` para a pasta de entrega na Área de
-    Trabalho (`~/Desktop/Campaign Kit/<campanha>/<conceito>/`) e marca `delivered`. As
-    rejeitadas (recriar) e refazer (com a nota) viram um lote em `requests.json` — a
-    regeneração é do agente (o render é determinístico; a UI não chama MCP). O agente
-    recria/refaz, roda `render --ids` e a revisão atualiza sozinha. Com as aprovadas
-    exportadas, gera também as planilhas de bulk upload de PPC (Meta + Google) em `ppc/`
-    dentro da mesma pasta de entrega.
+    Local and immediate: copies approved pieces from `out/` to the delivery folder on the
+    Desktop (`~/Desktop/Campaign Kit/<campaign>/<concept>/`) and marks `delivered`. Rejected
+    (recreate) and redo (with the note) become a batch in `requests.json` — regeneration
+    belongs to the agent (render is deterministic; the UI never calls MCP). The agent
+    recreates/redoes, runs `render --ids` and the review updates itself. With approved
+    pieces exported, it also generates the PPC bulk-upload sheets (Meta + Google) in `ppc/`
+    inside the same delivery folder.
     """
     with open(os.path.join(root, "state.json"), encoding="utf-8") as f:
         state = json.load(f)
@@ -359,7 +359,7 @@ def deliver(root, lang="pt"):
     ppc_summary = None
     if exported:
         from . import ppc
-        ppc_summary = ppc.export(root, lang=lang)
+        ppc_summary = ppc.export(root)
     return {"exported": len(exported), "regen": len(batch), "exported_ids": exported,
             "delivery_dir": delivery, "requests_path": "requests.json", "batch": batch,
             "ppc": ppc_summary}

@@ -1,11 +1,11 @@
 @echo off
-rem campaign-kit - instalador autocontido (Windows 10+): uv + Python gerenciado + wizard.
+rem campaign-kit - self-contained installer (Windows 10+): uv + managed Python + wizard.
 setlocal
 cd /d "%~dp0"
 if not exist ".tools" mkdir ".tools"
 
 if not exist ".tools\uv.exe" (
-  echo baixando uv...
+  echo downloading uv...
   if "%PROCESSOR_ARCHITECTURE%"=="ARM64" (
     curl -fsSL -o ".tools\uv.zip" "https://github.com/astral-sh/uv/releases/latest/download/uv-aarch64-pc-windows-msvc.zip"
   ) else (
@@ -16,10 +16,10 @@ if not exist ".tools\uv.exe" (
 )
 
 if not exist ".venv\Scripts\python.exe" (
-  echo preparando Python 3.12 gerenciado (sem admin)...
+  echo preparing managed Python 3.12 (no admin)...
   ".tools\uv.exe" venv --python 3.12 ".venv"
 )
-echo instalando dependencias...
+echo installing dependencies...
 ".tools\uv.exe" pip install --python ".venv\Scripts\python.exe" -r requirements.txt
 
 set "INBOX=%~1"
@@ -29,13 +29,13 @@ if "%~1"=="--copy" (
   set "COPY=1"
   set "INBOX=%~2"
 )
-if "%INBOX%"=="" set /p INBOX="pasta da campanha (Enter = Desktop\minha-campanha): "
-if "%INBOX%"=="" set "INBOX=%USERPROFILE%\Desktop\minha-campanha"
+if "%INBOX%"=="" set /p INBOX="campaign folder (Enter = Desktop\my-campaign): "
+if "%INBOX%"=="" set "INBOX=%USERPROFILE%\Desktop\my-campaign"
 if defined COPY (
-  echo abrindo o wizard de copy...
+  echo opening the copy wizard...
   ".venv\Scripts\python.exe" -m kit.cli copy onboard "%INBOX%"
 ) else (
-  echo abrindo o wizard de onboarding...
+  echo opening the onboarding wizard...
   ".venv\Scripts\python.exe" -m kit.cli onboard "%INBOX%"
 )
 pause

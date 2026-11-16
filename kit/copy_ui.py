@@ -1,9 +1,9 @@
-"""UI do Copy Kit (independente do kit visual): wizard enxuto + tabela de revisão.
+"""Copy Kit UI (independent of the visual kit): lean wizard + review table.
 
-Reusa o chrome do kit visual (ui._STYLE/_lang_toggle/_modal/_JS_UTIL/_open_folder e os
-helpers HTTP de ui.Handler), mas as páginas, strings e rotas são próprias — copy não
-toca campaign/render/ppc. Wizard: briefing + exemplos (só texto). Revisão: tabela
-linha a linha com aprovar/rejeitar/refazer+nota. Sobe em 127.0.0.1, uma UI por vez.
+Reuses the visual kit's chrome (ui._STYLE/_modal/_JS_UTIL/_open_folder and the HTTP
+helpers of ui.Handler), but pages, strings and routes are its own — copy never touches
+campaign/render/ppc. Wizard: briefing + examples (text only). Review: row-by-row table
+with approve/reject/redo+note. Runs on 127.0.0.1, one UI at a time. English-only.
 """
 
 import json
@@ -16,10 +16,7 @@ from urllib.parse import urlparse, parse_qs
 
 from . import copy, i18n, ui
 
-_STEPS = {
-    "pt": ["Briefing", "Gerar", "Revisar", "Entregar"],
-    "en": ["Briefing", "Generate", "Review", "Deliver"],
-}
+_STEPS = ["Briefing", "Generate", "Review", "Deliver"]
 
 _TABLE_STYLE = """<style>
 .tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px;max-height:72vh}
@@ -35,31 +32,29 @@ table.copy .acts button{min-height:28px;padding:3px 9px;font-size:12.5px}
 </style>"""
 
 
-def _head(title, lang):
-    return ('<!doctype html><html lang="' + lang + '"><head><meta charset="utf-8">'
+def _head(title):
+    return ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1">'
             '<title>copy-kit · ' + title + '</title>' + ui._STYLE + _TABLE_STYLE + '</head><body>')
 
 
-def _stepper(current, done, lang):
-    steps = _STEPS.get(lang, _STEPS["pt"])
+def _stepper(current, done):
     out = ['<div class="stepper">']
-    for i, label in enumerate(steps, 1):
+    for i, label in enumerate(_STEPS, 1):
         cls = "done" if i <= done else ("current" if i == current else "")
         mark = "✓" if i <= done else str(i)
         out.append(f'<span class="step {cls}" data-step="{i}"><span class="n">{mark}</span>{label}</span>')
-        if i < len(steps):
+        if i < len(_STEPS):
             out.append('<span class="bar"></span>')
     out.append("</div>")
     return "".join(out)
 
 
-_TEMPLATE_LINES = {l.strip() for t in copy.BRIEF_TEMPLATE.values()
-                   for l in t.splitlines() if l.strip()}
+_TEMPLATE_LINES = {l.strip() for l in copy.BRIEF_TEMPLATE.splitlines() if l.strip()}
 
 
 def _brief_progress(text):
-    """Seções preenchidas: linha que não seja placeholder '(…)' nem linha do template."""
+    """Filled sections: a line that is neither a '(…)' placeholder nor a template line."""
     sections = re.split(r"^## ", text, flags=re.M)[1:]
     filled = 0
     for s in sections:
@@ -74,56 +69,34 @@ def _brief_progress(text):
 
 
 _WIZ_T = {
-    "pt": {
-        "title": "Copy — briefing + exemplos",
-        "prog": "{filled}/{total} seções do briefing preenchidas",
-        "ready": "Briefing preenchido. Cole exemplos se quiser, salve e diga “pronto” no chat.",
-        "missing": "Preencha o briefing (pelo menos o objetivo) e salve. Exemplos são opcionais.",
-        "p1.title": "Briefing + exemplos",
-        "p1.desc": "Só texto: sem logo, brandbook ou referências visuais. O agente gera o copy a partir disto.",
-        "brief.label": "Briefing de copy",
-        "examples.label": "Textos de exemplo (cole copy que você gosta / quer usar como modelo)",
-        "save": "Salvar",
-        "saved": "Briefing e exemplos salvos.",
-        "p2.title": "Gerar com o agente",
-        "p2.desc": "Copie a linha abaixo e cole no chat. O agente gera o copy e abre a revisão em tabela.",
-        "agentline": "Pronto! Briefing e exemplos em {folder} — gere o copy (PPC + overlay) e abra a revisão.",
-        "copy": "Copiar",
-        "copied": "Linha copiada — cole no chat.",
-        "hascopy": "Já existe copy.json nesta pasta — o agente pode abrir a revisão direto.",
-        "nocopy": "Ainda não há copy.json — o agente gera depois do seu “pronto”.",
-    },
-    "en": {
-        "title": "Copy — briefing + examples",
-        "prog": "{filled}/{total} briefing sections filled",
-        "ready": "Briefing filled. Paste examples if you like, save and say “ready” in chat.",
-        "missing": "Fill the briefing (at least the objective) and save. Examples are optional.",
-        "p1.title": "Briefing + examples",
-        "p1.desc": "Text only: no logo, brandbook or visual references. The agent generates copy from this.",
-        "brief.label": "Copy briefing",
-        "examples.label": "Example texts (paste copy you like / want to use as a model)",
-        "save": "Save",
-        "saved": "Briefing and examples saved.",
-        "p2.title": "Generate with the agent",
-        "p2.desc": "Copy the line below and paste it in chat. The agent generates copy and opens the table review.",
-        "agentline": "Ready! Briefing and examples in {folder} — generate the copy (PPC + overlay) and open the review.",
-        "copy": "Copy",
-        "copied": "Line copied — paste it in chat.",
-        "hascopy": "copy.json already exists in this folder — the agent can open the review directly.",
-        "nocopy": "No copy.json yet — the agent generates it after your “ready”.",
-    },
+    "title": "Copy — briefing + examples",
+    "prog": "{filled}/{total} briefing sections filled",
+    "ready": "Briefing filled. Paste examples if you like, save and say “ready” in chat.",
+    "missing": "Fill the briefing (at least the objective) and save. Examples are optional.",
+    "p1.title": "Briefing + examples",
+    "p1.desc": "Text only: no logo, brandbook or visual references. The agent generates copy from this.",
+    "brief.label": "Copy briefing",
+    "examples.label": "Example texts (paste copy you like / want to use as a model)",
+    "save": "Save",
+    "saved": "Briefing and examples saved.",
+    "p2.title": "Generate with the agent",
+    "p2.desc": "Copy the line below and paste it in chat. The agent generates copy and opens the table review.",
+    "agentline": "Ready! Briefing and examples in {folder} — generate the copy (PPC + overlay) and open the review.",
+    "copy": "Copy",
+    "copied": "Line copied — paste it in chat.",
+    "hascopy": "copy.json already exists in this folder — the agent can open the review directly.",
+    "nocopy": "No copy.json yet — the agent generates it after your “ready”.",
 }
 
 
-def wizard_page(lang):
-    t = _WIZ_T.get(lang, _WIZ_T["pt"])
-    return _head(t["title"], lang) + f"""
+def wizard_page():
+    t = _WIZ_T
+    return _head(t["title"]) + f"""
 <header><span class="brand">copy-kit</span><h1>{t['title']}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
-{ui._lang_toggle(lang)}
-<button onclick="load()">{i18n.t('btn.refresh', lang)}</button></header>
+<button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
-""" + _stepper(1, 0, lang) + f"""
+""" + _stepper(1, 0) + f"""
 <span class="meta" id="prog"></span>
 <div class="callout warn" id="ready"></div>
 </div>
@@ -141,9 +114,8 @@ def wizard_page(lang):
 <button class="btn primary" onclick="copyAgent()">{t['copy']}</button></div>
 <p class="hint" id="copynote"></p></div>
 </div>
-""" + ui._modal(lang) + ui._JS_UTIL + (
-        '<script>const LANG="' + lang + '";const T='
-        + json.dumps(t, ensure_ascii=False) + ';</script>') + """
+""" + ui._modal() + ui._JS_UTIL + (
+        '<script>const T=' + json.dumps(t, ensure_ascii=False) + ';</script>') + """
 <script>
 let S=null;
 const fill=(s,o)=>s.replace(/\\{(\\w+)\\}/g,(m,k)=>(k in o?o[k]:m));
@@ -175,86 +147,49 @@ load();
 
 
 _REV_T = {
-    "pt": {
-        "title": "Revisar copy",
-        "meta": "local · {origin}",
-        "stats": "<span class='stat'><b>{total}</b> linhas</span><span class='stat'><b>{approved}</b> aprovadas</span>"
-                 "<span class='stat'><b>{pending}</b> pendentes</span><span class='stat'><b>{rejected}</b> rejeitadas</span>"
-                 "<span class='stat'><b>{redo}</b> refazer</span>",
-        "legend": "Legenda:",
-        "lbl.working": "Trabalho", "lbl.approved": "Aprovadas", "lbl.pending": "Pendentes",
-        "lbl.rejected": "Rejeitadas", "lbl.redo": "Refazer",
-        "sing.pending": "pendente", "sing.approved": "aprovada", "sing.rejected": "rejeitada", "sing.redo": "refazer",
-        "dest.all": "Todos", "dest.ppc": "PPC", "dest.overlay": "Overlay",
-        "allconcepts": "Todos os conceitos ({n})",
-        "concept": "Conceito:",
-        "th.status": "Status", "th.dest": "Destino", "th.concept": "Conceito", "th.axis": "Eixo",
-        "th.kind": "Kind", "th.text": "Texto", "th.lang": "Idioma", "th.acts": "Ações",
-        "approve": "Aprovar", "reject": "Rejeitar", "redo": "Refazer",
-        "regenask": "O que ajustar neste copy? (nota obrigatória)",
-        "approvetoast": "Copy aprovado.", "rejecttoast": "Copy rejeitado — o agente recria.",
-        "regentoast": "Marcado para refazer — o agente reescreve com a nota.",
-        "empty": "Nenhuma linha neste filtro.",
-        "p3.title": "Revisar copy",
-        "p3.desc": "Aprove/rejeite/refaça linha a linha. Nada sai sem aprovação. Refazer exige uma nota.",
-        "p4.title": "Entregar",
-        "p4.desc": "Exporta só o copy aprovado para planilhas (Meta / Google RSA / overlay) na pasta Desktop.",
-        "p4.hint": "CSV + XLSX. URL/orçamento/IDs ficam em branco para o time de PPC.",
-        "continue": "Exportar aprovadas",
-        "deliver.done": "{n} linhas aprovadas exportadas para {dir}",
-        "deliver.empty": "Nenhuma copy aprovada — aprove linhas na tabela primeiro.",
-        "deliver.toast": "{n} linhas exportadas.",
-        "deliver.warn": "Limites RSA excedidos (truncado no export)",
-        "openfolder": "Abrir pasta",
-        "openfolder.toast": "Pasta aberta: {dir}",
-        "openfolder.empty": "pasta de entrega vazia — exporte primeiro",
-    },
-    "en": {
-        "title": "Review copy",
-        "meta": "local · {origin}",
-        "stats": "<span class='stat'><b>{total}</b> rows</span><span class='stat'><b>{approved}</b> approved</span>"
-                 "<span class='stat'><b>{pending}</b> pending</span><span class='stat'><b>{rejected}</b> rejected</span>"
-                 "<span class='stat'><b>{redo}</b> redo</span>",
-        "legend": "Legend:",
-        "lbl.working": "Working", "lbl.approved": "Approved", "lbl.pending": "Pending",
-        "lbl.rejected": "Rejected", "lbl.redo": "Redo",
-        "sing.pending": "pending", "sing.approved": "approved", "sing.rejected": "rejected", "sing.redo": "redo",
-        "dest.all": "All", "dest.ppc": "PPC", "dest.overlay": "Overlay",
-        "allconcepts": "All concepts ({n})",
-        "concept": "Concept:",
-        "th.status": "Status", "th.dest": "Dest", "th.concept": "Concept", "th.axis": "Axis",
-        "th.kind": "Kind", "th.text": "Text", "th.lang": "Lang", "th.acts": "Actions",
-        "approve": "Approve", "reject": "Reject", "redo": "Redo",
-        "regenask": "What to adjust in this copy? (note required)",
-        "approvetoast": "Copy approved.", "rejecttoast": "Copy rejected — the agent recreates.",
-        "regentoast": "Marked for redo — the agent rewrites with the note.",
-        "empty": "No rows in this filter.",
-        "p3.title": "Review copy",
-        "p3.desc": "Approve/reject/redo row by row. Nothing ships unapproved. Redo requires a note.",
-        "p4.title": "Deliver",
-        "p4.desc": "Exports only approved copy to sheets (Meta / Google RSA / overlay) in the Desktop folder.",
-        "p4.hint": "CSV + XLSX. URL/budget/IDs are left blank for the PPC team.",
-        "continue": "Export approved",
-        "deliver.done": "{n} approved rows exported to {dir}",
-        "deliver.empty": "No approved copy — approve rows in the table first.",
-        "deliver.toast": "{n} rows exported.",
-        "deliver.warn": "RSA limits exceeded (truncated on export)",
-        "openfolder": "Open folder",
-        "openfolder.toast": "Folder opened: {dir}",
-        "openfolder.empty": "empty delivery folder — export first",
-    },
+    "title": "Review copy",
+    "meta": "local · {origin}",
+    "stats": "<span class='stat'><b>{total}</b> rows</span><span class='stat'><b>{approved}</b> approved</span>"
+             "<span class='stat'><b>{pending}</b> pending</span><span class='stat'><b>{rejected}</b> rejected</span>"
+             "<span class='stat'><b>{redo}</b> redo</span>",
+    "legend": "Legend:",
+    "lbl.working": "Working", "lbl.approved": "Approved", "lbl.pending": "Pending",
+    "lbl.rejected": "Rejected", "lbl.redo": "Redo",
+    "sing.pending": "pending", "sing.approved": "approved", "sing.rejected": "rejected", "sing.redo": "redo",
+    "dest.all": "All", "dest.ppc": "PPC", "dest.overlay": "Overlay",
+    "allconcepts": "All concepts ({n})",
+    "concept": "Concept:",
+    "th.status": "Status", "th.dest": "Dest", "th.concept": "Concept", "th.axis": "Axis",
+    "th.kind": "Kind", "th.text": "Text", "th.lang": "Lang", "th.acts": "Actions",
+    "approve": "Approve", "reject": "Reject", "redo": "Redo",
+    "regenask": "What to adjust in this copy? (note required)",
+    "approvetoast": "Copy approved.", "rejecttoast": "Copy rejected — the agent recreates.",
+    "regentoast": "Marked for redo — the agent rewrites with the note.",
+    "empty": "No rows in this filter.",
+    "p3.title": "Review copy",
+    "p3.desc": "Approve/reject/redo row by row. Nothing ships unapproved. Redo requires a note.",
+    "p4.title": "Deliver",
+    "p4.desc": "Exports only approved copy to sheets (Meta / Google RSA / overlay) in the Desktop folder.",
+    "p4.hint": "CSV + XLSX. URL/budget/IDs are left blank for the PPC team.",
+    "continue": "Export approved",
+    "deliver.done": "{n} approved rows exported to {dir}",
+    "deliver.empty": "No approved copy — approve rows in the table first.",
+    "deliver.toast": "{n} rows exported.",
+    "deliver.warn": "RSA limits exceeded (truncated on export)",
+    "openfolder": "Open folder",
+    "openfolder.toast": "Folder opened: {dir}",
+    "openfolder.empty": "empty delivery folder — export first",
 }
 
 
-def review_page(lang):
-    t = _REV_T.get(lang, _REV_T["pt"])
-    return _head(t["title"], lang) + f"""
+def review_page():
+    t = _REV_T
+    return _head(t["title"]) + f"""
 <header><span class="brand">copy-kit</span><h1 id="title">{t['title']}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
-{ui._lang_toggle(lang)}
-<button onclick="load()">{i18n.t('btn.refresh', lang)}</button></header>
+<button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
-""" + _stepper(3, 2, lang) + f"""
+""" + _stepper(3, 2) + f"""
 <div class="stats" id="stats"></div>
 <div class="legend"><b>{t['legend']}</b>
 <span class="tag approved"><span class="dot"></span>{t['sing.approved']}</span>
@@ -274,14 +209,13 @@ def review_page(lang):
 <tbody id="tbody"></tbody></table></div></div>
 <div class="panel"><h2><span class="n">4</span>{t['p4.title']}</h2>
 <p class="desc">{t['p4.desc']}</p>
-<div class="row" style="align-items:center"><button class="btn primary" onclick="continuar()">{t['continue']}</button>
+<div class="row" style="align-items:center"><button class="btn primary" onclick="continueBatch()">{t['continue']}</button>
 <button class="btn" id="openfolder" onclick="openFolder()" style="display:none">{t['openfolder']}</button>
 <span class="meta">{t['p4.hint']}</span></div>
 <div id="deliver-result"></div></div>
 </div>
-""" + ui._modal(lang) + ui._JS_UTIL + (
-        '<script>const LANG="' + lang + '";const T='
-        + json.dumps(t, ensure_ascii=False) + ';</script>') + """
+""" + ui._modal() + ui._JS_UTIL + (
+        '<script>const T=' + json.dumps(t, ensure_ascii=False) + ';</script>') + """
 <script>
 let state=null,filter="working",dest="all",cf="all",last="";
 const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"]};
@@ -349,10 +283,10 @@ async function poll(){
 function setStep(n){document.querySelectorAll(".stepper .step").forEach(el=>{
   const i=+el.dataset.step;el.classList.toggle("done",i<n);el.classList.toggle("current",i===n);
   const d=el.querySelector(".n");if(d)d.textContent=i<n?"✓":String(i);});}
-async function continuar(){
+async function continueBatch(){
   const r=await fetch("/deliver",{method:"POST",body:"{}"});
   const j=await r.json();
-  if(!r.ok){await tell(j.error||"erro");return;}
+  if(!r.ok){await tell(j.error||"error");return;}
   const box=document.getElementById("deliver-result");
   if(j.exported===0){box.innerHTML="";notify(T["deliver.empty"]);return;}
   let html=`<div class="callout ok">${fill(T["deliver.done"],{n:j.exported,dir:esc(j.dir)})}</div>`;
@@ -368,7 +302,7 @@ async function continuar(){
 async function openFolder(){
   const r=await fetch("/open-folder",{method:"POST",body:"{}"});
   const j=await r.json();
-  if(!r.ok){await tell(j.error||"erro");return;}
+  if(!r.ok){await tell(j.error||"error");return;}
   notify(fill(T["openfolder.toast"],{dir:esc(j.path)}));
 }
 load();
@@ -377,23 +311,12 @@ setInterval(poll,4000);
 
 
 class CopyHandler(ui.Handler):
-    """Herda _send/_lang/_cookie_lang/_safe/log_message de ui.Handler; rotas próprias."""
+    """Inherits _send/_safe/log_message from ui.Handler; own routes."""
 
     def do_GET(self):
         url = urlparse(self.path)
-        if url.path == "/lang":
-            setl = parse_qs(url.query).get("set", ["pt"])[0]
-            if setl not in ("pt", "en"):
-                setl = "pt"
-            self.send_response(302)
-            self.send_header("Set-Cookie", f"lang={setl}; Path=/; Max-Age=31536000; SameSite=Lax")
-            self.send_header("Location", "/")
-            self.send_header("Content-Length", "0")
-            self.end_headers()
-            return
-        lang = self._lang()
         if url.path == "/":
-            page = wizard_page(lang) if self.mode == "onboard" else review_page(lang)
+            page = wizard_page() if self.mode == "onboard" else review_page()
             self._send(200, page.encode(), "text/html; charset=utf-8")
         elif url.path == "/state":
             if self.mode == "onboard":
@@ -449,22 +372,20 @@ class CopyHandler(ui.Handler):
             except ValueError as e:
                 return self._send(400, {"error": str(e)})
             if not found:
-                return self._send(404, {"error": "id desconhecido"})
+                return self._send(404, {"error": "unknown id"})
             return self._send(200, {"ok": True})
         if url.path == "/deliver":
-            return self._send(200, copy.deliver(self.root, lang=self._lang()))
+            return self._send(200, copy.deliver(self.root))
         if url.path == "/open-folder":
             d = copy.delivery_dir(self.root)
             if not os.path.isdir(d):
-                en = self._lang() == "en"
-                return self._send(400, {"error": "empty delivery folder — export first" if en
-                                        else "pasta de entrega vazia — exporte primeiro"})
+                return self._send(400, {"error": "empty delivery folder — export first"})
             ui._open_folder(d)
             return self._send(200, {"ok": True, "path": d})
         self._send(404, {"error": "not found"})
 
 
-def _serve(folder, port, open_browser, shortcut_name, lang):
+def _serve(folder, port, open_browser, shortcut_name):
     server = None
     for p in range(port, port + 20):
         try:
@@ -473,36 +394,34 @@ def _serve(folder, port, open_browser, shortcut_name, lang):
         except OSError:
             continue
     if server is None:
-        raise OSError(f"nenhuma porta livre em {port}..{port + 19}")
+        raise OSError(f"no free port in {port}..{port + 19}")
     url = f"http://127.0.0.1:{server.server_address[1]}"
     threading.Thread(target=server.serve_forever, daemon=True).start()
     shortcut = os.path.join(folder, shortcut_name)
     with open(shortcut, "w", encoding="utf-8") as f:
-        f.write('<!doctype html><html lang="' + lang + '"><head><meta charset="utf-8">'
+        f.write('<!doctype html><html lang="en"><head><meta charset="utf-8">'
                 f'<meta http-equiv="refresh" content="0;url={url}">'
                 '<title>copy-kit</title></head>'
                 '<body style="font-family:system-ui,sans-serif;padding:40px">'
-                f'<p>{i18n.t("cli.shortcut.opening", lang, url=url)} <a href="{url}">{url}</a></p>'
-                f'<p>{i18n.t("cli.shortcut.manual", lang)}</p>'
+                f'<p>{i18n.t("cli.shortcut.opening", url=url)} <a href="{url}">{url}</a></p>'
+                f'<p>{i18n.t("cli.shortcut.manual")}</p>'
                 '</body></html>\n')
-    print(f"\n  ➜  {url}\n  ({i18n.t('cli.serve.shortcut', lang, name=shortcut_name)})\n", flush=True)
+    print(f"\n  ➜  {url}\n  ({i18n.t('cli.serve.shortcut', name=shortcut_name)})\n", flush=True)
     if open_browser:
         webbrowser.open(url)
     return server, url
 
 
-def serve_onboard(folder, port=8767, open_browser=True, lang=None):
-    lang = lang or i18n.resolve_lang()
+def serve_onboard(folder, port=8767, open_browser=True):
     folder = os.path.abspath(os.path.expanduser(folder))
-    copy.scaffold(folder, lang)
+    copy.scaffold(folder)
     CopyHandler.mode = "onboard"
     CopyHandler.root = folder
-    return _serve(folder, port, open_browser, "ABRIR-COPY.html", lang)
+    return _serve(folder, port, open_browser, "OPEN-COPY.html")
 
 
-def serve_review(folder, port=8768, open_browser=True, lang=None):
-    lang = lang or i18n.resolve_lang()
+def serve_review(folder, port=8768, open_browser=True):
     folder = os.path.abspath(os.path.expanduser(folder))
     CopyHandler.mode = "review"
     CopyHandler.root = folder
-    return _serve(folder, port, open_browser, "ABRIR-COPY-REVISAO.html", lang)
+    return _serve(folder, port, open_browser, "OPEN-COPY-REVIEW.html")

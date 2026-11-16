@@ -1,7 +1,7 @@
-"""Provider manual: os assets entram por uma pasta observada. Custo zero, sem rede.
+"""Manual provider: assets come in through a watched folder. Zero cost, no network.
 
-É o caminho de hoje do CDI (arquivos do Magnific caem em ~/Downloads) e o fallback
-universal para qualquer plataforma que não tenha API.
+This is today's CDI path (Magnific files land in ~/Downloads) and the universal fallback
+for any platform without an API.
 """
 
 import glob
@@ -19,7 +19,7 @@ class Manual(Provider):
         self.drop_dir = os.path.expanduser(drop_dir)
 
     def note(self):
-        return f"sem custo; arquivos esperados em {self.drop_dir}"
+        return f"no cost; files expected in {self.drop_dir}"
 
     def generate(self, job):
         pattern = os.path.join(self.drop_dir, f"{job['id']}*")
@@ -27,8 +27,8 @@ class Manual(Provider):
                       if p.lower().endswith(IMG_EXT + VID_EXT))
         if not hits:
             raise FileNotFoundError(
-                f"Nenhum arquivo para o job '{job['id']}' em {self.drop_dir}. "
-                f"Gere na plataforma e solte lá com o prefixo do job.")
+                f"No file for job '{job['id']}' in {self.drop_dir}. "
+                f"Generate on the platform and drop it there with the job prefix.")
         out = []
         for src in hits[:job.get("n", 1)]:
             dest = os.path.join(job["out_dir"], os.path.basename(src))

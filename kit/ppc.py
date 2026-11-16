@@ -1,13 +1,13 @@
-"""Export PPC: planilhas de bulk upload (Meta + Google) a partir da campanha renderizada.
+"""PPC export: bulk-upload sheets (Meta + Google) from the rendered campaign.
 
-Determinístico: cada peça aprovada (criativo + copy) vira uma linha nas colunas de
-import em lote de cada plataforma. CSV (import direto) + XLSX (revisão no Excel/Sheets).
-O que só o time de PPC sabe — URL final, orçamento, targeting, objetivo, IDs de
-Page/Pixel/Instagram — fica como coluna rotulada em branco. O manifesto lista todas as
-peças com plataforma, tamanho, conceito, caminho do arquivo e copy.
+Deterministic: each approved piece (creative + copy) becomes a row in each platform's
+bulk-import columns. CSV (direct import) + XLSX (review in Excel/Sheets). What only the
+PPC team knows — final URL, budget, targeting, objective, Page/Pixel/Instagram IDs —
+stays as a labeled blank column. The manifest lists every piece with platform, size,
+concept, file path and copy.
 
-Meta: Ads Manager → Import/Export → Import Ads in Bulk (CSV ou XLSX).
-Google Search (RSA) e Display: Google Ads Editor (CSV) ou Bulk actions → Uploads (CSV/XLSX).
+Meta: Ads Manager → Import/Export → Import Ads in Bulk (CSV or XLSX).
+Google Search (RSA) and Display: Google Ads Editor (CSV) or Bulk actions → Uploads (CSV/XLSX).
 """
 
 import csv
@@ -238,28 +238,7 @@ def _write_xlsx(path, columns, rows, title):
     return True
 
 
-_NOTES = {
-    "pt": """PLANILHAS DE BULK UPLOAD — time de PPC
-=======================================
-Arquivos (cada um em CSV e XLSX):
-  meta_bulk_import   → Meta Ads Manager → Import/Export → Import Ads in Bulk.
-  google_search_rsa  → Google Ads Editor (CSV) ou Bulk actions → Uploads. Responsive Search Ads.
-  google_display     → Google Ads Editor / Uploads. Responsive Display Ads (texto + referências de criativo).
-  creative_manifest  → referência humana: cada peça com plataforma, tamanho, conceito, arquivo e copy.
-
-Já preenchido pelo kit: nomes de campanha/ad set/ad, criativo (nome do arquivo), copy
-(hook/primary text, headline, description), CTA, placements e tamanho.
-
-Falta o time de PPC preencher (colunas em branco):
-  - URL final (Link / Final URL), Display Link e URL Tags (UTM).
-  - Objetivo da campanha, orçamento, optimization goal, billing event, países/targeting.
-  - IDs: Facebook Page (Link Object ID), Instagram Account ID, Pixel/Conversion (Meta).
-  - Google Display: anexar os arquivos de imagem/logo listados (Image file / Logo file) no Editor.
-
-Limites: Google RSA headline ≤ 30 caracteres (até 15), description ≤ 90 (até 4), path ≤ 15.
-Tudo sai PAUSED/Paused para revisão antes de ativar. Confira o copy e os limites antes de importar.
-""",
-    "en": """BULK-UPLOAD SHEETS — PPC team
+_NOTES = """BULK-UPLOAD SHEETS — PPC team
 =============================
 Files (each as CSV and XLSX):
   meta_bulk_import   → Meta Ads Manager → Import/Export → Import Ads in Bulk.
@@ -278,12 +257,11 @@ PPC team must fill (blank columns):
 
 Limits: Google RSA headline ≤ 30 chars (up to 15), description ≤ 90 (up to 4), path ≤ 15.
 Everything ships PAUSED/Paused for review before going live. Check copy and limits before importing.
-""",
-}
+"""
 
 
-def export(root, all_pieces=False, lang="pt"):
-    """Gera as planilhas em ppc/ na pasta de entrega (Desktop). Devolve um resumo (contagens + arquivos)."""
+def export(root, all_pieces=False):
+    """Generate the sheets in ppc/ inside the delivery folder (Desktop). Returns a summary (counts + files)."""
     state_path = os.path.join(root, "state.json")
     if not os.path.isfile(state_path):
         return {"dir": os.path.join(C.delivery_dir(root), "ppc"), "files": [], "meta": 0,
@@ -323,6 +301,6 @@ def export(root, all_pieces=False, lang="pt"):
 
     notes = os.path.join(outdir, "README.txt")
     with open(notes, "w", encoding="utf-8") as f:
-        f.write(_NOTES.get(lang, _NOTES["en"]))
+        f.write(_NOTES)
     files.append("README.txt")
     return {"dir": outdir, "files": files, "xlsx": _HAS_XLSX, **counts}

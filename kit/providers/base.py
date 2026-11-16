@@ -1,10 +1,12 @@
-"""Contrato de provider de assets de IA (imagem e vídeo).
+"""Contract for AI asset providers (image and video).
 
-O contrato é a pasta + manifest, não a API: o Magnific entra mediado pelo agente (MCP),
-outros entram por HTTP direto. Trocar de plataforma é trocar adapter, não o pipeline.
+The contract is the folder + manifest, not the API: Magnific comes in mediated by the
+agent (MCP), others come in over direct HTTP. Switching platforms means switching
+adapters, not the pipeline.
 
-`estimate` é obrigatório e informativo: mostra ≈ quanto será gasto antes de gerar.
-Não bloqueia — o usuário já espera a cobrança; o que importa é o valor aproximado.
+`estimate` is mandatory and informational: shows ≈ how much will be spent before
+generating. It never blocks — the user already expects the charge; what matters is the
+approximate amount.
 """
 
 import hashlib
@@ -17,10 +19,10 @@ VID_EXT = (".mp4", ".mov", ".webm", ".m4v")
 
 
 class NeedsAgent(Exception):
-    """O transporte deste provider é o agente (MCP). O CLI para e entrega os jobs a ele."""
+    """This provider's transport is the agent (MCP). The CLI stops and hands it the jobs."""
 
     def __init__(self, jobs_path, jobs):
-        super().__init__(f"Provider mediado pelo agente: cumpra os jobs em {jobs_path}")
+        super().__init__(f"Agent-mediated provider: fulfill the jobs in {jobs_path}")
         self.jobs_path = jobs_path
         self.jobs = jobs
 
@@ -45,14 +47,14 @@ class Provider:
 
 
 def notice(estimate):
-    """Aviso curto de gasto aproximado — informativo, nunca um bloqueio."""
+    """Short approximate-spend notice — informational, never a blocker."""
     bits = []
     if estimate.get("images"):
-        bits.append(f"{estimate['images']} imagem(ns)")
+        bits.append(f"{estimate['images']} image(s)")
     if estimate.get("videos"):
-        bits.append(f"{estimate['videos']} vídeo(s)")
-    what = " + ".join(bits) or "nada"
-    return f"≈ {estimate['credits']} créditos ({what}) · estimativa {estimate['provider']}"
+        bits.append(f"{estimate['videos']} video(s)")
+    what = " + ".join(bits) or "nothing"
+    return f"≈ {estimate['credits']} credits ({what}) · estimate {estimate['provider']}"
 
 
 def sha256(path):
@@ -64,7 +66,7 @@ def sha256(path):
 
 
 def record_manifest(campaign_root, entries):
-    """Proveniência e gasto por asset — o que o pipeline antigo não tinha."""
+    """Provenance and spend per asset — what the old pipeline lacked."""
     path = os.path.join(campaign_root, "assets", "manifest.json")
     existing = []
     if os.path.isfile(path):

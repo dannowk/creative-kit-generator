@@ -1,8 +1,8 @@
-"""Fábrica de providers + o fluxo de assets com aviso de custo.
+"""Provider factory + the assets flow with a cost notice.
 
-Fluxo: estimate (aviso informativo de ≈ créditos) -> generate -> manifest + subject.json.
-Para MCP, o generate levanta NeedsAgent e o CLI entrega os jobs ao agente.
-Vídeo é job de provider (kind=video), não render local.
+Flow: estimate (informational ≈ credits notice) -> generate -> manifest + subject.json.
+For MCP, generate raises NeedsAgent and the CLI hands the jobs to the agent.
+Video is a provider job (kind=video), not local render.
 """
 
 import json
@@ -32,7 +32,7 @@ def run_assets(campaign):
     root = campaign["_root"]
     jobs = campaign.get("asset_jobs") or []
     if not jobs:
-        return {"count": 0, "credits": 0, "generated": [], "note": "campanha sem asset_jobs"}
+        return {"count": 0, "credits": 0, "generated": [], "note": "campaign has no asset_jobs"}
     provider = get_provider(campaign.get("provider"))
     estimate = provider.estimate(jobs)
     estimate["notice"] = notice(estimate)

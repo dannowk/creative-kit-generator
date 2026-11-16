@@ -1,7 +1,7 @@
 id: clean
 name: Clean SaaS
-description: Direção de arte editorial-clara — papel, foto em bloco sem tratamento de filme,
-  tipografia sóbria sem sublinhado. Autorada para o briefing da Acme, não herdada do CDI.
+description: Light editorial art direction — paper, block photo with no film treatment,
+  sober typography without underline. Authored for the Acme briefing.
 needs_photo: true
 
 variants:
