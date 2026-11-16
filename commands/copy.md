@@ -20,11 +20,16 @@ chat and use the browser. This command is the **copy kit** (independent of
    you're done."* Wait for the OK.
 5. `copy plan <folder>` → read the briefing + examples + any listed attached files
    (`attachments/` — plain text: read directly; PDF/docx/image: extract with your tools) →
-   **author `copy.json`** (concepts +
-   rows: id, destination ppc/overlay, concept, axis, kind, text, lang, status pending,
-   origin agent, updated_at/by). PPC: headline/description/primary_text. Overlay:
-   hook/kicker/program/cta. **Never invent copy** beyond the briefing+examples+attachments; **never
-   mark approved** (it's the user's).
+   **author `copy.json`** (concepts + rows: id, destination ppc/overlay, platform
+   google/meta/both, concept, axis, kind, text, lang, status pending, origin agent,
+   updated_at/by + top-level `strategy_note` and `meta_cta`). PPC kinds:
+   headline/description/primary_text/link_description/cta. Overlay:
+   hook/kicker/program/cta. **Platform playbook per concept×axis:** Google RSA = 15
+   headlines (≤30) + 4 descriptions (≤90), keywords in the headlines, varied angles
+   (benefit / authority / CTA), no repeated words — Ad Strength "Excellent". Meta = 5
+   primary_text (hook in the first 90–125 chars, before "See more") + 5 headline (≤30) +
+   5 link_description (≤40) + 1 cta row (recommended native button). **Never invent copy**
+   beyond the briefing+examples+attachments; **never mark approved** (it's the user's).
 6. `copy validate <folder>` → fix errors (nothing written on error).
 7. `copy review <folder>` → opens the **table** (shortcut `OPEN-COPY-REVIEW.html`). The user
    approves/rejects/redo+note per row. Fulfill rejected/redo by rewriting the text,

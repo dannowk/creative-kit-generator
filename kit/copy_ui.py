@@ -26,6 +26,8 @@ table.copy th{text-align:left;color:var(--mut);font-weight:600;font-size:11.5px;
 table.copy td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
 table.copy tr:hover td{background:#fbfcfd}
 table.copy .txt{min-width:240px;max-width:440px}
+table.copy .cnt{color:var(--mut);font-size:11.5px;white-space:nowrap}
+table.copy .cnt.over{color:#B42318;font-weight:600}
 table.copy .acts{white-space:nowrap}
 table.copy .acts button{min-height:28px;padding:3px 9px;font-size:12.5px}
 .fieldlabel{font-size:12.5px;color:var(--mut);font-weight:600}
@@ -222,6 +224,9 @@ _REV_T = {
     "lbl.rejected": "Rejected", "lbl.redo": "Redo",
     "sing.pending": "pending", "sing.approved": "approved", "sing.rejected": "rejected", "sing.redo": "redo",
     "dest.all": "All", "dest.ppc": "PPC", "dest.overlay": "Overlay",
+    "pf.all": "All platforms", "pf.google": "Google", "pf.meta": "Meta",
+    "stratnote": "Strategist's note",
+    "metacta": "Recommended Meta CTA:",
     "allconcepts": "All concepts ({n})",
     "concept": "Concept:",
     "th.status": "Status", "th.dest": "Dest", "th.concept": "Concept", "th.axis": "Axis",
@@ -267,7 +272,9 @@ def review_page():
 <p class="desc">{t['p3.desc']}</p>
 <div class="filters" id="filters"></div>
 <div class="filters" id="dfilters"></div>
+<div class="filters" id="pfilters"></div>
 <div class="row" style="align-items:center"><span class="meta">{t['concept']}</span><div class="filters" id="cfilters"></div></div>
+<div class="callout" id="strat" style="display:none"></div>
 <div class="tablewrap"><table class="copy">
 <thead><tr><th>{t['th.status']}</th><th>{t['th.dest']}</th><th>{t['th.concept']}</th><th>{t['th.axis']}</th>
 <th>{t['th.kind']}</th><th>{t['th.text']}</th><th>{t['th.lang']}</th><th>{t['th.acts']}</th></tr></thead>
@@ -282,9 +289,10 @@ def review_page():
 """ + ui._modal() + ui._JS_UTIL + (
         '<script>const T=' + json.dumps(t, ensure_ascii=False) + ';</script>') + """
 <script>
-let state=null,filter="working",dest="all",cf="all",last="";
+let state=null,filter="working",dest="all",pf="all",cf="all",last="";
 const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"]};
 const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"]};
+const LIM={headline:30,description:90,link_description:40};
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fill=(s,o)=>s.replace(/\\{(\\w+)\\}/g,(m,k)=>(k in o?o[k]:m));
 async function load(){applyState(await (await fetch("/state")).json());}
@@ -301,6 +309,17 @@ function applyState(s){
     .map(([k,v])=>`<button class="${k===filter?'on':''}" onclick="setFilter('${k}')">${LBL[k]} (${v})</button>`).join("");
   document.getElementById("dfilters").innerHTML=["all","ppc","overlay"].map(d=>
     `<button class="${d===dest?'on':''}" onclick="setDest('${d}')">${T["dest."+d]} (${d==="all"?s.rows.length:s.rows.filter(r=>r.destination===d).length})</button>`).join("");
+  const pc={google:0,meta:0};
+  for(const r of s.rows){if(r.destination!=="ppc")continue;const p=r.platform||"both";
+    if(p==="both"){pc.google++;pc.meta++;}else if(pc[p]!==undefined)pc[p]++;}
+  document.getElementById("pfilters").innerHTML=["all","google","meta"].map(p=>
+    `<button class="${p===pf?'on':''}" onclick="setPf('${p}')">${T["pf."+p]}${p==="all"?"":" ("+pc[p]+")"}</button>`).join("");
+  const st=document.getElementById("strat");
+  if(s.strategy_note||s.meta_cta){
+    st.style.display="";st.className="callout ok";
+    st.innerHTML=(s.strategy_note?`<b>${T.stratnote}:</b> ${esc(s.strategy_note)}`:"")+
+      (s.meta_cta?`${s.strategy_note?" &middot; ":""}<b>${T.metacta}</b> ${esc(s.meta_cta)}`:"");
+  }else{st.style.display="none";}
   const cc={};for(const r of s.rows)cc[r.concept]=(cc[r.concept]||0)+1;
   const concepts=(s.concepts&&s.concepts.length?s.concepts:Object.keys(cc));
   document.getElementById("cfilters").innerHTML=
@@ -310,19 +329,26 @@ function applyState(s){
 }
 function setFilter(f){filter=f;draw();}
 function setDest(d){dest=d;draw();}
+function setPf(p){pf=p;draw();}
 function setConcept(k){cf=k;draw();}
 function draw(){
   const items=state.rows.filter(r=>
     (filter==="working"?r.status!=="approved":r.status===filter)&&
-    (dest==="all"||r.destination===dest)&&(cf==="all"||r.concept===cf));
+    (dest==="all"||r.destination===dest)&&
+    (pf==="all"||r.destination!=="ppc"||(r.platform||"both")==="both"||(r.platform||"both")===pf)&&
+    (cf==="all"||r.concept===cf));
   const tb=document.getElementById("tbody");
   if(!items.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty">${T.empty}</div></td></tr>`;return;}
   tb.innerHTML=items.map(r=>{
     const note=(r.status==="redo"&&r.note)?`<div class="hint">↻ ${esc(r.note)}</div>`:"";
+    const n=(r.text||"").length,lim=LIM[r.kind];
+    const cnt=lim?` <span class="cnt${n>lim?" over":""}">[${n}/${lim}]</span>`
+      :(r.destination==="ppc"?` <span class="cnt">[${n}]</span>`:"");
+    const plat=r.destination==="ppc"&&r.platform&&r.platform!=="both"?" · "+esc(r.platform):"";
     return `<tr>
       <td><span class="tag ${r.status}"><span class="dot"></span>${SING[r.status]}</span></td>
-      <td>${esc(r.destination)}</td><td>${esc(r.concept)}</td><td>${esc(r.axis)}</td>
-      <td>${esc(r.kind)}</td><td class="txt">${esc(r.text)}${note}</td><td>${esc(r.lang)}</td>
+      <td>${esc(r.destination)}${plat}</td><td>${esc(r.concept)}</td><td>${esc(r.axis)}</td>
+      <td>${esc(r.kind)}</td><td class="txt">${esc(r.text)}${cnt}${note}</td><td>${esc(r.lang)}</td>
       <td class="acts">
         <button class="btn ok" onclick="decide('${r.id}','approved')">${T.approve}</button>
         <button class="btn no" onclick="decide('${r.id}','rejected')">${T.reject}</button>
@@ -401,6 +427,8 @@ class CopyHandler(ui.Handler):
                 data = copy.load(self.root)
                 payload["folder"] = os.path.basename(self.root)
                 payload["concepts"] = data.get("concepts") or []
+                payload["strategy_note"] = data.get("strategy_note") or ""
+                payload["meta_cta"] = data.get("meta_cta") or ""
                 self._send(200, payload)
         elif url.path == "/download":
             fname = os.path.basename(parse_qs(url.query).get("file", [""])[0])

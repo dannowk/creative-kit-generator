@@ -12,13 +12,33 @@ from datetime import datetime, timezone
 
 DESTINATIONS = ("ppc", "overlay")
 KINDS = {
-    "ppc": ("headline", "description", "primary_text"),
+    "ppc": ("headline", "description", "primary_text", "link_description", "cta"),
     "overlay": ("hook", "kicker", "program", "cta"),
+}
+PLATFORMS = ("google", "meta", "both")
+LIMITS = {"headline": 30, "description": 90, "link_description": 40}
+VOLUME = {
+    "google": {"headline": 15, "description": 4},
+    "meta": {"primary_text": 5, "headline": 5, "link_description": 5},
 }
 STATUSES = ("pending", "approved", "rejected", "redo")
 LANGS = ("en",)
 ORIGINS = ("agent", "sheet")
 USES = ("image", "ppc", "both")
+
+PLATFORM_RULES = """  platform playbook (ppc rows carry platform: google | meta | both):
+    GOOGLE RSA — per concept × axis: 15 headlines (≤30 chars each) + 4 descriptions (≤90).
+      Aim for Ad Strength "Excellent": work the main Google Ads keywords naturally into the
+      headlines, spread the angles (direct benefit / differentiator + authority / strong CTA)
+      and avoid repeating the same words across headlines (diversity score).
+    META — per concept × axis: exactly 5 primary_text + 5 headline (≤30) + 5 link_description
+      (≤30–40). The hook (pain / desire / promise) must land in the FIRST 90–125 chars of each
+      primary_text — before the "See more" cut on mobile. Feed-stop angle: storytelling +
+      solid argument. Add one cta row with the recommended native Meta button
+      (e.g. "Learn More", "Sign Up", "Subscribe").
+    After authoring, write at the TOP LEVEL of copy.json: "strategy_note" (how the Google Ads
+    terms were used and which angles break the scroll) and "meta_cta" (recommended native
+    button for the campaign)."""
 
 
 def _path(root):
@@ -68,6 +88,8 @@ def validate(data):
         elif r.get("kind") not in KINDS[dest]:
             errs.append(f"row {i}: invalid kind for {dest}: {r.get('kind')!r} "
                         f"({'/'.join(KINDS[dest])})")
+        if dest == "ppc" and r.get("platform", "both") not in PLATFORMS:
+            errs.append(f"row {i}: invalid platform: {r.get('platform')!r} (google/meta/both)")
         if not str(r.get("text") or "").strip():
             errs.append(f"row {i}: empty text")
         if concepts and r.get("concept") not in concepts:
@@ -146,8 +168,11 @@ BRIEF_TEMPLATE = """# Copy briefing
 (variations — e.g. urgency, benefit)
 
 ## 8. Constraints
-- Google RSA: headline ≤ 30 chars, description ≤ 90
-- CTA: short verb
+- Google RSA: 15 headlines ≤ 30 chars + 4 descriptions ≤ 90 per concept × axis
+  (keywords in the headlines, varied angles, no repeated words — Ad Strength "Excellent")
+- Meta: 5 primary texts (hook in the first 90–125 chars) + 5 headlines ≤ 30 +
+  5 link descriptions ≤ 40 per concept × axis
+- CTA: short verb; recommended native Meta button (e.g. "Learn More", "Sign Up")
 - (other rules)
 
 ## 9. Languages
@@ -258,24 +283,38 @@ def _adset(concept, axis):
 
 def _meta_rows(rows, name):
     from . import ppc
+    rows = [r for r in rows if r.get("platform", "both") in ("meta", "both")]
     out = []
     for concept, axis, lang in _groups(rows):
-        head = _texts(rows, concept, axis, lang, "headline")
         prim = _texts(rows, concept, axis, lang, "primary_text")
-        desc = _texts(rows, concept, axis, lang, "description")
-        row = {c: "" for c in ppc.META_COLUMNS}
-        row.update({"Campaign Name": name, "Campaign Status": "PAUSED",
-                    "Ad Set Name": _adset(concept, axis), "Ad Set Run Status": "PAUSED",
-                    "Ad Name": f"{_adset(concept, axis)} ({lang})", "Ad Status": "PAUSED",
-                    "Title": ppc._trunc(head[0] if head else "", 40),
-                    "Body": ppc._clean(prim[0] if prim else ""),
-                    "Link Description": ppc._trunc(desc[0] if desc else "", 30)})
-        out.append(row)
+        head = _texts(rows, concept, axis, lang, "headline")
+        link = (_texts(rows, concept, axis, lang, "link_description")
+                or _texts(rows, concept, axis, lang, "description"))
+        cta = _texts(rows, concept, axis, lang, "cta")
+        n = max(len(prim), len(head), len(link), 1)
+
+        def pick(lst, v):
+            if not lst:
+                return ""
+            return lst[v] if v < len(lst) else lst[v % len(lst)]
+
+        for v in range(n):
+            row = {c: "" for c in ppc.META_COLUMNS}
+            row.update({"Campaign Name": name, "Campaign Status": "PAUSED",
+                        "Ad Set Name": _adset(concept, axis), "Ad Set Run Status": "PAUSED",
+                        "Ad Name": _adset(concept, axis) + f" ({lang})" + (f" v{v + 1}" if n > 1 else ""),
+                        "Ad Status": "PAUSED",
+                        "Title": ppc._trunc(pick(head, v), 40),
+                        "Body": ppc._clean(pick(prim, v)),
+                        "Link Description": ppc._trunc(pick(link, v), 40),
+                        "Call to Action": ppc._clean(cta[0]) if cta else ""})
+            out.append(row)
     return out
 
 
 def _rsa_rows(rows, name):
     from . import ppc
+    rows = [r for r in rows if r.get("platform", "both") in ("google", "both")]
     out = []
     for concept, axis, lang in _groups(rows):
         heads = [ppc._trunc(t, 30) for t in ppc._dedup(_texts(rows, concept, axis, lang, "headline"))]
@@ -311,6 +350,23 @@ def _manifest_rows(rows):
              "Lang": r.get("lang"), "Chars": len(ppc._clean(r.get("text")))} for r in rows]
 
 
+def volume_report(rows):
+    """Per-group volume notes against the platform playbook (targets, not errors)."""
+    out = []
+    for concept, axis, lang in _groups(rows):
+        ppc = [r for r in rows if r.get("destination") == "ppc"
+               and r.get("concept") == concept and (r.get("axis") or "") == axis
+               and r.get("lang") == lang]
+        grp = " | ".join(x for x in [concept, axis] if x) or "(group)"
+        for plat in ("google", "meta"):
+            side = [r for r in ppc if r.get("platform", "both") in (plat, "both")]
+            for kind, want in VOLUME[plat].items():
+                n = sum(1 for r in side if r.get("kind") == kind)
+                if n < want:
+                    out.append(f"{grp} ({lang}) · {plat} {kind}: {n}/{want}")
+    return out
+
+
 _NOTES = """COPY KIT — APPROVED COPY
 ========================
 Files (each as CSV and XLSX):
@@ -320,8 +376,14 @@ Files (each as CSV and XLSX):
   copy_manifest      → human reference: every approved row (destination, concept, kind, text, chars).
 
 Only APPROVED copy ships. Final URL, budget, targeting and IDs are left blank for the PPC
-team. Everything ships PAUSED/Paused. Google RSA limits: headline ≤ 30, description ≤ 90
-(the export truncates and warns which rows exceeded — check before importing).
+team. Everything ships PAUSED/Paused.
+
+Platform playbook the copy was authored under:
+  Google RSA — 15 headlines (≤ 30 chars) + 4 descriptions (≤ 90) per concept × axis,
+    keywords worked into the headlines, varied angles, Ad Strength "Excellent".
+  Meta — 5 primary texts (hook in the first 90–125 chars, before "See more") +
+    5 headlines (≤ 30) + 5 link descriptions (≤ 40) per concept × axis, one ad per variation.
+Limits exceeded become a warning + truncation on export (check before importing).
 """
 
 
@@ -351,7 +413,7 @@ def export(root):
     ppc_rows = [r for r in rows if r.get("destination") == "ppc"]
     ov_rows = [r for r in rows if r.get("destination") == "overlay"]
     for r in ppc_rows:
-        limit = {"headline": 30, "description": 90}.get(r.get("kind"))
+        limit = LIMITS.get(r.get("kind"))
         n = len(ppc._clean(r.get("text")))
         if limit and n > limit:
             warnings.append({"id": r.get("id"), "kind": r.get("kind"), "chars": n, "limit": limit})

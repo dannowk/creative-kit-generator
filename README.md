@@ -301,12 +301,17 @@ The step-by-step is the same as the visual one, but lighter:
    `attachments/` for the agent to read. Only `briefing.md` + `examples.txt` + attachments —
    no logo/brandbook/refs/photos/videos.
 2. **Generate** — the agent writes the copy from the briefing + examples + attached files,
-   in volume (concepts × axes × destinations × versions), for **PPC** (headline/description/
-   primary_text) and **overlay** (hook/kicker/program/cta). It never invents beyond the
+   in volume (concepts × axes × destinations × versions), following the platform playbook:
+   **Google RSA** — 15 headlines (≤30) + 4 descriptions (≤90) per concept × axis, keywords
+   in the headlines and varied angles for Ad Strength "Excellent"; **Meta** — 5 primary
+   texts (hook in the first 90–125 chars, before the mobile "See more") + 5 headlines (≤30)
+   + 5 link descriptions (≤40) + the recommended native CTA; and **overlay**
+   (hook/kicker/program/cta) for the pieces. It never invents beyond the
    briefing/examples/attachments.
 3. **Review (table)** — approve / reject / redo+note **row by row** in a browser table,
-   with filters by status, destination and concept. Each click only marks; the agent
-   rewrites the rejected/redo rows and the table updates by itself.
+   with filters by status, destination, platform (Google/Meta) and concept, exact
+   character counters per row (`[28/30]`, red when over) and the strategist's note.
+   Each click only marks; the agent rewrites the rejected/redo rows and the table updates by itself.
 4. **Deliver** — all approved → click **Export approved** (or `copy deliver`):
    **CSV + XLSX** sheets in `~/Desktop/Copy Kit/<folder>/` (`meta_bulk_import`,
    `google_search_rsa`, `overlay`, `copy_manifest` + README), with **download** in the

@@ -192,12 +192,15 @@ def main(argv=None):
                 for a in atts:
                     print(f"   - {os.path.join(folder, copy.ATTACH_DIR, a['name'])} ({a['size']} bytes)")
             print("  destinations / kinds:")
-            print("    ppc:     headline (≤30 for Google RSA), description (≤90), primary_text")
+            print("    ppc:     headline (≤30), description (≤90), primary_text (hook in the first 90–125 chars),")
+            print("             link_description (≤40, Meta), cta (native Meta button)")
             print("    overlay: hook, kicker, program, cta")
+            print(copy.PLATFORM_RULES)
             print("  YOUR JOB: author "
                   + os.path.join(folder, "copy.json") + ' = {"concepts":[...], "rows":[...]}')
-            print("    each row: id, destination(ppc/overlay), concept, axis, kind, text, "
-                  "lang(en), status:\"pending\", origin:\"agent\", updated_at, updated_by.")
+            print("    each row: id, destination(ppc/overlay), platform(google/meta/both, ppc only),")
+            print("    concept, axis, kind, text, lang(en), status:\"pending\", origin:\"agent\",")
+            print("    updated_at, updated_by. Top level: strategy_note + meta_cta.")
             print("    Never invent copy beyond briefing+examples+attachments; never mark approved (the user does).")
             print("    Then: copy validate <folder> → copy review <folder>.")
             return 0
@@ -213,6 +216,11 @@ def main(argv=None):
                   + ", ".join(f"{k}:{v}" for k, v in counts.items()))
             for e in errs:
                 print("  " + e, file=sys.stderr)
+            vol = copy.volume_report(rows)
+            if vol and not errs:
+                print("  volume notes (playbook targets, not errors):")
+                for v in vol:
+                    print("   - " + v)
             print("OK — appliable." if not errs
                   else f"{len(errs)} error(s) — nothing written.")
             return 0 if not errs else 1

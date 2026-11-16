@@ -245,5 +245,82 @@ class ExportTest(unittest.TestCase):
         self.assertEqual(s["files"], [])
 
 
+class PlatformTest(unittest.TestCase):
+    def test_bad_platform(self):
+        errs = copy.validate(_data([_row(destination="ppc", kind="headline",
+                                         text="Hi", platform="tiktok")]))
+        self.assertTrue(any("platform" in e for e in errs))
+
+    def test_new_ppc_kinds_ok(self):
+        rows = [_row(id="k01", destination="ppc", kind="link_description",
+                     text="Short link desc", platform="meta"),
+                _row(id="k02", destination="ppc", kind="cta", text="Sign Up", platform="meta")]
+        self.assertEqual(copy.validate(_data(rows)), [])
+
+    def test_volume_report(self):
+        rows = [_row(id=f"k{i:02d}", destination="ppc", kind="headline", text=f"H{i}")
+                for i in range(1, 16)]
+        rows.append(_row(id="d01", destination="ppc", kind="description", text="D1"))
+        notes = copy.volume_report(rows)
+        self.assertTrue(any("google description: 1/4" in n for n in notes))
+        self.assertFalse(any("google headline" in n for n in notes))
+        self.assertTrue(any("meta primary_text: 0/5" in n for n in notes))
+
+    def test_link_description_limit_warning(self):
+        with tempfile.TemporaryDirectory() as folder, tempfile.TemporaryDirectory() as desktop:
+            os.environ["KIT_DESKTOP_DIR"] = desktop
+            try:
+                copy.save(folder, _data([_row(id="k01", destination="ppc", platform="meta",
+                                              kind="link_description", text="x" * 50,
+                                              status="approved")]))
+                s = copy.export(folder)
+                self.assertEqual(s["warnings"][0]["limit"], 40)
+            finally:
+                os.environ.pop("KIT_DESKTOP_DIR", None)
+
+    def test_meta_one_ad_per_variation_and_routing(self):
+        import csv
+        with tempfile.TemporaryDirectory() as folder, tempfile.TemporaryDirectory() as desktop:
+            os.environ["KIT_DESKTOP_DIR"] = desktop
+            try:
+                rows = []
+                for i in range(1, 6):
+                    rows += [_row(id=f"p{i}", destination="ppc", platform="meta",
+                                  kind="primary_text", text=f"Hook {i} before the fold.",
+                                  status="approved"),
+                             _row(id=f"h{i}", destination="ppc", platform="meta",
+                                  kind="headline", text=f"Headline {i}", status="approved"),
+                             _row(id=f"l{i}", destination="ppc", platform="meta",
+                                  kind="link_description", text=f"Link desc {i}",
+                                  status="approved")]
+                rows += [_row(id="cta1", destination="ppc", platform="meta",
+                              kind="cta", text="Sign Up", status="approved"),
+                         _row(id="g1", destination="ppc", platform="google",
+                              kind="headline", text="Google only headline", status="approved"),
+                         _row(id="g2", destination="ppc", platform="google",
+                              kind="description", text="Google only description",
+                              status="approved")]
+                copy.save(folder, {"concepts": ["clean"], "rows": rows})
+                s = copy.export(folder)
+                self.assertEqual((s["meta"], s["google_rsa"]), (5, 1))
+                with open(os.path.join(s["dir"], "meta_bulk_import.csv"),
+                          encoding="utf-8-sig") as f:
+                    ads = list(csv.DictReader(f))
+                self.assertEqual([a["Body"] for a in ads],
+                                 [f"Hook {i} before the fold." for i in range(1, 6)])
+                self.assertEqual([a["Title"] for a in ads],
+                                 [f"Headline {i}" for i in range(1, 6)])
+                self.assertTrue(all(a["Call to Action"] == "Sign Up" for a in ads))
+                self.assertIn("v5", ads[-1]["Ad Name"])
+                with open(os.path.join(s["dir"], "google_search_rsa.csv"),
+                          encoding="utf-8-sig") as f:
+                    rsa = list(csv.DictReader(f))[0]
+                self.assertEqual(rsa["Headline 1"], "Google only headline")
+                self.assertEqual(rsa["Headline 2"], "")
+                self.assertEqual(rsa["Description 1"], "Google only description")
+            finally:
+                os.environ.pop("KIT_DESKTOP_DIR", None)
+
+
 if __name__ == "__main__":
     unittest.main()

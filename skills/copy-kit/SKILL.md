@@ -37,11 +37,23 @@ uses 8767 (wizard) / 8768 (table). Do not start both in the same session.
    destinations/kinds vocabulary. **Read the attachments** (plain text directly; PDF/docx/image:
    extract with your tools) — they are part of the source material.
    **YOUR JOB:** author `<folder>/copy.json` = `{"concepts":[...], "rows":[...]}`.
-   Each row: `id` (`k01`…, next free), `destination` (`ppc`/`overlay`), `concept`,
+   Each row: `id` (`k01`…, next free), `destination` (`ppc`/`overlay`), `platform`
+   (`google`/`meta`/`both`, ppc rows only), `concept`,
    `axis` (optional), `kind`, `text`, `lang` (`en`), `status:"pending"`,
    `origin:"agent"`, `updated_at` (ISO UTC now), `updated_by` (your name/user).
-   - **ppc kinds:** `headline` (≤30 for Google RSA), `description` (≤90), `primary_text`.
+   - **ppc kinds:** `headline` (≤30), `description` (≤90), `primary_text` (hook in the
+     first 90–125 chars), `link_description` (≤40, Meta), `cta` (native Meta button).
    - **overlay kinds:** `hook`, `kicker`, `program`, `cta`.
+   - **Platform playbook (per concept × axis):** GOOGLE RSA = **15 headlines + 4
+     descriptions**, keywords worked naturally into the headlines, angles spread across
+     benefit / differentiator+authority / strong CTA, no repeated words (Ad Strength
+     "Excellent"). META = **exactly 5 primary_text + 5 headline + 5 link_description**,
+     hook (pain/desire/promise) in the first 90–125 chars of each primary text (before
+     the mobile "See more" cut), feed-stop storytelling — plus one `cta` row with the
+     recommended native button (e.g. "Learn More", "Sign Up").
+   - Write at the top level of copy.json: `strategy_note` (how the Google Ads terms were
+     used, which angles break the scroll) and `meta_cta` (recommended native button) —
+     both show in the review table.
    High volume: concepts × axes × destinations × versions. **Never invent copy** beyond the
    briefing + examples + attached files; **never mark `approved`** — the decision is the user's in the table.
 6. **`copy validate <folder>`** checks the shape (valid destinations/kinds/status/lang, non-empty
