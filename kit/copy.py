@@ -118,3 +118,104 @@ def review_payload(root):
     rows = load(root).get("rows") or []
     counts = {s: sum(1 for r in rows if r.get("status") == s) for s in STATUSES}
     return {"rows": rows, "counts": counts}
+
+
+BRIEF_TEMPLATE = {
+    "pt": """# Briefing de copy
+
+## 1. Objetivo
+(o que a campanha quer alcançar)
+
+## 2. Público
+(quem fala, dor/desejo)
+
+## 3. Tom de voz
+(como a marca fala — ex.: direto, próximo, técnico)
+
+## 4. Oferta / produto
+(o que se anuncia, diferencial, preço se houver)
+
+## 5. Destinos
+- PPC (só texto): Meta / Google Search
+- Overlay: hook / kicker / program / CTA sobre a peça
+
+## 6. Conceitos
+(lista separada por vírgula — ex.: clean, editorial)
+
+## 7. Eixos (opcional)
+(variações — ex.: urgencia, beneficio)
+
+## 8. Restrições
+- Google RSA: headline ≤ 30 caracteres, description ≤ 90
+- CTA: verbo curto
+- (outras regras)
+
+## 9. Idiomas
+pt / en
+""",
+    "en": """# Copy briefing
+
+## 1. Objective
+(what the campaign wants to achieve)
+
+## 2. Audience
+(who you speak to, pain/desire)
+
+## 3. Tone of voice
+(how the brand speaks — e.g. direct, warm, technical)
+
+## 4. Offer / product
+(what is advertised, differentiator, price if any)
+
+## 5. Destinations
+- PPC (text only): Meta / Google Search
+- Overlay: hook / kicker / program / CTA over the piece
+
+## 6. Concepts
+(comma-separated list — e.g. clean, editorial)
+
+## 7. Axes (optional)
+(variations — e.g. urgency, benefit)
+
+## 8. Constraints
+- Google RSA: headline ≤ 30 chars, description ≤ 90
+- CTA: short verb
+- (other rules)
+
+## 9. Languages
+pt / en
+""",
+}
+
+EXAMPLES_HEADER = {
+    "pt": "# Cole aqui textos de exemplo (copy que você gosta / quer usar como modelo).\n"
+          "# Um por linha ou bloco. O agente usa isto + o briefing para gerar o copy.\n\n",
+    "en": "# Paste example texts here (copy you like / want to use as a model).\n"
+          "# One per line or block. The agent uses this + the briefing to generate copy.\n\n",
+}
+
+
+def scaffold(folder, lang="pt"):
+    """Pasta enxuta de copy: briefing.md + examples.txt (sem logo/brandbook/refs).
+
+    Não sobrescreve arquivos existentes. Retorna o caminho do briefing.
+    """
+    key = "pt" if lang == "pt" else "en"
+    os.makedirs(folder, exist_ok=True)
+    brief = os.path.join(folder, "briefing.md")
+    if not os.path.isfile(brief):
+        with open(brief, "w", encoding="utf-8") as f:
+            f.write(BRIEF_TEMPLATE[key])
+    examples = os.path.join(folder, "examples.txt")
+    if not os.path.isfile(examples):
+        with open(examples, "w", encoding="utf-8") as f:
+            f.write(EXAMPLES_HEADER[key])
+    return brief
+
+
+def read_text(folder, name):
+    path = os.path.join(folder, name)
+    if not os.path.isfile(path):
+        return ""
+    with open(path, encoding="utf-8") as f:
+        return f.read()

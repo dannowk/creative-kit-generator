@@ -14,7 +14,7 @@ import json
 import os
 import sys
 
-from . import briefing, campaign, i18n, intake, onboard, providers, render, ui, video
+from . import briefing, campaign, copy, i18n, intake, onboard, providers, render, ui, video
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -72,6 +72,13 @@ def main(argv=None):
     p = sub.add_parser("onboard", help="prepara a pasta da campanha (briefing, refs, fontes, logo, fotos, vídeos)")
     p.add_argument("inbox")
     p.add_argument("--port", type=int, default=8766)
+    p.add_argument("--no-ui", action="store_true", help="só scaffold + checklist, sem servidor")
+    p.add_argument("--no-open", action="store_true", help="não abre o navegador (headless)")
+
+    p = sub.add_parser("copy", help="Copy Kit: copy independente (PPC + overlay), skill /campaign-kit:copy")
+    p.add_argument("action", choices=["onboard", "plan", "validate"])
+    p.add_argument("folder")
+    p.add_argument("--port", type=int, default=8767)
     p.add_argument("--no-ui", action="store_true", help="só scaffold + checklist, sem servidor")
     p.add_argument("--no-open", action="store_true", help="não abre o navegador (headless)")
 
@@ -155,6 +162,61 @@ def main(argv=None):
         for g in gaps:
             print(f"  [{g['field']}] {g['question']}", file=sys.stderr)
         return 0
+
+    if args.cmd == "copy":
+        folder = os.path.expanduser(args.folder)
+        en = lang == "en"
+        if args.action == "onboard":
+            copy.scaffold(folder, lang)
+            print("Copy Kit — " + ("folder ready: " if en else "pasta pronta: ") + folder)
+            print("  briefing.md  ← " + ("fill in the copy briefing" if en else "preencha o briefing de copy"))
+            print("  examples.txt ← " + ("paste example texts" if en else "cole textos de exemplo"))
+            print("  " + ("(no logo/brandbook/refs — copy is text only)" if en
+                          else "(sem logo/brandbook/refs — copy é só texto)"))
+            print(("Next: fill briefing + examples, then `copy plan <folder>`." if en
+                   else "Próximo: preencha briefing + exemplos e rode `copy plan <pasta>`."))
+            return 0
+        if args.action == "plan":
+            brief = copy.read_text(folder, "briefing.md")
+            examples = copy.read_text(folder, "examples.txt")
+            print("COPY — " + ("content direction (read before generating):" if en
+                               else "direção de conteúdo (leia antes de gerar):"))
+            print("  briefing:\n" + (brief or ("(empty)" if en else "(vazio)")))
+            print("  " + ("examples:" if en else "exemplos:") + "\n"
+                  + (examples or ("(empty)" if en else "(vazio)")))
+            print("  " + ("destinations / kinds:" if en else "destinos / kinds:"))
+            print("    ppc:     headline (≤30 " + ("for Google RSA" if en else "p/ Google RSA")
+                  + "), description (≤90), primary_text")
+            print("    overlay: hook, kicker, program, cta")
+            print("  " + ("YOUR JOB: author " if en else "SEU TRABALHO: autore ")
+                  + os.path.join(folder, "copy.json") + ' = {"concepts":[...], "rows":[...]}')
+            print("    " + ("each row: id, destination(ppc/overlay), concept, axis, kind, text, "
+                           "lang(pt/en), status:\"pending\", origin:\"agent\", updated_at, updated_by." if en
+                           else "cada row: id, destination(ppc/overlay), concept, axis, kind, text, "
+                                "lang(pt/en), status:\"pending\", origin:\"agent\", updated_at, updated_by."))
+            print("    " + ("Never invent copy beyond briefing+examples; never mark approved (the user does)." if en
+                           else "Nunca invente copy fora do briefing+exemplos; nunca marque approved (é do usuário)."))
+            print("    " + ("Then: copy validate <folder> → copy review <folder>." if en
+                           else "Depois: copy validate <pasta> → copy review <pasta>."))
+            return 0
+        if args.action == "validate":
+            if not os.path.isfile(os.path.join(folder, "copy.json")):
+                print(("copy.json missing — generate the copy first (copy plan)." if en
+                       else "copy.json ausente — gere o copy primeiro (copy plan)."), file=sys.stderr)
+                return 1
+            data = copy.load(folder)
+            errs = copy.validate(data)
+            rows = data.get("rows") or []
+            counts = {s: sum(1 for r in rows if r.get("status") == s) for s in copy.STATUSES}
+            print(("copy.json: " if en else "copy.json: ") + str(len(rows))
+                  + (" rows — " if en else " linhas — ")
+                  + ", ".join(f"{k}:{v}" for k, v in counts.items()))
+            for e in errs:
+                print("  " + e, file=sys.stderr)
+            print(("OK — appliable." if en else "OK — aplicável.") if not errs
+                  else (f"{len(errs)} error(s) — nothing written." if en
+                        else f"{len(errs)} erro(s) — nada gravado."))
+            return 0 if not errs else 1
 
     camp = campaign.load_campaign(os.path.join(ROOT, args.campaign)
                                   if not os.path.isabs(args.campaign) else args.campaign)

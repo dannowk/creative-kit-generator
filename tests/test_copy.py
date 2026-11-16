@@ -125,5 +125,28 @@ class IdTest(unittest.TestCase):
         self.assertEqual(copy.next_id([_row(id="k01"), _row(id="k02")]), "k03")
 
 
+class ScaffoldTest(unittest.TestCase):
+    def test_creates_briefing_and_examples(self):
+        with tempfile.TemporaryDirectory() as folder:
+            brief = copy.scaffold(folder, "pt")
+            self.assertTrue(os.path.isfile(brief))
+            self.assertTrue(os.path.isfile(os.path.join(folder, "examples.txt")))
+            self.assertIn("Briefing de copy", copy.read_text(folder, "briefing.md"))
+            self.assertFalse(os.path.exists(os.path.join(folder, "logo")))
+
+    def test_does_not_overwrite(self):
+        with tempfile.TemporaryDirectory() as folder:
+            copy.scaffold(folder, "pt")
+            with open(os.path.join(folder, "briefing.md"), "w", encoding="utf-8") as f:
+                f.write("meu briefing")
+            copy.scaffold(folder, "pt")
+            self.assertEqual(copy.read_text(folder, "briefing.md"), "meu briefing")
+
+    def test_en_template(self):
+        with tempfile.TemporaryDirectory() as folder:
+            copy.scaffold(folder, "en")
+            self.assertIn("Copy briefing", copy.read_text(folder, "briefing.md"))
+
+
 if __name__ == "__main__":
     unittest.main()
