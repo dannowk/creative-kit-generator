@@ -87,14 +87,6 @@ python3 -m kit.cli plan campaigns/acme-launch
 #    com visão (PDF/imagem): as regras dele (cores, tipografia, uso do logo, voz)
 #    prevalecem sobre a paleta proposta do logo; conflito com o briefing vira pergunta.
 
-# 3b. Conteúdo base da planilha do time de conteúdo (opcional)
-python3 -m kit.cli content campaigns/acme-launch          # ingest + valida → content.json
-#    SEU TRABALHO: aplique as regras da seção 11 do briefing em content.json
-#    (versões, adaptação por destino use: image/ppc/both). Nunca invente copy.
-python3 -m kit.cli content campaigns/acme-launch --apply  # mescla em campaign.json.copy
-#    Revise o copy no navegador antes do render: o painel "Revisar copy" aprova/rejeita/refaz;
-#    só "Aplicar copy aprovado" mescla as aprovadas. Time aprova online: content --export / --import.
-
 # 4. Assets de IA (imagem e vídeo) — aviso de custo informativo, sem porteiro
 python3 -m kit.cli assets campaigns/acme-launch
 #    imprime "≈ X créditos (N imagem(ns) + M vídeo(s))" e gera/coleta.
@@ -163,52 +155,6 @@ CTA por conceito×eixo, e o copy do RSA no export de PPC); regras de layout, saf
 segurança do logo viram `geometry`/`safe_zones` e `compliance` no `brand.yaml` e nos
 templates. As regras do brandbook e destes documentos prevalecem sobre a paleta proposta;
 conflito com o briefing vira pergunta — nunca chute silencioso.
-
-## Conteúdo base (planilha do time de conteúdo)
-
-O time de conteúdo mantém o copy base numa planilha — online (SharePoint) ou arquivo
-local. O wizard tem o slot `content/` (.xlsx/.csv) + campo **Link do SharePoint**; o
-link vai para `content_link.txt`. O wizard também oferece **↓ planilha modelo**
-(`/content-sample`): .xlsx com aba limpa (colunas canônicas) + aba de exemplos
-(`use` image/ppc/both, eixo, linhas repetidas = versões), PT/EN. **O kit nunca fala com SharePoint**: se só há link,
-você (agente) baixa a planilha uma vez pelo navegador e salva em `content/`. Antes de
-rodar `content`, copie a planilha do inbox para `campaigns/<slug>/content/` (o
-`intake.inventory` recolhe em `content`; mesmo padrão agent-mediated do drop_dir).
-
-Colunas canônicas (aliases PT/EN aceitos): `concept` (obrigatório), `axis` (opcional),
-`hook` (obrigatório), `kicker`, `program`, `cta`, `use`, `lang`. Uma linha = um copy
-base. **`use` roteia**: `image` → só nas peças; `ppc` → só nas planilhas de PPC;
-`both`/vazio → ambos (comportamento atual). Planilha livre? Você mapeia para as
-colunas canônicas (como no normalize) — o kit valida a forma canônica, não a planilha
-bruta.
-
-Fluxo (normalize pattern): `content` faz ingest + validate → `content.json` (rows +
-gaps + errors). **SEU TRABALHO**: aplique as regras da **seção 11 do briefing**
-("15 versões a mais, hooks mais curtos para Stories") em `content.json` — expanda
-versões, adapte por destino, nunca invente o que a planilha/briefing não dizem.
-`content --apply` revalida e mescla em `campaign.json.copy`: primeira linha por
-(eixo, conceito) = entry base; demais = `versions`. O render pula `use: ppc`; o PPC
-pula `use: image`, exporta uma linha por versão (Meta/Display) e alimenta o pool de
-headlines/descriptions do RSA; entries `ppc` sem peça viram linhas de anúncio extras
-(criativo em branco para o time de PPC). Variantes de **imagem** usam o mecanismo
-existente de eixos: adicione um eixo de versão em `campaign.json.axes` e keyed o copy
-por ele — `lookup` resolve por valor de eixo, a matriz expande sozinha.
-
-### Revisão do copy (etapa entre content e render)
-
-Depois de adaptar o copy em `content.json`, **abra a revisão** (`review`) — o painel
-**Revisar copy** aparece quando há `content.json`. Cada linha tem `id` (`c01…`),
-`origin` (`sheet`/`agent`), `status` (`pending`/`approved`/`rejected`/`redo`) e `note`.
-O ingest marca as linhas da planilha como `origin:sheet, status:approved` (copy do time
-é confiável). **SEU TRABALHO:** linhas que você adiciona/edita ao adaptar ficam
-`origin:agent, status:pending` (nova linha pega o próximo id livre); cumprir um
-`rejected`/`redo` = reescrever o copy, voltar `status:pending` e limpar `note`. **Nunca**
-marque `approved` você mesmo — isso é do usuário/time. Re-ingest (nova planilha) zera as
-decisões. Só **Aplicar copy aprovado** (`content --apply`) mescla as aprovadas em
-`campaign.json.copy` — render/PPC não mudam. O time aprova online pela planilha:
-`content --export` gera `content_review.xlsx` na pasta de entrega; eles preenchem
-`decision` (approve/reject/redo) + `note` e devolvem; `content --import <arquivo>` aplica
-só as decisões (edições de texto são ignoradas). O kit nunca fala com SharePoint.
 
 ## Specs de template (declarativo)
 

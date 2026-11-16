@@ -21,7 +21,7 @@ from urllib.parse import urlparse, parse_qs
 
 import yaml
 
-from . import campaign, content, i18n, intake, onboard
+from . import campaign, i18n, intake, onboard
 
 _STYLE = """<style>
 :root{color-scheme:light;
@@ -232,21 +232,6 @@ def review_page(lang):
 <span class="tag blocked"><span class="dot"></span>{i18n.t('rv.legend.blocked', lang)}</span></div>
 </div>
 <div class="wrap">
-<div class="panel" id="copypanel" hidden>
-<h2>{i18n.t('rv.copy.title', lang)}</h2>
-<p class="desc">{i18n.t('rv.copy.desc', lang)}</p>
-<div class="stats" id="copystats"></div>
-<div class="row" style="align-items:center">
-<a class="btn" href="/copy-export" download>{i18n.t('rv.copy.export', lang)}</a>
-<label class="btn" style="cursor:pointer">{i18n.t('rv.copy.import', lang)}<input type="file" id="copyimport" accept=".xlsx,.csv" hidden onchange="importCopy(this)"></label>
-<button class="btn primary" onclick="applyCopy()">{i18n.t('rv.copy.apply', lang)}</button>
-<span class="meta" id="copyresult"></span></div>
-<div class="filters" id="copyfilters"></div>
-<div class="row" style="align-items:center"><span class="meta">{i18n.t('rv.concept', lang)}</span><div class="filters" id="copycfilters"></div></div>
-<div id="copywarn"></div>
-<div class="rgrid" id="copygrid"></div>
-<div id="copyapproved"></div>
-</div>
 <div class="panel"><h2><span class="n">5</span>{i18n.t('rv.p5.title', lang)}</h2>
 <p class="desc">{i18n.t('rv.p5.desc', lang)}</p>
 <div class="filters" id="filters"></div>
@@ -274,7 +259,7 @@ def review_page(lang):
 <dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
 """ + _modal(lang) + _JS_UTIL + _inject(lang, "rv.js") + """
 <script>
-let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null, cstatus="working", cconcept="all";
+let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null;
 const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"],blocked:T["lbl.blocked"]};
 const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"],blocked:T["sing.blocked"]};
 const fmsg=f=>(LANG==="en"&&f.message_en)?f.message_en:f.message;
@@ -303,7 +288,7 @@ function applyState(s){
     {approved:c("approved"),regen:c("rejected")+c("redo")});
   document.getElementById("opendelivery").style.display = delivered>0 ? "" : "none";
   if(delivered>0) setStep(6);
-  draw();drawCopy();
+  draw();
 }
 function setFilter(f){filter=f;draw();}
 function setConcept(k){cfilter=k;draw();
@@ -413,91 +398,6 @@ async function openDelivery(){
   if(!r.ok){await tell(j.error||"erro");return;}
   notify(fill(T["openfolder.toast"],{dir:j.path}));
 }
-function drawCopy(){
-  const cp=state.content, panel=document.getElementById("copypanel");
-  if(!cp){panel.hidden=true;return;}
-  panel.hidden=false;
-  const rows=cp.rows, counts=cp.counts;
-  document.getElementById("copystats").innerHTML=fill(T["copy.stats"],
-    {total:rows.length,pending:counts.pending,approved:counts.approved,rejected:counts.rejected,redo:counts.redo});
-  const cc={working:rows.filter(r=>r.status!=="approved").length,
-    approved:counts.approved,pending:counts.pending,rejected:counts.rejected,redo:counts.redo};
-  document.getElementById("copyfilters").innerHTML=Object.entries(cc)
-    .map(([k,v])=>`<button class="${k===cstatus?'on':''}" onclick="setCopyStatus('${k}')">${LBL[k]} (${v})</button>`).join("");
-  const ccc={};for(const r of rows)ccc[r.concept]=(ccc[r.concept]||0)+1;
-  const concepts=[...new Set(rows.map(r=>r.concept))];
-  document.getElementById("copycfilters").innerHTML=
-    `<button class="${cconcept==='all'?'on':''}" onclick="setCopyConcept('all')">${fill(T.allconcepts,{n:rows.length})}</button>`+
-    concepts.map(k=>`<button class="${cconcept===k?'on':''}" onclick="setCopyConcept('${k}')">${k} (${ccc[k]||0})</button>`).join("");
-  const notApproved=rows.filter(r=>r.status!=="approved").length;
-  document.getElementById("copywarn").innerHTML=notApproved>0
-    ?`<div class="callout warn">${fill(T["copy.warn"],{n:notApproved})}</div>`:"";
-  const items=rows.filter(r=>(cstatus==="working"?r.status!=="approved":r.status===cstatus)&&(cconcept==="all"||r.concept===cconcept));
-  const g=document.getElementById("copygrid");
-  if(!items.length){g.innerHTML=`<div class="empty">${T["copy.empty"]}</div>`;}
-  else g.innerHTML=items.map(r=>{
-    const meta=[r.kicker,r.program,r.cta].filter(Boolean).map(esc).join(" · ");
-    const tags=`<span class="tag">${esc(r.concept)}</span>`
-      +(r.axis?`<span class="tag">${esc(r.axis)}</span>`:"")
-      +`<span class="tag">${esc(r.use||"both")}</span>`
-      +(r.lang?`<span class="tag">${esc(r.lang)}</span>`:"")
-      +`<span class="tag ${r.origin==="agent"?"redo":""}">${r.origin==="agent"?T["copy.ai"]:T["copy.sheet"]}</span>`;
-    const note=(r.note&&(r.status==="redo"||r.status==="rejected"))?`<p class="hint">↻ ${esc(r.note)}</p>`:"";
-    return `<div class="card rcard"><div class="body">
-      <div class="row"><span class="tag ${r.status}"><span class="dot"></span>${SING[r.status]||r.status}</span>${tags}</div>
-      <div class="name">${esc(r.hook)}</div>
-      ${meta?`<p class="desc">${meta}</p>`:""}
-      ${note}
-      <div class="row">
-        <button class="btn ok" onclick="decideCopy('${r.id}','approved')">${T.approve}</button>
-        <button class="btn no" onclick="decideCopy('${r.id}','rejected')">${T.reject}</button>
-        <button class="btn" onclick="redoCopy('${r.id}')">${T.redo}</button>
-      </div></div></div>`;
-  }).join("");
-  const approved=rows.filter(r=>r.status==="approved");
-  document.getElementById("copyapproved").innerHTML=approved.length
-    ?`<h3>${fill(T["copy.approvedtitle"],{n:approved.length})}</h3>`+approved.map(r=>
-      `<div class="row" style="align-items:center"><span class="tag approved"><span class="dot"></span>${esc(r.hook)}</span>
-       <span class="meta">${esc(r.concept)}${r.axis?" · "+esc(r.axis):""} · ${esc(r.use||"both")}</span>
-       <button class="btn" onclick="decideCopy('${r.id}','pending')">↺</button></div>`).join("")
-    :"";
-}
-function setCopyStatus(s){cstatus=s;drawCopy();}
-function setCopyConcept(k){cconcept=k;drawCopy();}
-async function decideCopy(id,status){
-  const r=await fetch("/copy-decision",{method:"POST",body:JSON.stringify({id,status})});
-  const j=await r.json();
-  if(!r.ok){await tell(j.error||"erro");return;}
-  await load();
-  notify(status==="approved"?T["copy.approvetoast"]:status==="rejected"?T["copy.rejecttoast"]:status==="pending"?T["copy.reopentoast"]:T["copy.regentoast"]);
-}
-async function redoCopy(id){
-  const note=await ask(T["copy.redoask"]);
-  if(note===null)return;
-  const r=await fetch("/copy-decision",{method:"POST",body:JSON.stringify({id,status:"redo",note})});
-  const j=await r.json();
-  if(!r.ok){await tell(j.error||"erro");return;}
-  await load();
-  notify(T["copy.regentoast"]);
-}
-async function applyCopy(){
-  const r=await fetch("/copy-apply",{method:"POST",body:"{}"});
-  const j=await r.json();
-  const box=document.getElementById("copyresult");
-  if(!r.ok){box.innerHTML=`<span class="tag rejected">${esc(j.error||"erro")}</span>`;return;}
-  box.innerHTML=fill(T["copy.applied"],{n:j.merged,m:j.pending});
-  notify(fill(T["copy.appliedtoast"],{n:j.merged}));
-  await load();
-}
-async function importCopy(input){
-  const file=input.files[0];input.value="";
-  if(!file)return;
-  const r=await fetch("/copy-import",{method:"POST",body:file,headers:{"X-Filename":file.name}});
-  const j=await r.json();
-  if(!r.ok){await tell(j.error||"erro");return;}
-  await load();
-  notify(fill(T["copy.imported"],{a:j.approved,r:j.rejected,d:j.redo}));
-}
 async function poll(){
   if(document.querySelector("dialog[open]")) return;
   const s=await (await fetch("/state")).json();
@@ -523,12 +423,7 @@ def onboard_page(lang):
 <div class="panel"><h2><span class="n">1</span>{i18n.t('ob.p1.title', lang)}</h2>
 <p class="desc">{i18n.t('ob.p1.desc', lang)}</p>
 <span class="meta" id="slotprog"></span>
-<div class="grid" id="slots"></div>
-<p class="desc" style="margin-top:10px"><a href="/content-sample" download>{i18n.t('ob.content.sample', lang)}</a></p>
-<div class="row" style="margin-top:10px"><input type="text" id="contentlink"
-  placeholder="{i18n.t('ob.content.linkph', lang)}">
-<button class="btn" onclick="saveLink()">{i18n.t('ob.content.linksave', lang)}</button></div>
-<p class="desc">{i18n.t('ob.content.linknote', lang)}</p></div>
+<div class="grid" id="slots"></div></div>
 <div class="panel"><h2><span class="n">2</span>{i18n.t('ob.p2.title', lang)}</h2>
 <p class="desc">{i18n.t('ob.p2.desc', lang)}</p>
 <div class="dropzone" id="briefdrop">
@@ -612,8 +507,6 @@ async function load(){
     ? docs.map(f=>`<li><span>${esc(f.name)}</span><span class="row"><span class="meta">${fmt(f.size)}</span>
         <button class="btn docremove" title="${T["docs.remove"]}" onclick="removeDoc('${esc(f.name)}')">✕</button></span></li>`).join("")
     : `<li><span class="meta">${T["docs.empty"]}</span></li>`;
-  const cl=document.getElementById("contentlink");
-  if(document.activeElement!==cl) cl.value=S.content_link||"";
 }
 async function upload(slot,files){
   for(const f of files){
@@ -624,10 +517,6 @@ async function upload(slot,files){
 }
 async function saveBrief(){
   await fetch("/briefing",{method:"POST",body:JSON.stringify({text:document.getElementById("brief").value})});
-  await load();
-}
-async function saveLink(){
-  await fetch("/content-link",{method:"POST",body:JSON.stringify({link:document.getElementById("contentlink").value})});
   await load();
 }
 async function uploadBrief(files){
@@ -835,11 +724,6 @@ class Handler(BaseHTTPRequestHandler):
             with open(os.path.join(self.root, "briefing.md"), "w", encoding="utf-8") as f:
                 f.write(payload.get("text", ""))
             return self._send(200, {"ok": True})
-        if url.path == "/content-link":
-            link = str(payload.get("link", "")).strip()
-            with open(os.path.join(self.root, "content_link.txt"), "w", encoding="utf-8") as f:
-                f.write(link)
-            return self._send(200, {"ok": True})
         if url.path == "/intake":
             bid = payload.get("brand_id", "").strip()
             if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", bid):
@@ -875,19 +759,8 @@ class Handler(BaseHTTPRequestHandler):
         elif url.path == "/state":
             if self.mode == "onboard":
                 return self._send(200, onboard.status(self.root, lang))
-            state_path = os.path.join(self.root, "state.json")
-            if os.path.isfile(state_path):
-                with open(state_path, encoding="utf-8") as f:
-                    state = json.load(f)
-            else:
-                camp = campaign.load_campaign(self.root)
-                state = {"campaign": camp.get("slug"), "brand": camp.get("brand"),
-                         "pieces": [], "blocked_count": 0,
-                         "concepts": camp.get("concepts") or []}
-            cp = content.review_payload(self.root)
-            if cp is not None:
-                state["content"] = cp
-            self._send(200, state)
+            with open(os.path.join(self.root, "state.json"), encoding="utf-8") as f:
+                self._send(200, json.load(f))
         elif url.path == "/img":
             rel = parse_qs(url.query).get("path", [""])[0]
             path = self._safe(rel)
@@ -898,16 +771,6 @@ class Handler(BaseHTTPRequestHandler):
                      }.get(os.path.splitext(path)[1].lower(), "application/octet-stream")
             with open(path, "rb") as f:
                 self._send(200, f.read(), ctype)
-        elif url.path == "/content-sample" and self.mode == "onboard":
-            data = content.sample_xlsx(lang)
-            name = "modelo-conteudo.xlsx" if lang == "pt" else "content-sample.xlsx"
-            self.send_response(200)
-            self.send_header("Content-Type",
-                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            self.send_header("Content-Disposition", f'attachment; filename="{name}"')
-            self.send_header("Content-Length", str(len(data)))
-            self.end_headers()
-            self.wfile.write(data)
         elif url.path == "/style":
             from .brand import rgb_hex, font_dirs
             import glob as _glob
@@ -926,50 +789,13 @@ class Handler(BaseHTTPRequestHandler):
                             if p.lower().endswith((".ttf", ".otf", ".ttc"))})
             self._send(200, {"concept": concept, "palette": palette, "type": type_cfg,
                              "fonts": fonts, "override": campaign.load_style(self.root, concept)})
-        elif url.path == "/copy-export":
-            try:
-                summary = content.export_review(self.root, self._lang())
-            except ValueError:
-                return self._send(404, {"error": "content.json ausente"})
-            with open(summary["path"], "rb") as f:
-                data = f.read()
-            self.send_response(200)
-            self.send_header("Content-Type",
-                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            self.send_header("Content-Disposition", 'attachment; filename="content_review.xlsx"')
-            self.send_header("Content-Length", str(len(data)))
-            self.end_headers()
-            self.wfile.write(data)
         else:
             self._send(404, {"error": "not found"})
-
-    def _copy_import(self, length):
-        import tempfile
-        lang = self._lang()
-        if length > 20 * 1024 * 1024:
-            return self._send(413, {"error": i18n.t("rv.copy.err.big", lang)})
-        data = self.rfile.read(length)
-        name = self.headers.get("X-Filename", "upload.xlsx")
-        ext = os.path.splitext(name)[1].lower()
-        if ext not in content.SHEET_EXT:
-            return self._send(400, {"error": i18n.t("rv.copy.err.ext", lang)})
-        fd, tmp = tempfile.mkstemp(suffix=ext)
-        try:
-            with os.fdopen(fd, "wb") as f:
-                f.write(data)
-            summary = content.import_decisions(self.root, tmp)
-        finally:
-            os.unlink(tmp)
-        if summary.get("errors"):
-            return self._send(400, {"error": "; ".join(summary["errors"])})
-        self._send(200, summary)
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         if self.mode == "onboard":
             return self._onboard_post(length)
-        if self.path == "/copy-import":
-            return self._copy_import(length)
         payload = json.loads(self.rfile.read(length) or b"{}")
         state_path = os.path.join(self.root, "state.json")
         if self.path in ("/decision", "/regen"):
@@ -1044,19 +870,6 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, {"error": i18n.t("rv.js.openfolder.empty", self._lang())})
             _open_folder(dest)
             self._send(200, {"ok": True, "path": dest})
-        elif self.path == "/copy-decision":
-            lang = self._lang()
-            status = payload.get("status")
-            if status not in content.STATUSES:
-                return self._send(400, {"error": i18n.t("rv.copy.err.status", lang)})
-            if not content.decide(self.root, payload.get("id"), status, payload.get("note", "")):
-                return self._send(400, {"error": i18n.t("rv.copy.err.id", lang)})
-            self._send(200, {"ok": True})
-        elif self.path == "/copy-apply":
-            summary = content.apply(campaign.load_campaign(self.root))
-            if summary.get("errors"):
-                return self._send(400, {"error": "; ".join(summary["errors"])})
-            self._send(200, summary)
         else:
             self._send(404, {"error": "not found"})
 

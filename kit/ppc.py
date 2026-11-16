@@ -84,14 +84,7 @@ def _copy_for(camp, combo, concept):
     return {"hook": _clean(merged.get("hook", "")),
             "kicker": _clean(merged.get("kicker", "")),
             "program": _clean(merged.get("program") or C.lookup(camp.get("labels"), combo) or ""),
-            "cta": _clean(merged.get("cta", camp.get("cta", "Learn more"))),
-            "use": merged.get("use") or "both",
-            "versions": merged.get("versions") or []}
-
-
-def _variants(copy):
-    base = {k: copy[k] for k in ("hook", "kicker", "program", "cta")}
-    return [base] + [{k: _clean(v.get(k, "")) for k in base} for v in copy["versions"]]
+            "cta": _clean(merged.get("cta", camp.get("cta", "Learn more")))}
 
 
 def _campaign_name(camp, brand):
@@ -136,19 +129,15 @@ def _meta_rows(pieces, camp, brand):
     rows = []
     for p in pieces:
         copy = _copy_for(camp, p.get("axes", {}), p["concept"])
-        if copy["use"] == "image":
-            continue
-        for i, v in enumerate(_variants(copy)):
-            row = {c: "" for c in META_COLUMNS}
-            row.update({"Campaign Name": cname, "Campaign Status": "PAUSED", "Buying Type": "AUCTION",
-                        "Ad Set Name": _adgroup(p["concept"], p.get("axes", {})), "Ad Set Run Status": "PAUSED",
-                        "Placements": _meta_placement(p["format"]),
-                        "Ad Name": p["id"] if i == 0 else f"{p['id']}_V{i}", "Ad Status": "PAUSED",
-                        "Creative Type": "Link Page Post Ad", "Title": _trunc(v["program"] or v["hook"], 40),
-                        "Body": v["hook"], "Link Description": _trunc(v["kicker"], 30),
-                        "Call to Action": _cta_enum(v["cta"]), "Link": url})
-            row["Video File Name" if p.get("kind") == "video" else "Image File Name"] = _creative_basename(p)
-            rows.append(row)
+        row = {c: "" for c in META_COLUMNS}
+        row.update({"Campaign Name": cname, "Campaign Status": "PAUSED", "Buying Type": "AUCTION",
+                    "Ad Set Name": _adgroup(p["concept"], p.get("axes", {})), "Ad Set Run Status": "PAUSED",
+                    "Placements": _meta_placement(p["format"]), "Ad Name": p["id"], "Ad Status": "PAUSED",
+                    "Creative Type": "Link Page Post Ad", "Title": _trunc(copy["program"] or copy["hook"], 40),
+                    "Body": copy["hook"], "Link Description": _trunc(copy["kicker"], 30),
+                    "Call to Action": _cta_enum(copy["cta"]), "Link": url})
+        row["Video File Name" if p.get("kind") == "video" else "Image File Name"] = _creative_basename(p)
+        rows.append(row)
     return rows
 
 
@@ -158,17 +147,14 @@ def _display_rows(pieces, camp, brand):
     rows = []
     for p in pieces:
         copy = _copy_for(camp, p.get("axes", {}), p["concept"])
-        if copy["use"] == "image":
-            continue
-        for i, v in enumerate(_variants(copy)):
-            row = {c: "" for c in DISPLAY_COLUMNS}
-            row.update({"Campaign": cname, "Ad group": _adgroup(p["concept"], p.get("axes", {})),
-                        "Ad type": "Responsive display ad", "Headline": _trunc(v["program"] or v["hook"], 30),
-                        "Long headline": _trunc(v["hook"], 90), "Description": _trunc(v["kicker"] or v["hook"], 90),
-                        "Business name": brand.name, "Final URL": url, "Status": "Paused",
-                        "Image file": _creative_basename(p), "Logo file": logo, "Size": _size(p["format"]),
-                        "Concept": p["concept"], "Placement": "Google Display Network"})
-            rows.append(row)
+        row = {c: "" for c in DISPLAY_COLUMNS}
+        row.update({"Campaign": cname, "Ad group": _adgroup(p["concept"], p.get("axes", {})),
+                    "Ad type": "Responsive display ad", "Headline": _trunc(copy["program"] or copy["hook"], 30),
+                    "Long headline": _trunc(copy["hook"], 90), "Description": _trunc(copy["kicker"] or copy["hook"], 90),
+                    "Business name": brand.name, "Final URL": url, "Status": "Paused",
+                    "Image file": _creative_basename(p), "Logo file": logo, "Size": _size(p["format"]),
+                    "Concept": p["concept"], "Placement": "Google Display Network"})
+        rows.append(row)
     return rows
 
 
@@ -184,16 +170,11 @@ def _rsa_rows(pieces, camp, brand):
     rows = []
     for concept, combo in combos:
         copy = _copy_for(camp, combo, concept)
-        if copy["use"] == "image":
-            continue
-        vs = _variants(copy)
         headlines = [_trunc(x, 30) for x in _dedup(
-            [t for v in vs for t in (v["program"], v["kicker"], v["hook"], v["cta"])] + [brand.name])]
+            [copy["program"], copy["kicker"], copy["hook"], copy["cta"], brand.name])]
         descriptions = [_trunc(x, 90) for x in _dedup(
-            [t for v in vs for t in (
-                v["hook"],
-                " ".join(x for x in [v["kicker"], v["program"]] if x),
-                " — ".join(x for x in [v["cta"], v["program"]] if x))])]
+            [copy["hook"], " ".join(x for x in [copy["kicker"], copy["program"]] if x),
+             " — ".join(x for x in [copy["cta"], copy["program"]] if x)])]
         row = {c: "" for c in RSA_COLUMNS}
         row.update({"Campaign": cname, "Ad group": _adgroup(concept, combo),
                     "Ad type": "Responsive search ad", "Status": "Paused",
@@ -211,8 +192,6 @@ def _manifest_rows(pieces, camp, brand):
     rows = []
     for p in pieces:
         copy = _copy_for(camp, p.get("axes", {}), p["concept"])
-        if copy["use"] == "image":
-            continue
         rows.append({"Piece ID": p["id"], "Platform": _channel(p["format"]), "Format": p["format"],
                      "Size": _size(p["format"]), "Concept": p["concept"],
                      "Axes": "; ".join(f"{k}={v}" for k, v in p.get("axes", {}).items()),
@@ -220,35 +199,6 @@ def _manifest_rows(pieces, camp, brand):
                      "Creative file": os.path.join("out", p["path"]),
                      "Delivery path": p.get("delivery_path", ""),
                      "Hook": copy["hook"], "Kicker": copy["kicker"], "Program": copy["program"], "CTA": copy["cta"]})
-    return rows
-
-
-def _ppc_only_rows(camp, brand):
-    """Copy entries with use=ppc have no rendered piece — export as text-ad rows.
-    Creative file stays blank for the PPC team."""
-    cname, url = _campaign_name(camp, brand), camp.get("landing_url", "")
-    rows = []
-    for axis, concepts in (camp.get("copy") or {}).items():
-        if not isinstance(concepts, dict):
-            continue
-        for concept, entry in concepts.items():
-            if not isinstance(entry, dict) or entry.get("use") != "ppc":
-                continue
-            copy = {"hook": _clean(entry.get("hook", "")), "kicker": _clean(entry.get("kicker", "")),
-                    "program": _clean(entry.get("program", "")),
-                    "cta": _clean(entry.get("cta", camp.get("cta", "Learn more"))),
-                    "use": "ppc", "versions": entry.get("versions") or []}
-            combo = {} if axis == "default" else {"axis": axis}
-            for i, v in enumerate(_variants(copy)):
-                row = {c: "" for c in META_COLUMNS}
-                row.update({"Campaign Name": cname, "Campaign Status": "PAUSED", "Buying Type": "AUCTION",
-                            "Ad Set Name": _adgroup(concept, combo), "Ad Set Run Status": "PAUSED",
-                            "Ad Name": f"{concept}_{axis}_V{i + 1}", "Ad Status": "PAUSED",
-                            "Creative Type": "Link Page Post Ad",
-                            "Title": _trunc(v["program"] or v["hook"], 40), "Body": v["hook"],
-                            "Link Description": _trunc(v["kicker"], 30),
-                            "Call to Action": _cta_enum(v["cta"]), "Link": url})
-                rows.append(row)
     return rows
 
 
@@ -365,9 +315,7 @@ def export(root, all_pieces=False, lang="pt"):
         counts[key] = len(rows)
 
     if want_meta:
-        emit("meta_bulk_import", META_COLUMNS,
-             _meta_rows(meta, camp, brand) + _ppc_only_rows(camp, brand),
-             "Meta bulk import", "meta")
+        emit("meta_bulk_import", META_COLUMNS, _meta_rows(meta, camp, brand), "Meta bulk import", "meta")
     if want_google:
         emit("google_display", DISPLAY_COLUMNS, _display_rows(google, camp, brand), "Google Display", "google_display")
         emit("google_search_rsa", RSA_COLUMNS, _rsa_rows(pieces, camp, brand), "Google Search RSA", "google_rsa")

@@ -35,9 +35,6 @@ SLOTS = [
     {"key": "videos", "dir": "videos", "label": "Vídeos", "ext": VID_EXT, "multiple": True,
      "required": False,
      "hint": "Clipes fonte ou referência de movimento. Vídeos novos são gerados pelo provider (ex. Magnific via MCP), com estimativa de custo antes de gerar."},
-    {"key": "content", "dir": "content", "label": "Conteúdo base (planilha)",
-     "ext": (".xlsx", ".csv"), "multiple": False, "required": False,
-     "hint": "Opcional. Planilha do time de conteúdo com o copy base (colunas: concept, hook, kicker, program, cta, use). A coluna use roteia: image / ppc / both."},
 ]
 
 BRIEFING_TEMPLATE = """# Briefing da campanha
@@ -73,9 +70,6 @@ _preencher: disclaimer obrigatório, cor proibida, termo que não pode quebrar l
 
 ## 10. Assets existentes
 _preencher: fotos e vídeos que já posso usar (e se há direito de uso)._
-
-## 11. Conteúdo base e regras
-_preencher: link da planilha do time de conteúdo (SharePoint ou arquivo) e as regras de adaptação — ex.: "15 versões a mais, hooks mais curtos para Stories". Coluna use da planilha: image / ppc / both._
 """
 
 BRIEFING_TEMPLATE_EN = """# Campaign briefing
@@ -111,9 +105,6 @@ _fill in: mandatory disclaimer, forbidden color, term that must not wrap._
 
 ## 10. Existing assets
 _fill in: photos and videos you can already use (and whether you hold the rights)._
-
-## 11. Base content & rules
-_fill in: link to the content team's spreadsheet (SharePoint or file) and the adaptation rules — e.g. "15 more versions, shorter hooks for Stories". Sheet use column: image / ppc / both._
 """
 
 # Marcadores de seção não preenchida (PT/EN) — o parser de conceitos e o status usam.
@@ -214,14 +205,8 @@ def status(inbox, lang="pt"):
             p = os.path.join(docs_dir, f)
             docs.append({"name": f, "size": os.path.getsize(p),
                          "rel": os.path.join(BRIEF_DOCS_DIR, f)})
-    link_path = os.path.join(inbox, "content_link.txt")
-    content_link = ""
-    if os.path.isfile(link_path):
-        with open(link_path, encoding="utf-8") as f:
-            content_link = f.read().strip()
     return {"inbox": os.path.abspath(inbox), "slots": slots,
             "briefing": {"text": text, "sections": sections, "missing": missing,
                          "concepts": requested_concepts(text)},
             "briefing_docs": docs,
-            "content_link": content_link,
             "ready": slots["logo"]["ok"] and not missing}
