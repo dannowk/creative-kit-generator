@@ -16,16 +16,17 @@ uses 8767 (wizard) / 8768 (table). Do not start both in the same session.
 
 ## Steps
 
-1. **Find the kit root** (`AGENTS.md` + `install.sh`). If it is not in the workspace,
+1. **Find the kit root** (`AGENTS.md` + `kit/`). If it is not in the workspace,
    clone it yourself from `https://github.com/dannowk/creative-kit-generator` into
    `~/Documents/creative-kit-generator` — do not ask the user to clone.
 2. **Create the folder automatically**: default `~/Desktop/my-campaign-copy` (or
    `~/Desktop/<brand>-copy` if they already said the name in the chat). Without asking for a path.
-3. **Bootstrap + copy wizard in a single command**, in the background: `./install.sh <inbox> --copy`
-   (Mac/Linux) or `Install.bat <inbox> --copy` (Windows). Downloads `uv` + managed Python 3.12
-   without admin, installs the deps and **opens the copy wizard in the browser**,
+3. **Bootstrap + copy wizard**, in the background: install the deps once
+   (`python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`, or your
+   environment's pip), then run `python3 -m kit.cli copy onboard <folder>` — it
+   **opens the copy wizard in the browser**,
    creating only `briefing.md` + `examples.txt` (no logo/brandbook/refs/photos/videos).
-   `.venv/` already exists → just reopens the wizard.
+   Deps already installed → just reopen the wizard.
 4. **Announce in the chat** that the copy wizard opened; ask for the **briefing** (goal, audience,
    tone of voice, offer/product, concepts, axes, constraints, languages) and the **example
    texts** (a text field where they paste copy they like / want to use as a model). Mention

@@ -9,7 +9,7 @@ hosted service: no cloud, no login, no public URL — the files and the control 
 ### 1. Start — no terminal
 
 **You do not need to open a terminal or type a command.** The agent does it all for you:
-it creates the campaign folder, installs Python by itself (no admin), opens the
+it creates the campaign folder, installs the dependencies by itself (once), opens the
 onboarding in the browser and walks you through to review. You just **chat with it** and
 **use the browser**. Pick how to get the agent running:
 
@@ -35,8 +35,8 @@ onboarding in the browser and walks you through to review. You just **chat with 
 1. Clone or download the repository and open the folder in your agent:
    <https://github.com/dannowk/creative-kit-generator>
 2. Say: *"read AGENTS.md and start a campaign"*. The agent follows the repository
-   rules, runs the installer (`install.sh` on Mac/Linux, `Install.bat` on Windows)
-   and opens the onboarding in a **local browser tab** (`127.0.0.1`).
+   rules, installs the dependencies (`pip install -r requirements.txt`, once) and opens
+   the onboarding in a **local browser tab** (`127.0.0.1`).
 3. Everything is managed in the browser: you fill the inbox in the wizard and approve
    pieces in the review; the agent drives the rest from the chat. No plugin or native
    install is required — any agent that reads `AGENTS.md` can drive it.
@@ -81,16 +81,14 @@ anything: the agent **normalizes** it into the kit template and asks you only ab
 is missing (a single round). Just say: *"normalize this briefing"* and point at the file.
 Whoever fills in the template on screen (above) is already in the right format.
 
-**Prefer to create it by hand, or reopen the wizard later?** Inside the kit folder, use
-the Python the installer left behind (not the system `python3`, which lacks the
-dependencies):
+**Prefer to create it by hand, or reopen the wizard later?** Inside the kit folder, with
+the dependencies installed (see [Quick start](#quick-start-manual)):
 
 ```
-.venv/bin/python -m kit.cli onboard ~/Desktop/my-brand       # Mac / Linux
-.venv\Scripts\python -m kit.cli onboard ~/Desktop/my-brand   # Windows
+python3 -m kit.cli onboard ~/Desktop/my-brand
 ```
 
-(In the manual flow of [Quick start](#quick-start-manual), use `python3` with the venv activated.)
+(Inside a venv, or `.venv/bin/python -m kit.cli onboard ...` / `.venv\Scripts\python ...`.)
 
 ### 3. Hand it to the agent
 
@@ -290,9 +288,9 @@ you paste examples of copy you like.
 **Start (no terminal):**
 
 - **Claude Code (plugin):** `/campaign-kit:copy`
-- **Any agent:** say *"read AGENTS.md and run the copy kit"* — the agent runs
-  `install.sh <folder> --copy` (Mac/Linux) or `Install.bat <folder> --copy` (Windows)
-  and opens the copy wizard in the browser.
+- **Any agent:** say *"read AGENTS.md and run the copy kit"* — the agent installs the
+  dependencies (once) and opens the copy wizard in the browser
+  (`python3 -m kit.cli copy onboard <folder>`).
 
 The step-by-step is the same as the visual one, but lighter:
 

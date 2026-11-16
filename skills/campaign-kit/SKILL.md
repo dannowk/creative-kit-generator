@@ -12,17 +12,17 @@ and the browser.**
 
 ## Steps
 
-1. **Find the kit root** (`AGENTS.md` + `install.sh`). If it is not in the workspace,
+1. **Find the kit root** (`AGENTS.md` + `kit/`). If it is not in the workspace,
    clone it yourself from `https://github.com/dannowk/creative-kit-generator` into
    `~/Documents/creative-kit-generator` — do not ask the user to clone.
 2. **Create the campaign folder automatically**: default `~/Desktop/my-campaign`
    (or `~/Desktop/<brand>` if they already said the name in the chat). Without asking for a path.
-3. **Bootstrap + onboarding in a single command**, in the background: `./install.sh <inbox>`
-   (Mac/Linux, without `--no-open`) or `Install.bat <inbox>` (Windows). Downloads `uv` +
-   managed Python 3.12 without admin, installs the deps
-   and **opens the wizard in the browser**, creating `logo/ refs/ brandbook/ fonts/ photos/
+3. **Bootstrap + onboarding**, in the background: install the deps once
+   (`python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`, or your
+   environment's pip), then run `python3 -m kit.cli onboard <inbox>` — it
+   **opens the wizard in the browser**, creating `logo/ refs/ brandbook/ fonts/ photos/
    videos/ briefing/ briefing.md`. Each slot accepts a button + drag-and-drop (so does the briefing).
-   `.venv/` already exists → just reopens the wizard.
+   Deps already installed → just reopen the wizard.
 4. **Announce in the chat** that onboarding opened; ask for the logo (required) + photos/refs +
    briefing (brandbook is optional) and wait for the user's "ready". In the briefing area there is
    **"Supporting documents"** (several, they add up): ad copy, layout rules, safe

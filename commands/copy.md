@@ -6,13 +6,14 @@ The user **does not open a terminal or type a command**. You (the agent) run eve
 chat and use the browser. This command is the **copy kit** (independent of
 `/campaign-kit:start`, which is the visual). Follow the `copy-kit` skill in this order:
 
-1. Find the kit root (the folder with `AGENTS.md` + `install.sh`).
+1. Find the kit root (the folder with `AGENTS.md` + `kit/`).
 2. **Create the folder automatically**, without asking for a path: default
    `~/Desktop/my-campaign-copy` (or `~/Desktop/<brand>-copy` if the user already said the name).
-3. Run `./install.sh <inbox> --copy` (Mac/Linux) or `Install.bat <inbox> --copy`
-   (Windows) in the **background**. Downloads `uv` + managed Python 3.12 (no admin), installs
-   the deps and **opens the copy wizard in the browser**, creating only `briefing.md` +
-   `examples.txt` (no logo/brandbook/refs). If `.venv/` already exists, it just reopens the wizard.
+3. Install the deps once (`python3 -m venv .venv && .venv/bin/pip install -r
+   requirements.txt`, or your environment's pip), then run `python3 -m kit.cli copy onboard
+   <folder>` in the **background** — it **opens the copy wizard in the browser**, creating
+   only `briefing.md` + `examples.txt` (no logo/brandbook/refs). Deps already installed →
+   just reopen the wizard.
 4. Say in the chat: *"I opened the copy wizard in the browser. Fill in the briefing (goal,
    audience, tone, offer, concepts) and paste example texts into the examples field — or
    drop a file with copy you already have into either field's drop zone. Let me know when

@@ -16,22 +16,21 @@ briefing and the references provided**, never an inherited fixed look.
 ## Bootstrap (once)
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
 Dependencies: **Pillow, numpy, PyYAML, imageio-ffmpeg, faster-whisper**. Python 3.9+.
-Run every command from the root as `python3 -m kit.cli ...`.
+Run every command from the root as `python3 -m kit.cli ...` (inside the venv, or
+`.venv/bin/python -m kit.cli ...`).
 
 **No-terminal flow (default):** the user does not open a terminal or type a command — you
-run everything. Instead of the manual venv above, use `./install.sh <inbox>` (Mac/Linux, without
-`--no-open`) or `Install.bat <inbox>` (Windows) in the background: it downloads `uv` + managed Python 3.12 **without admin**, installs the deps and
-**opens the onboarding wizard in the browser**. **Create the `<inbox>` folder automatically**
+run everything. There is no installer: do the bootstrap above yourself (once), then run
+`python3 -m kit.cli onboard <inbox>` in the background — it **opens the onboarding wizard
+in the browser**. **Create the `<inbox>` folder automatically**
 (default `~/Desktop/my-campaign`, or `~/Desktop/<brand>`), without asking the user for a
 path; `onboard` does the scaffold (`logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ briefing.md`).
-Announce in the chat that onboarding opened, wait for the "ready" and follow the pipeline. The
-`python3` commands below are the manual equivalent (door C); in the managed flow use
-`.venv/bin/python -m kit.cli ...` (Mac/Linux) or `.venv\Scripts\python ...` (Windows).
+Announce in the chat that onboarding opened, wait for the "ready" and follow the pipeline.
 
 **ffmpeg / codecs:** do not install system ffmpeg or codecs. `imageio-ffmpeg` embeds
 the ffmpeg binary (used by the video module for trim/reframe/overlay/concat/captions).
