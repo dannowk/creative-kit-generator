@@ -297,12 +297,15 @@ you paste examples of copy you like.
 The step-by-step is the same as the visual one, but lighter:
 
 1. **Wizard** — fill in the **briefing** (goal, audience, tone, offer, concepts, axes,
-   languages) and paste the **example texts** into the examples field. Only
-   `briefing.md` + `examples.txt` — no logo/brandbook/refs/photos/videos.
-2. **Generate** — the agent writes the copy from the briefing + examples, in volume
-   (concepts × axes × destinations × versions), for **PPC** (headline/description/
+   languages) and paste the **example texts** into the examples field. Each field has a
+   **drag-and-drop / browse zone**: already have the copy in a file? Drop it — `.md`/`.txt`
+   content goes straight into the field, and any file (PDF/docx included) is saved in
+   `attachments/` for the agent to read. Only `briefing.md` + `examples.txt` + attachments —
+   no logo/brandbook/refs/photos/videos.
+2. **Generate** — the agent writes the copy from the briefing + examples + attached files,
+   in volume (concepts × axes × destinations × versions), for **PPC** (headline/description/
    primary_text) and **overlay** (hook/kicker/program/cta). It never invents beyond the
-   briefing/examples.
+   briefing/examples/attachments.
 3. **Review (table)** — approve / reject / redo+note **row by row** in a browser table,
    with filters by status, destination and concept. Each click only marks; the agent
    rewrites the rejected/redo rows and the table updates by itself.

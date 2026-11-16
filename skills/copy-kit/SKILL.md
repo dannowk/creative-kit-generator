@@ -28,9 +28,13 @@ uses 8767 (wizard) / 8768 (table). Do not start both in the same session.
    `.venv/` already exists → just reopens the wizard.
 4. **Announce in the chat** that the copy wizard opened; ask for the **briefing** (goal, audience,
    tone of voice, offer/product, concepts, axes, constraints, languages) and the **example
-   texts** (a text field where they paste copy they like / want to use as a model).
+   texts** (a text field where they paste copy they like / want to use as a model). Mention
+   that **each field has a drop zone**: they can drag a file with copy they already have —
+   `.md`/`.txt` content goes into the field, any file lands in `attachments/` for you to read.
    Wait for the user's "ready".
-5. **`copy plan <folder>`** prints the briefing + examples + the destinations/kinds vocabulary.
+5. **`copy plan <folder>`** prints the briefing + examples + **attached files** (if any) + the
+   destinations/kinds vocabulary. **Read the attachments** (plain text directly; PDF/docx/image:
+   extract with your tools) — they are part of the source material.
    **YOUR JOB:** author `<folder>/copy.json` = `{"concepts":[...], "rows":[...]}`.
    Each row: `id` (`k01`…, next free), `destination` (`ppc`/`overlay`), `concept`,
    `axis` (optional), `kind`, `text`, `lang` (`en`), `status:"pending"`,
@@ -38,7 +42,7 @@ uses 8767 (wizard) / 8768 (table). Do not start both in the same session.
    - **ppc kinds:** `headline` (≤30 for Google RSA), `description` (≤90), `primary_text`.
    - **overlay kinds:** `hook`, `kicker`, `program`, `cta`.
    High volume: concepts × axes × destinations × versions. **Never invent copy** beyond the
-   briefing + examples; **never mark `approved`** — the decision is the user's in the table.
+   briefing + examples + attached files; **never mark `approved`** — the decision is the user's in the table.
 6. **`copy validate <folder>`** checks the shape (valid destinations/kinds/status/lang, non-empty
    text, unique ids, declared concept). Error → nothing written; fix and revalidate.
 7. **`copy review <folder>`** opens the **table** in the browser (shortcut `OPEN-COPY-REVIEW.html`

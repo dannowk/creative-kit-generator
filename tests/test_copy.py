@@ -160,6 +160,37 @@ class ProgressTest(unittest.TestCase):
         self.assertEqual(copy_ui._brief_progress("## 1. Objective\n(what you want)\n")[0], 0)
 
 
+class AttachTest(unittest.TestCase):
+    def test_save_list_remove_and_collision(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.assertEqual(copy.attachments(root), [])
+            name = copy.save_attachment(root, "ready-copy.md", b"# hooks\nLess phone tag.")
+            self.assertEqual(name, "ready-copy.md")
+            name2 = copy.save_attachment(root, "ready-copy.md", b"second version")
+            self.assertEqual(name2, "ready-copy (2).md")
+            atts = copy.attachments(root)
+            self.assertEqual([a["name"] for a in atts], ["ready-copy (2).md", "ready-copy.md"])
+            self.assertEqual(atts[1]["size"], len(b"# hooks\nLess phone tag."))
+            self.assertTrue(copy.remove_attachment(root, "ready-copy.md"))
+            self.assertFalse(copy.remove_attachment(root, "ready-copy.md"))
+            self.assertEqual([a["name"] for a in copy.attachments(root)], ["ready-copy (2).md"])
+
+    def test_name_is_sanitized(self):
+        with tempfile.TemporaryDirectory() as root:
+            name = copy.save_attachment(root, "../../etc/passwd", b"x")
+            self.assertEqual(name, "passwd")
+            self.assertTrue(os.path.isfile(os.path.join(root, "attachments", "passwd")))
+
+    def test_plan_lists_attachments(self):
+        with tempfile.TemporaryDirectory() as root:
+            copy.scaffold(root)
+            copy.save_attachment(root, "brief.docx", b"\x00binary")
+            with os.popen(f"python3 -m kit.cli copy plan {root!r}") as p:
+                out = p.read()
+            self.assertIn("attached files", out)
+            self.assertIn("brief.docx", out)
+
+
 class ExportTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

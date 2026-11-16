@@ -14,12 +14,15 @@ chat and use the browser. This command is the **copy kit** (independent of
    the deps and **opens the copy wizard in the browser**, creating only `briefing.md` +
    `examples.txt` (no logo/brandbook/refs). If `.venv/` already exists, it just reopens the wizard.
 4. Say in the chat: *"I opened the copy wizard in the browser. Fill in the briefing (goal,
-   audience, tone, offer, concepts) and paste example texts into the examples field.
-   Let me know when you're done."* Wait for the OK.
-5. `copy plan <folder>` → read the briefing + examples → **author `copy.json`** (concepts +
+   audience, tone, offer, concepts) and paste example texts into the examples field — or
+   drop a file with copy you already have into either field's drop zone. Let me know when
+   you're done."* Wait for the OK.
+5. `copy plan <folder>` → read the briefing + examples + any listed attached files
+   (`attachments/` — plain text: read directly; PDF/docx/image: extract with your tools) →
+   **author `copy.json`** (concepts +
    rows: id, destination ppc/overlay, concept, axis, kind, text, lang, status pending,
    origin agent, updated_at/by). PPC: headline/description/primary_text. Overlay:
-   hook/kicker/program/cta. **Never invent copy** beyond the briefing+examples; **never
+   hook/kicker/program/cta. **Never invent copy** beyond the briefing+examples+attachments; **never
    mark approved** (it's the user's).
 6. `copy validate <folder>` → fix errors (nothing written on error).
 7. `copy review <folder>` → opens the **table** (shortcut `OPEN-COPY-REVIEW.html`). The user

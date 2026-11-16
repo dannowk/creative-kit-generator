@@ -29,6 +29,15 @@ table.copy .txt{min-width:240px;max-width:440px}
 table.copy .acts{white-space:nowrap}
 table.copy .acts button{min-height:28px;padding:3px 9px;font-size:12.5px}
 .fieldlabel{font-size:12.5px;color:var(--mut);font-weight:600}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:11px 14px;color:var(--mut);
+ font-size:13px;cursor:pointer;margin:6px 0 10px;text-align:center;background:#fbfcfd;line-height:1.45}
+.drop:hover,.drop.over{border-color:#0B6BCB;color:#0B6BCB;background:#f2f8ff}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
+.chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;
+ padding:3px 6px 3px 12px;font-size:12.5px;background:var(--surface)}
+.chip .sz{color:var(--mut);font-size:11.5px}
+.chip button{border:none;background:none;cursor:pointer;color:var(--mut);font-size:15px;padding:0 5px;line-height:1}
+.chip button:hover{color:#C62828}
 </style>"""
 
 
@@ -76,7 +85,13 @@ _WIZ_T = {
     "p1.title": "Briefing + examples",
     "p1.desc": "Text only: no logo, brandbook or visual references. The agent generates copy from this.",
     "brief.label": "Copy briefing",
+    "brief.attach": "Have the briefing in a file? Drop it here or click to browse — .md/.txt content goes straight into the field.",
     "examples.label": "Example texts (paste copy you like / want to use as a model)",
+    "examples.attach": "Already have copy written in a file? Drop it here or click to browse — .md/.txt content goes straight into the field.",
+    "attach.list": "Attached files (the agent reads them — PDF/docx are extracted with its tools):",
+    "attach.toast": "File attached — saved in the folder for the agent.",
+    "attach.text": "File attached and its content inserted into the field.",
+    "attach.err": "Could not attach the file.",
     "save": "Save",
     "saved": "Briefing and examples saved.",
     "p2.title": "Generate with the agent",
@@ -105,8 +120,14 @@ def wizard_page():
 <p class="desc">{t['p1.desc']}</p>
 <label class="fieldlabel" for="brief">{t['brief.label']}</label>
 <textarea id="brief"></textarea>
+<div class="drop" id="drop-briefing" onclick="pick('briefing')" title="{t['brief.attach']}">⬇ {t['brief.attach']}</div>
 <label class="fieldlabel" for="examples">{t['examples.label']}</label>
 <textarea id="examples" style="min-height:180px"></textarea>
+<div class="drop" id="drop-examples" onclick="pick('examples')" title="{t['examples.attach']}">⬇ {t['examples.attach']}</div>
+<div id="attachwrap" style="display:none">
+<label class="fieldlabel">{t['attach.list']}</label>
+<div class="chips" id="chips"></div></div>
+<input type="file" id="filepick" multiple style="display:none">
 <div class="row"><button class="btn primary" onclick="save()">{t['save']}</button></div></div>
 <div class="panel"><h2><span class="n">2</span>{t['p2.title']}</h2>
 <p class="desc">{t['p2.desc']}</p>
@@ -117,8 +138,11 @@ def wizard_page():
 """ + ui._modal() + ui._JS_UTIL + (
         '<script>const T=' + json.dumps(t, ensure_ascii=False) + ';</script>') + """
 <script>
-let S=null;
+let S=null,pickSlot="examples";
 const fill=(s,o)=>s.replace(/\\{(\\w+)\\}/g,(m,k)=>(k in o?o[k]:m));
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const TEXT_EXT=/\\.(md|markdown|txt|csv|json|rtf)$/i;
+const fmtSize=n=>n<1024?n+" B":n<1048576?(n/1024).toFixed(0)+" KB":(n/1048576).toFixed(1)+" MB";
 async function load(){
   S=await (await fetch("/state")).json();
   document.getElementById("meta").textContent=S.folder;
@@ -129,14 +153,55 @@ async function load(){
   const r=document.getElementById("ready");
   if(S.ready){r.className="callout ok";r.textContent=T.ready;}
   else{r.className="callout warn";r.textContent=T.missing;}
+  const atts=S.attachments||[];
+  document.getElementById("attachwrap").style.display=atts.length?"":"none";
+  document.getElementById("chips").innerHTML=atts.map(a=>
+    `<span class="chip">${esc(a.name)} <span class="sz">${fmtSize(a.size)}</span>`+
+    `<button title="Remove" onclick="detach('${esc(a.name)}')">×</button></span>`).join("");
   document.getElementById("agentline").value=fill(T.agentline,{folder:S.folder});
   document.getElementById("copynote").textContent=S.has_copy?T.hascopy:T.nocopy;
 }
-async function save(){
+async function save(msg){
   await fetch("/save",{method:"POST",body:JSON.stringify({
     briefing:document.getElementById("brief").value,
     examples:document.getElementById("examples").value})});
-  await load();notify(T.saved);
+  await load();notify(msg||T.saved);
+}
+function pick(slot){pickSlot=slot;document.getElementById("filepick").click();}
+document.getElementById("filepick").addEventListener("change",e=>{
+  handleFiles(e.target.files);e.target.value="";});
+for(const slot of ["briefing","examples"]){
+  const z=document.getElementById("drop-"+slot);
+  z.addEventListener("dragover",e=>{e.preventDefault();z.classList.add("over");});
+  z.addEventListener("dragleave",e=>{e.preventDefault();z.classList.remove("over");});
+  z.addEventListener("drop",e=>{e.preventDefault();z.classList.remove("over");handleFiles(e.dataTransfer.files,slot);});
+}
+async function handleFiles(files,slot){
+  slot=slot||pickSlot;
+  let anyText=false,ok=0;
+  for(const f of files){
+    const r=await fetch("/attach?slot="+slot+"&name="+encodeURIComponent(f.name),
+      {method:"POST",headers:{"Content-Type":"application/octet-stream"},body:f});
+    if(!r.ok){await tell(T["attach.err"]+" ("+esc(f.name)+")");continue;}
+    ok++;
+    if(TEXT_EXT.test(f.name)){
+      const txt=(await f.text()).trim();
+      if(txt){
+        const ta=document.getElementById(slot==="briefing"?"brief":"examples");
+        ta.value=(ta.value.trim()?ta.value.replace(/\\s*$/,"")+"\\n\\n":"")+txt+"\\n";
+        anyText=true;
+      }
+    }
+  }
+  if(ok){
+    if(anyText) await save(T["attach.text"]);
+    else{await load();notify(T["attach.toast"]);}
+  }
+}
+async function detach(name){
+  const r=await fetch("/detach",{method:"POST",body:JSON.stringify({name})});
+  if(!r.ok){await tell((await r.json()).error||"error");return;}
+  await load();
 }
 async function copyAgent(){
   await navigator.clipboard.writeText(document.getElementById("agentline").value);
@@ -325,6 +390,7 @@ class CopyHandler(ui.Handler):
                 self._send(200, {
                     "folder": self.root, "briefing": brief,
                     "examples": copy.read_text(self.root, "examples.txt"),
+                    "attachments": copy.attachments(self.root),
                     "filled": filled, "total": total, "ready": filled > 0,
                     "has_copy": os.path.isfile(os.path.join(self.root, "copy.json"))})
             else:
@@ -355,16 +421,32 @@ class CopyHandler(ui.Handler):
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
-        payload = json.loads(self.rfile.read(length) or b"{}")
+        raw = self.rfile.read(length) if length else b""
         url = urlparse(self.path)
         if self.mode == "onboard":
+            if url.path == "/attach":
+                q = parse_qs(url.query)
+                slot = q.get("slot", ["examples"])[0]
+                name = q.get("name", [""])[0]
+                if slot not in ("briefing", "examples") or not os.path.basename(name).strip():
+                    return self._send(400, {"error": "bad request"})
+                if not raw:
+                    return self._send(400, {"error": "empty file"})
+                stored = copy.save_attachment(self.root, name, raw)
+                return self._send(200, {"ok": True, "name": stored})
+            payload = json.loads(raw or b"{}")
             if url.path == "/save":
                 with open(os.path.join(self.root, "briefing.md"), "w", encoding="utf-8") as f:
                     f.write(payload.get("briefing", ""))
                 with open(os.path.join(self.root, "examples.txt"), "w", encoding="utf-8") as f:
                     f.write(payload.get("examples", ""))
                 return self._send(200, {"ok": True})
+            if url.path == "/detach":
+                if copy.remove_attachment(self.root, payload.get("name", "")):
+                    return self._send(200, {"ok": True})
+                return self._send(404, {"error": "not found"})
             return self._send(404, {"error": "not found"})
+        payload = json.loads(raw or b"{}")
         if url.path == "/decide":
             try:
                 found = copy.decide(self.root, payload.get("id"), payload.get("status"),

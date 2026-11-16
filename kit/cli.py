@@ -186,6 +186,11 @@ def main(argv=None):
             print("COPY — content direction (read before generating):")
             print("  briefing:\n" + (brief or "(empty)"))
             print("  examples:\n" + (examples or "(empty)"))
+            atts = copy.attachments(folder)
+            if atts:
+                print("  attached files (READ — plain text: use directly; PDF/docx/image: extract with your tools):")
+                for a in atts:
+                    print(f"   - {os.path.join(folder, copy.ATTACH_DIR, a['name'])} ({a['size']} bytes)")
             print("  destinations / kinds:")
             print("    ppc:     headline (≤30 for Google RSA), description (≤90), primary_text")
             print("    overlay: hook, kicker, program, cta")
@@ -193,7 +198,7 @@ def main(argv=None):
                   + os.path.join(folder, "copy.json") + ' = {"concepts":[...], "rows":[...]}')
             print("    each row: id, destination(ppc/overlay), concept, axis, kind, text, "
                   "lang(en), status:\"pending\", origin:\"agent\", updated_at, updated_by.")
-            print("    Never invent copy beyond briefing+examples; never mark approved (the user does).")
+            print("    Never invent copy beyond briefing+examples+attachments; never mark approved (the user does).")
             print("    Then: copy validate <folder> → copy review <folder>.")
             return 0
         if args.action == "validate":

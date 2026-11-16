@@ -183,6 +183,48 @@ def read_text(folder, name):
         return f.read()
 
 
+ATTACH_DIR = "attachments"
+
+
+def attach_dir(root):
+    return os.path.join(root, ATTACH_DIR)
+
+
+def save_attachment(root, name, data):
+    """Save a dropped/picked file in <root>/attachments/. Returns the stored name
+    (suffix added on collision)."""
+    name = os.path.basename(str(name)).strip() or "file"
+    d = attach_dir(root)
+    os.makedirs(d, exist_ok=True)
+    dest = os.path.join(d, name)
+    n = 2
+    while os.path.exists(dest):
+        stem, ext = os.path.splitext(name)
+        dest = os.path.join(d, f"{stem} ({n}){ext}")
+        n += 1
+    with open(dest, "wb") as f:
+        f.write(data)
+    return os.path.basename(dest)
+
+
+def remove_attachment(root, name):
+    p = os.path.join(attach_dir(root), os.path.basename(str(name)))
+    if os.path.isfile(p):
+        os.remove(p)
+        return True
+    return False
+
+
+def attachments(root):
+    """[{name, size}] sorted by name — what the wizard lists and `copy plan` prints."""
+    d = attach_dir(root)
+    if not os.path.isdir(d):
+        return []
+    return sorted(({"name": n, "size": os.path.getsize(os.path.join(d, n))}
+                   for n in os.listdir(d) if os.path.isfile(os.path.join(d, n))),
+                  key=lambda a: a["name"])
+
+
 def delivery_dir(root):
     """~/Desktop/Copy Kit/<folder>/ — same convention as the visual kit, outside the working folder."""
     from .campaign import desktop_dir, _slug
