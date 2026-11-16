@@ -104,7 +104,7 @@ Lista de linhas; cada linha:
   (`/state`, `/decide`, `/deliver`, `/download`, `/open-folder`). Servidor próprio.
 - `commands/copy.md`, `skills/copy-kit/SKILL.md`.
 - Subcomando `copy` no `kit/cli.py` (só adiciona; não muda os existentes).
-- README.md / README.en.md: seção "Copy Kit" + comando `/campaign-kit:copy`.
+- README.md (English-only): "Copy Kit" section + `/campaign-kit:copy` command.
 - Testes do módulo copy (TDD).
 
 ## Regras invioláveis (herdadas)

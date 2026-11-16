@@ -1,285 +1,345 @@
 # campaign-kit
 
-**Idioma:** Português · [English](README.en.md)
+Generate a complete campaign from a folder with a **logo + references + briefing**.
+It runs on **your machine**, with **your AI agent** (Claude, Codex, Qoder…). It is not a
+hosted service: no cloud, no login, no public URL — the files and the control are yours.
 
-Gere uma campanha completa a partir de uma pasta com **logo + referências + briefing**.
-Roda na **sua máquina**, com o **seu agente de IA** (Claude, Codex, Qoder…). Não é um
-serviço hospedado: nada de nuvem, login ou URL pública — os arquivos e o controle são
-seus.
+## Start here (step by step)
 
-## Comece aqui (passo a passo)
+### 1. Start — no terminal
 
-### 1. Comece — sem terminal
+**You do not need to open a terminal or type a command.** The agent does it all for you:
+it creates the campaign folder, installs Python by itself (no admin), opens the
+onboarding in the browser and walks you through to review. You just **chat with it** and
+**use the browser**. Pick how to get the agent running:
 
-**Você não precisa abrir terminal nem digitar comando.** O agente faz tudo por você:
-cria a pasta da campanha, instala o Python sozinho (sem admin), abre o onboarding no
-navegador e conduz até a revisão. Você só **conversa com ele no chat** e **usa o
-navegador**. Escolha como colocar o agente para rodar:
+**Door 1 · Claude Code (plugin — nothing to download):**
 
-**Porta 1 · Claude Code (plugin — sem baixar nada):**
-
-1. Abra o Claude Code.
-2. Peça para ele instalar o repositorio - https://github.com/dannowk/creative-kit-generator
+1. Open Claude Code.
+2. Ask it to install the repository - https://github.com/dannowk/creative-kit-generator
    ```
    /plugin marketplace add dannowk/creative-kit-generator
    ```
    ```
    /plugin install campaign-kit@creative-kit-generator
    ```
-3. Para começar, digite:
+3. To begin, type:
    ```
    /campaign-kit:start
    ```
+   Just the **copy** (text for PPC + overlay), independent of the visual? Use
+   `/campaign-kit:copy` — see [Copy Kit](#copy-kit).
 
-**Porta 2 · Qualquer agente (Qoder, Codex, Claude… — sem plugin):**
+**Door 2 · Any agent (Qoder, Codex, Claude… — no plugin):**
 
-1. Clone ou baixe o repositório e abra a pasta no seu agente:
+1. Clone or download the repository and open the folder in your agent:
    <https://github.com/dannowk/creative-kit-generator>
-2. Diga: *"leia o AGENTS.md e comece uma campanha"*. O agente segue as regras do
-   repositório, roda o instalador (`install.sh` no Mac/Linux, `Instalar.bat` no Windows)
-   e abre o onboarding numa **aba local do navegador** (`127.0.0.1`).
-3. Tudo é gerenciado no navegador: você preenche o inbox no wizard e aprova as peças
-   na revisão; o agente conduz o resto pelo chat. Nenhum plugin ou instalação nativa
-   é necessária — qualquer agente que leia o `AGENTS.md` consegue conduzir.
+2. Say: *"read AGENTS.md and start a campaign"*. The agent follows the repository
+   rules, runs the installer (`install.sh` on Mac/Linux, `Instalar.bat` on Windows)
+   and opens the onboarding in a **local browser tab** (`127.0.0.1`).
+3. Everything is managed in the browser: you fill the inbox in the wizard and approve
+   pieces in the review; the agent drives the rest from the chat. No plugin or native
+   install is required — any agent that reads `AGENTS.md` can drive it.
 
-### 2. Preencha a SUA pasta (o inbox da campanha)
+### 2. Fill in YOUR folder (the campaign inbox)
 
-Sua pasta fica **fora do kit** (ex.: `~/Desktop/minha-campanha`) — o kit é a
-ferramenta; o inbox é o seu material. **O agente cria essa pasta e abre o wizard no
-navegador para você.** É nele que você prepara tudo, sem digitar comando: suba ou
-arraste os arquivos em cada slot e preencha o briefing na tela.
+Your folder lives **outside the kit** (e.g. `~/Desktop/my-campaign`) — the kit is the
+tool; the inbox is your material. **The agent creates this folder and opens the wizard in
+the browser for you.** That is where you prepare everything, without typing a command:
+upload or drag files into each slot and fill in the briefing on screen.
 
-O wizard cria exatamente esta estrutura dentro da pasta que o agente criou:
-
-```
-minha-marca/
-  logo/        ← logo png, de preferência fundo transparente (obrigatório)
-  photos/      ← fotos que podem virar peça
-  videos/      ← clipes fonte
-  refs/        ← 2–6 referências de anúncios/posts do look desejado
-  brandbook/   ← manual da marca em PDF/imagens/docx (opcional)
-  fonts/       ← .ttf / .otf da marca (opcional; há substitutas)
-  briefing/    ← documentos de apoio: copy dos anúncios, regras de layout, safe areas, segurança do logo (opcional, vários)
-  briefing.md  ← o briefing que você preencheu na tela (ou editado à mão)
-```
-
-Cada slot aceita **botão ou arrastar-e-soltar** — e o briefing também: arraste um
-`.md/.txt/.rtf/.pdf/.docx` para a área de briefing, ou escreva/cole na tela. Cada arquivo
-enviado aparece na lista com um **✕ para remover** só aquele arquivo. Se você
-anexar um **brandbook**, o agente lê as regras da marca (cores, tipografia, uso do logo,
-voz) e as segue junto com o briefing e as referências.
-
-**Documentos de apoio (vários arquivos):** na área de briefing há uma zona **"Documentos
-de apoio"** para anexar quantos arquivos quiser — o **conteúdo/copy dos anúncios** (quando
-está em arquivos separados), **regras de layout**, **safe areas** e **segurança do logo**
-do brandbook. Aceita texto, PDF/Word, imagens (diagramas) e planilha (`.csv/.xlsx`, ex.:
-tabela de copy). Eles **se somam** (não substituem o briefing) e aparecem numa lista com
-botão de remover. O agente lê tudo no `plan`: o copy vira o texto das peças (e dos anúncios
-de search no PPC), e as regras de layout/safe area/logo viram geometria e compliance.
-
-**Já tem um briefing pronto em qualquer formato** (Word, PDF, texto, e-mail)? Não
-precisa reescrever nada: o agente **normaliza** para o modelo do kit e te pergunta só
-o que faltar (uma rodada única). É só dizer: *"normalize este briefing"* e apontar o
-arquivo. Quem preenche o modelo na tela (acima) já está no formato certo.
-
-**Prefere criar na mão, ou reabrir o wizard depois?** Dentro da pasta do kit, use o
-Python que o instalador deixou (não o `python3` do sistema, que não tem as dependências):
+The wizard creates exactly this structure inside the folder the agent created:
 
 ```
-.venv/bin/python -m kit.cli onboard ~/Desktop/minha-marca       # Mac / Linux
-.venv\Scripts\python -m kit.cli onboard ~/Desktop/minha-marca   # Windows
+my-brand/
+  logo/        ← logo png, transparent background preferred (required)
+  photos/      ← photos that can become a piece
+  videos/      ← source clips
+  refs/        ← 2–6 ad/post references of the desired look
+  brandbook/   ← brand manual as PDF/images/docx (optional)
+  fonts/       ← brand .ttf / .otf (optional; there are substitutes)
+  briefing/    ← supporting documents: ad copy, layout rules, safe areas, logo safety (optional, several)
+  briefing.md  ← the briefing you filled on screen (or edited by hand)
 ```
 
-(No fluxo manual do [Início rápido](#início-rápido-manual), use `python3` com o venv ativado.)
+Every slot accepts a **button or drag-and-drop** — and so does the briefing: drag a
+`.md/.txt/.rtf/.pdf/.docx` onto the briefing area, or write/paste on screen. Each uploaded
+file shows in the list with an **✕ to remove** just that file. If you
+attach a **brandbook**, the agent reads the brand rules (colors, typography, logo usage,
+voice) and follows them alongside the briefing and references.
 
-### 3. Entregue ao agente
+**Supporting documents (several files):** the briefing area has a **"Supporting documents"**
+zone to attach as many files as you like — the **ad content/copy** (when it lives in separate
+files), **layout rules**, **safe areas** and **logo safety** from the brandbook. It accepts
+text, PDF/Word, images (diagrams) and spreadsheets (`.csv/.xlsx`, e.g. a copy table). They
+**add up** (they don't replace the briefing) and show in a list with a remove button. The
+agent reads them all in `plan`: copy becomes the piece text (and the search-ad text in the
+PPC sheets), and layout/safe-area/logo rules become geometry and compliance.
 
-> **No fluxo sem terminal (Portas 1 e 2)** o agente já está conduzindo — este passo é
-> só para quem preparou a pasta na mão (alternativas com terminal).
+**Already have a briefing in any format** (Word, PDF, text, email)? No need to rewrite
+anything: the agent **normalizes** it into the kit template and asks you only about what
+is missing (a single round). Just say: *"normalize this briefing"* and point at the file.
+Whoever fills in the template on screen (above) is already in the right format.
 
-Abra a **pasta do kit** no seu agente — Claude Code (`claude` no terminal dentro dela),
-Qoder (abrir a pasta no app), Codex (`codex`) — e diga:
+**Prefer to create it by hand, or reopen the wizard later?** Inside the kit folder, use
+the Python the installer left behind (not the system `python3`, which lacks the
+dependencies):
 
-> "leia o AGENTS.md e rode a campanha de `~/Desktop/minha-marca`"
+```
+.venv/bin/python -m kit.cli onboard ~/Desktop/my-brand       # Mac / Linux
+.venv\Scripts\python -m kit.cli onboard ~/Desktop/my-brand   # Windows
+```
 
-O agente conduz `intake (ou brief --apply) → plan → assets → render → video` e cria:
+(In the manual flow of [Quick start](#quick-start-manual), use `python3` with the venv activated.)
 
-- `brands/minha-marca/` — `brand.yaml` (paleta, fontes, voz), `assets/logo.png`;
-- `campaigns/minha-marca-<slug>/` — `campaign.json`, `templates/` (direção de arte),
+### 3. Hand it to the agent
+
+> **In the no-terminal flow (Doors 1 and 2)** the agent is already driving — this step is
+> only for those who prepared the folder by hand (terminal alternatives).
+
+Open the **kit folder** in your agent — Claude Code (`claude` in the terminal inside it),
+Qoder (open the folder in the app), Codex (`codex`) — and say:
+
+> "read AGENTS.md and run the campaign for `~/Desktop/my-brand`"
+
+The agent drives `intake (or brief --apply) → plan → assets → render → video` and creates:
+
+- `brands/my-brand/` — `brand.yaml` (palette, fonts, voice), `assets/logo.png`;
+- `campaigns/my-brand-<slug>/` — `campaign.json`, `templates/` (art direction),
   `assets/`, `out/`, `review/`.
 
-Faltou informação? Vira **uma rodada única** de perguntas (no wizard ou no terminal).
-Antes de gerar qualquer asset pago, o agente mostra o aviso de ≈ créditos.
+Missing information? It becomes a **single round** of questions (in the wizard or in the
+terminal). Before generating any paid asset, the agent shows the ≈ credits notice.
 
-### 4. Aprove no navegador — e clique Continuar para entregar
+### 4. Approve in the browser — then click Continue to deliver
 
-O `review` **abre o navegador sozinho** em `http://127.0.0.1:8765` (ou a próxima porta
-livre). Na tela você decide peça por peça — **cada clique só marca, nada executa na hora**:
+`review` **opens the browser by itself** at `http://127.0.0.1:8765` (or the next free
+port). On screen you decide piece by piece — **each click only marks, nothing runs immediately**:
 
-- **✓ aprovar** → a peça fica marcada para ir para a pasta de entrega (na Área de Trabalho)
-  e sai da grade de trabalho (vai só para a lista **Aprovadas**).
-- **✕ rejeitar** → marcada para o sistema **recriar** outra automaticamente.
-- **↻ refazer** → você escreve o que ajustar; a nota fica guardada.
-- **Ajustar estilo (o conceito inteiro)** → filtre um conceito e clique **Ajustar estilo**
-  para mudar **cores e fontes de todas as peças daquele conceito de uma vez** (papéis da
-  paleta e da tipografia, mais uma nota livre). O ajuste é salvo em `styles/<conceito>.yaml`
-  e todas as peças do conceito entram na fila de refazer — o agente re-renderiza com o novo
-  look (e ele vale para as próximas renderizações também).
+- **✓ approve** → the piece is marked to go to the delivery folder (on your Desktop) and
+  leaves the working grid (it goes only to the **Approved** list).
+- **✕ reject** → marked for the system to **recreate** another one automatically.
+- **↻ redo** → you write what to adjust; the note is saved.
+- **Adjust style (the whole concept)** → filter a concept and click **Adjust style** to
+  change **colors and fonts of all its pieces at once** (palette and type roles, plus a free
+  note). The adjustment is saved to `styles/<concept>.yaml` and every piece of the concept
+  enters the redo queue — the agent re-renders with the new look (and it applies to future
+  renders too).
 
-Quando terminar de marcar, clique no botão **Continuar** (etapa 6). Aí sim tudo executa de
-uma vez: as aprovadas são **exportadas para a pasta de entrega na sua Área de Trabalho**
-(`~/Desktop/Campaign Kit/<campanha>/`) e as rejeitadas/refazer entram na fila de regeneração.
-O botão **Abrir pasta** aparece ao lado do Continuar e abre essa pasta no seu computador
-(Finder no Mac, Explorer no Windows). O **agente recria/refaz** as peças da fila e elas
-**atualizam nesta mesma página** sozinhas, prontas para revisar de novo. As aprovadas
-continuam só na lista de aprovadas. Repita até fechar a campanha.
+When you finish marking, click the **Continue** button (stage 6). Only then does everything
+run at once: the approved pieces are **exported to the delivery folder on your Desktop**
+(`~/Desktop/Campaign Kit/<campaign>/`) and the rejected/redo ones enter the regeneration
+queue. An **Open folder** button appears next to Continue and opens that folder on your
+computer (Finder on Mac, Explorer on Windows). The **agent recreates/redoes** the queued
+pieces and they **update on this same page** by themselves, ready to review again. Approved
+pieces stay only in the approved list. Repeat until the campaign is done.
 
-- Perdeu o link? Atalho clicável **`ABRIR-REVISAO.html`** dentro da pasta da campanha;
-  o endereço também fica no topo da tela e no fim de `render` / `video` no terminal.
-- Peças entregues (aprovadas): `~/Desktop/Campaign Kit/<campanha>/<conceito>/` (png/mp4), na
-  sua Área de Trabalho. O render de trabalho fica em `campaigns/<campanha>/out/<conceito>/`
-  + contact sheet `review/sheet_<conceito>.png`.
-- **Planilhas p/ o time de PPC (Meta + Google):** o Continuar também gera
-  `~/Desktop/Campaign Kit/<campanha>/ppc/` com o bulk upload de cada plataforma em **CSV + XLSX**
-  (Meta Ads Manager, Google Search RSA e Google Display) + um manifesto dos criativos. Já
-  vem com nomes, copy, CTA, placements e tamanho; o time de tráfego completa URL, orçamento
-  e IDs. Tudo sai pausado para revisão. Veja [Planilhas de PPC](#planilhas-de-ppc-meta--google).
-- **Idioma da interface:** o wizard e a revisão têm toggle **PT | EN** no topo (fica
-  gravado no navegador). No terminal, `--lang en` ou `KIT_LANG=en` traduz as mensagens.
+- Lost the link? Clickable shortcut **`ABRIR-REVISAO.html`** inside the campaign folder;
+  the address is also at the top of the screen and at the end of `render` / `video` in the terminal.
+- Delivered (approved) pieces: `~/Desktop/Campaign Kit/<campaign>/<concept>/` (png/mp4), on
+  your Desktop. The working render lives in `campaigns/<campaign>/out/<concept>/` + contact
+  sheet `review/sheet_<concept>.png`.
+- **Sheets for the PPC team (Meta + Google):** Continue also generates
+  `~/Desktop/Campaign Kit/<campaign>/ppc/` with each platform's bulk upload in **CSV + XLSX**
+  (Meta Ads Manager, Google Search RSA and Google Display) + a creative manifest. Names,
+  copy, CTA, placements and size come pre-filled; the traffic team fills URL, budget and
+  IDs. Everything ships paused for review. See [PPC sheets](#ppc-sheets-meta--google).
+- **Interface language:** the wizard and the review have a **PT | EN** toggle at the top
+  (it is remembered in the browser). In the terminal, `--lang en` or `KIT_LANG=en`
+  translates the messages.
 
-### 5. Gerar imagem/vídeo com IA (opcional — só p/ o que faltar)
+### 5. Generate image/video with AI (optional — only for what is missing)
 
-**Precisa disso?** Só se quiser que a IA **crie** imagem ou vídeo que está faltando.
-Se o seu inbox já tem `photos/` e `videos/`, o kit renderiza a partir deles e você
-**pula este passo**.
+**Do you need this?** Only if you want the AI to **create** image or video that is
+missing. If your inbox already has `photos/` and `videos/`, the kit renders from them and
+you **skip this step**.
 
-**Quem faz?** O **agente**, sozinho — você não edita YAML nem roda comando duas vezes.
-Seu único trabalho é ter o MCP do provider instalado no agente (ex.: Magnific):
+**Who does it?** The **agent**, by itself — you do not edit YAML or run a command twice.
+Your only job is to have the provider's MCP installed in the agent (e.g. Magnific):
 Claude Code (`claude mcp add …`), Qoder (Settings → MCP), Codex (`~/.codex/config.toml`).
-Aí diga ao agente: *"gere os assets que faltam"*. Ele mostra o aviso de ≈ créditos
-antes de gerar (é aviso, não porteiro) e cuida do resto.
+Then tell the agent: *"generate the missing assets"*. It shows the ≈ credits notice
+before generating (it is a notice, not a gatekeeper) and handles the rest.
 
-**Por que o agente e não o kit?** O kit é Python local e **não guarda conexão MCP** —
-de propósito, ele nunca vê suas credenciais. Quem tem o MCP é o agente; por isso é ele
-quem gera, e o kit só coleta os arquivos prontos.
+**Why the agent and not the kit?** The kit is local Python and **holds no MCP connection** —
+on purpose, it never sees your credentials. The agent is the one with the MCP; that is why
+it generates, and the kit only collects the finished files.
 
 <details>
-<summary>Por baixo do capô (avançado / manual)</summary>
+<summary>Under the hood (advanced / manual)</summary>
 
-O contrato vive na seção `provider` do briefing:
+The contract lives in the briefing's `provider` section:
 
 ```yaml
 provider:
   nome: magnific-mcp        # manual | magnific-mcp | http
-  creditos_imagem: 4        # alimenta o aviso "≈ X créditos"
+  creditos_imagem: 4        # feeds the "≈ X credits" notice
   creditos_video: 20
-  drop_dir: ~/Downloads     # onde o agente solta os arquivos gerados
+  drop_dir: ~/Downloads     # where the agent drops the generated files
 ```
 
-1. `assets` prepara `campaigns/<campanha>/assets/jobs.json` e para (`NeedsAgent`).
-2. O agente cumpre cada job pelo MCP dele e salva no `drop_dir` com o **prefixo do id
-   do job** (ex.: `acme-hero_….png`).
-3. `assets` de novo coleta do `drop_dir`, copia para `assets/` da campanha e grava
-   `manifest.json` (tipo + créditos).
+1. `assets` prepares `campaigns/<campaign>/assets/jobs.json` and stops (`NeedsAgent`).
+2. The agent fulfills each job through its MCP and saves into `drop_dir` with the **job id
+   prefix** (e.g. `acme-hero_….png`).
+3. `assets` again collects from `drop_dir`, copies into the campaign's `assets/` and writes
+   `manifest.json` (type + credits).
 
-Alternativas: `manual` (sem MCP — você mesmo dropa os arquivos no `drop_dir`) e `http`
-(API genérica: `api_url` + `api_key_env`, ex. `MAGNIFIC_API_KEY`; **a chave fica em
-variável de ambiente, nunca no briefing**).
+Alternatives: `manual` (no MCP — you drop the files into `drop_dir` yourself) and `http`
+(generic API: `api_url` + `api_key_env`, e.g. `MAGNIFIC_API_KEY`; **the key lives in an
+environment variable, never in the briefing**).
 
 </details>
 
-### 6. Campanha nova
+### 6. New campaign
 
-- **Mesma marca:** só um briefing novo (objetivo, oferta, CTA, canais, conceitos, copy);
-  o agente reusa `brands/<id>` e cria `campaigns/<id>-<novo-slug>/`.
-- **Marca nova:** novo inbox (passo 2) e repita do passo 3.
+- **Same brand:** just a new briefing (goal, offer, CTA, channels, concepts, copy);
+  the agent reuses `brands/<id>` and creates `campaigns/<id>-<new-slug>/`.
+- **New brand:** a new inbox (step 2) and repeat from step 3.
 
-### Onde cada coisa fica
+### Where everything lives
 
-| O quê | Onde |
+| What | Where |
 | --- | --- |
-| código do kit | onde você baixou/abriu (ex.: `~/Documents/creative-kit-generator`) |
-| seus arquivos | inbox que o agente criou (ex.: `~/Desktop/minha-campanha`) |
-| marca derivada | `<kit>/brands/<id>/` |
-| peças entregues (aprovadas) | `~/Desktop/Campaign Kit/<campanha>/<conceito>/` (na Área de Trabalho) |
-| planilhas de PPC | `~/Desktop/Campaign Kit/<campanha>/ppc/` (CSV + XLSX) |
-| render de trabalho | `<kit>/campaigns/<id>-<slug>/out/<conceito>/` + `review/sheet_<conceito>.png` |
-| revisão | navegador `127.0.0.1:8765+` · atalho `ABRIR-REVISAO.html` |
-| lote de regeneração | `<kit>/campaigns/<id>-<slug>/requests.json` (rejeitadas + refazer) |
-| ajuste de estilo do conceito | `<kit>/campaigns/<id>-<slug>/styles/<conceito>.yaml` (cores/fontes; o render aplica) |
-| gerados pelo MCP | `drop_dir` (ex.: `~/Downloads`) → coletados p/ `assets/` da campanha |
+| kit code | where you downloaded/opened it (e.g. `~/Documents/creative-kit-generator`) |
+| your files | the inbox the agent created (e.g. `~/Desktop/my-campaign`) |
+| derived brand | `<kit>/brands/<id>/` |
+| delivered (approved) pieces | `~/Desktop/Campaign Kit/<campaign>/<concept>/` (on your Desktop) |
+| PPC sheets | `~/Desktop/Campaign Kit/<campaign>/ppc/` (CSV + XLSX) |
+| working render | `<kit>/campaigns/<id>-<slug>/out/<concept>/` + `review/sheet_<concept>.png` |
+| review | browser `127.0.0.1:8765+` · shortcut `ABRIR-REVISAO.html` |
+| regeneration batch | `<kit>/campaigns/<id>-<slug>/requests.json` (rejected + redo) |
+| concept style adjustment | `<kit>/campaigns/<id>-<slug>/styles/<concept>.yaml` (colors/fonts; render applies it) |
+| generated by MCP | `drop_dir` (e.g. `~/Downloads`) → collected into the campaign's `assets/` |
 
-## Início rápido (manual)
+## Quick start (manual)
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-python3 -m kit.cli onboard ~/inbox/acme        # prepara a pasta; wizard abre no navegador
-python3 -m kit.cli intake  ~/inbox/acme acme   # deriva a marca
-#  ou, pelo modelo canônico de briefing (avançado):
-python3 -m kit.cli brief --template           # só IMPRIME um checklist markdown (não salva arquivo)
-#  preencha um briefing.yaml/.json com esses campos e então:
-python3 -m kit.cli brief ~/inbox/briefing.yaml --apply   # valida e escreve marca + campanha
-#  ou normalize um briefing livre (prosa/PDF/docx) — emite skeleton + contrato p/ o agente:
-python3 -m kit.cli brief --normalize ~/inbox/briefing.pdf   # agente preenche → brief <out> --apply
+python3 -m kit.cli onboard ~/inbox/acme        # prepares the folder; wizard opens in the browser
+python3 -m kit.cli intake  ~/inbox/acme acme   # derives the brand
+#  or, via the canonical briefing template (advanced):
+python3 -m kit.cli brief --template           # only PRINTS a markdown checklist (does not save a file)
+#  fill in a briefing.yaml/.json with those fields and then:
+python3 -m kit.cli brief ~/inbox/briefing.yaml --apply   # validates and writes brand + campaign
+#  or normalize a free-form briefing (prose/PDF/docx) — emits a skeleton + contract for the agent:
+python3 -m kit.cli brief --normalize ~/inbox/briefing.pdf   # agent fills it → brief <out> --apply
 python3 -m kit.cli plan    campaigns/acme-launch
 python3 -m kit.cli assets  campaigns/acme-launch
 python3 -m kit.cli render  campaigns/acme-launch
-python3 -m kit.cli video   campaigns/acme-launch   # trim/reframe/overlay/concat/legenda
-python3 -m kit.cli review  campaigns/acme-launch   # abre o navegador sozinho; atalho ABRIR-REVISAO.html na pasta
-python3 -m kit.cli deliver campaigns/acme-launch   # etapa 6: o "Continuar" — exporta aprovadas + enfileira recriação/refazer
-#  o agente cumpre requests.json e re-renderiza só as peças do lote (preserva as aprovadas):
+python3 -m kit.cli video   campaigns/acme-launch   # trim/reframe/overlay/concat/captions
+python3 -m kit.cli review  campaigns/acme-launch   # opens the browser by itself; shortcut ABRIR-REVISAO.html in the folder
+python3 -m kit.cli deliver campaigns/acme-launch   # stage 6: the "Continue" — exports approved + queues recreation/redo
+#  the agent fulfils requests.json and re-renders only the batch pieces (preserves the approved):
 python3 -m kit.cli render  campaigns/acme-launch --ids <id1> <id2>
-python3 -m kit.cli ppc     campaigns/acme-launch   # planilhas de bulk upload (Meta + Google), CSV + XLSX, em ppc/ na pasta de entrega (Desktop)
-python3 -m kit.cli ppc     campaigns/acme-launch --all   # exporta todas as peças, não só as aprovadas
+python3 -m kit.cli ppc     campaigns/acme-launch   # bulk-upload sheets (Meta + Google), CSV + XLSX, in ppc/ in the delivery folder (Desktop)
+python3 -m kit.cli ppc     campaigns/acme-launch --all   # export every piece, not just the approved ones
 ```
 
-## Planilhas de PPC (Meta + Google)
+Add `--lang en` (or set `KIT_LANG=en`) to any command for English messages; the default is
+Portuguese. The `plan` art-direction output stays in Portuguese — it is guidance for the
+agent, like `AGENTS.md`.
 
-Para campanhas com muitos anúncios, Meta e Google aceitam **importar em lote por planilha**.
-O kit gera essas planilhas sozinho — o **Continuar** já cria, e você também pode rodar
-`python3 -m kit.cli ppc <campanha>` a qualquer momento. Tudo cai em
-`~/Desktop/Campaign Kit/<campanha>/ppc/` (na sua Área de Trabalho), em **CSV** (import direto)
-e **XLSX** (revisão no Excel/Google Sheets):
+## PPC sheets (Meta + Google)
 
-| Arquivo | Onde importar | O que é |
+For campaigns with many ads, Meta and Google accept **bulk import via spreadsheet**. The kit
+generates those sheets by itself — **Continue** already creates them, and you can also run
+`python3 -m kit.cli ppc <campaign>` anytime. Everything lands in
+`~/Desktop/Campaign Kit/<campaign>/ppc/` (on your Desktop), as **CSV** (direct import) and
+**XLSX** (review in Excel/Google Sheets):
+
+| File | Where to import | What it is |
 |---|---|---|
-| `meta_bulk_import` | Meta Ads Manager → Import/Export → **Import Ads in Bulk** | Uma linha por peça Meta (feed/story/reels), com placements, CTA, copy e nome do criativo. |
-| `google_search_rsa` | Google Ads Editor (CSV) ou **Bulk actions → Uploads** | Responsive Search Ads: até 15 headlines (≤30 car.) + 4 descriptions (≤90) por conceito×eixo. |
-| `google_display` | Google Ads Editor / Uploads | Responsive Display Ads: texto + referência ao arquivo de imagem/logo (o anexo é feito no Editor). |
-| `creative_manifest` | — (referência humana) | Cada peça com plataforma, formato, tamanho, conceito, arquivo e copy. |
-| `README.txt` | — | O que vem preenchido vs. o que o PPC completa, e os limites de caracteres. |
+| `meta_bulk_import` | Meta Ads Manager → Import/Export → **Import Ads in Bulk** | One row per Meta piece (feed/story/reels), with placements, CTA, copy and creative file name. |
+| `google_search_rsa` | Google Ads Editor (CSV) or **Bulk actions → Uploads** | Responsive Search Ads: up to 15 headlines (≤30 chars) + 4 descriptions (≤90) per concept×axis. |
+| `google_display` | Google Ads Editor / Uploads | Responsive Display Ads: text + image/logo file reference (attachment is done in Editor). |
+| `creative_manifest` | — (human reference) | Each piece with platform, format, size, concept, file and copy. |
+| `README.txt` | — | What is pre-filled vs. what PPC completes, and the character limits. |
 
-**Já preenchido:** nomes de campanha/ad set/anúncio, criativo (nome do arquivo), copy
-(hook/primary text, headline, description), CTA, placements e tamanho — tudo derivado da
-campanha renderizada, conforme a plataforma e o formato de cada peça.
+**Pre-filled:** campaign/ad set/ad names, creative (file name), copy (hook/primary text,
+headline, description), CTA, placements and size — all derived from the rendered campaign,
+per platform and per piece format.
 
-**O time de PPC completa (colunas em branco):** URL final, Display Link, URL Tags (UTM),
-objetivo, orçamento, targeting e IDs (Facebook Page, Instagram, Pixel). Nada disso é
-inventado pelo kit. Todos os anúncios saem **pausados** para revisão antes de ativar.
+**The PPC team completes (blank columns):** final URL, Display Link, URL Tags (UTM),
+objective, budget, targeting and IDs (Facebook Page, Instagram, Pixel). None of that is
+invented by the kit. Every ad ships **paused** for review before going live.
 
 <details>
-<summary>Detalhes (avançado)</summary>
+<summary>Details (advanced)</summary>
 
-- O export é **determinístico**: peça aprovada → linha. Re-renderize/re-aprove e rode `ppc`
-  de novo para atualizar. `--all` inclui peças ainda não aprovadas (útil para rascunho).
-- O copy do Google RSA sai do `copy` da campanha (program/kicker/hook/CTA), truncado nos
-  limites do Google e sem os `[colchetes]` de destaque. Melhore o `copy` no briefing se
-  quiser headlines/descriptions melhores — não edite a planilha na mão.
-- Se o briefing trouxer a landing page, grave `landing_url` no `campaign.json` para o kit
-  pré-preencher `Link`/`Final URL`; senão ficam em branco para o PPC.
-- XLSX exige `openpyxl` (já em `requirements.txt`). Sem ele, o kit exporta só CSV e avisa.
-- Google Display não anexa imagem por CSV puro: a planilha lista `Image file`/`Logo file`
-  para você anexar no Editor. Meta usa o nome do arquivo de criativo já exportado.
+- The export is **deterministic**: approved piece → row. Re-render/re-approve and run `ppc`
+  again to refresh. `--all` includes pieces not yet approved (handy for drafts).
+- Google RSA copy comes from the campaign `copy` (program/kicker/hook/CTA), truncated to
+  Google's limits and stripped of the `[bracket]` highlights. Improve the briefing `copy`
+  for better headlines/descriptions — don't hand-edit the sheet.
+- If the briefing has a landing page, set `landing_url` in `campaign.json` so the kit
+  pre-fills `Link`/`Final URL`; otherwise they stay blank for PPC.
+- XLSX needs `openpyxl` (already in `requirements.txt`). Without it the kit exports CSV only
+  and says so.
+- Google Display can't attach images via plain CSV: the sheet lists `Image file`/`Logo file`
+  for you to attach in Editor. Meta uses the already-exported creative file name.
 
 </details>
 
-## O que vem no repo
+## Copy Kit
 
-- `kit/` — motor de render declarativo + compliance + providers + UI local.
-- `templates/` — biblioteca de specs de conceito (sobrescrevível por campanha).
-- `brands/acme` + `campaigns/acme-launch` — exemplo genérico para você seguir.
+Need **only the copy** — text for PPC (Meta / Google) and for the piece overlay
+(hook/kicker/program/CTA) — without generating image/video? **Copy Kit** is an
+**independent** flow in the same repository: it asks for no logo, brandbook or visual
+references and does not touch the visual kit. The reference is a **text field** where
+you paste examples of copy you like.
 
-O design **segue o briefing e as referências** — não herda o visual de outro cliente.
-Regras completas e contrato de providers em **[AGENTS.md](AGENTS.md)**.
+**Start (no terminal):**
+
+- **Claude Code (plugin):** `/campaign-kit:copy`
+- **Any agent:** say *"read AGENTS.md and run the copy kit"* — the agent runs
+  `install.sh <folder> --copy` (Mac/Linux) or `Instalar.bat <folder> --copy` (Windows)
+  and opens the copy wizard in the browser.
+
+The step-by-step is the same as the visual one, but lighter:
+
+1. **Wizard** — fill in the **briefing** (goal, audience, tone, offer, concepts, axes,
+   languages) and paste the **example texts** into the examples field. Only
+   `briefing.md` + `examples.txt` — no logo/brandbook/refs/photos/videos.
+2. **Generate** — the agent writes the copy from the briefing + examples, in volume
+   (concepts × axes × destinations × versions), for **PPC** (headline/description/
+   primary_text) and **overlay** (hook/kicker/program/cta). It never invents beyond the
+   briefing/examples.
+3. **Review (table)** — approve / reject / redo+note **row by row** in a browser table,
+   with filters by status, destination and concept. Each click only marks; the agent
+   rewrites the rejected/redo rows and the table updates by itself.
+4. **Deliver** — all approved → click **Export approved** (or `copy deliver`):
+   **CSV + XLSX** sheets in `~/Desktop/Copy Kit/<folder>/` (`meta_bulk_import`,
+   `google_search_rsa`, `overlay`, `copy_manifest` + README), with **download** in the
+   table itself and an **Open folder** button. **Only the approved rows ship.** Google
+   RSA limits (headline ≤30 / description ≤90) become a warning + truncation, not a
+   gatekeeper. URL/budget/targeting/IDs stay blank for the PPC team.
+
+**One flow at a time in the UI:** the visual uses ports 8766 (wizard) / 8765 (review);
+copy uses 8767 (wizard) / 8768 (table). Don't run both in the same session.
+
+<details>
+<summary>Manual (terminal)</summary>
+
+```bash
+python3 -m kit.cli copy onboard  ~/Desktop/my-campaign-copy   # light wizard (briefing + examples)
+python3 -m kit.cli copy plan     ~/Desktop/my-campaign-copy   # prints briefing + examples + vocabulary for the agent
+#  the agent authors copy.json (concepts + rows) from that, then:
+python3 -m kit.cli copy validate ~/Desktop/my-campaign-copy   # checks the shape (error → nothing written)
+python3 -m kit.cli copy review   ~/Desktop/my-campaign-copy   # opens the table in the browser
+python3 -m kit.cli copy deliver  ~/Desktop/my-campaign-copy   # exports only the approved (CSV + XLSX) to Desktop/Copy Kit
+```
+
+Copy is independent: it delivers its own file. There is no automatic import by the
+visual kit (handoff = a future step, if you want it). The voice comes from the briefing
++ pasted examples, not from a logo/brandbook.
+</details>
+
+## What is in the repo
+
+- `kit/` — declarative render engine + compliance + providers + local UI.
+- `templates/` — library of concept specs (overridable per campaign).
+- `brands/acme` + `campaigns/acme-launch` — a generic example for you to follow.
+
+The design **follows the briefing and the references** — it does not inherit another
+client's look. Full rules and the provider contract are in **[AGENTS.md](AGENTS.md)** (Portuguese).

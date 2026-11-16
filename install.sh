@@ -30,11 +30,23 @@ echo "instalando dependências…"
 .tools/uv pip install --python .venv/bin/python -r requirements.txt
 
 INBOX=""
-if [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; then INBOX=$1; shift; fi
+COPY=0
+FLAGS=""
+for a in "$@"; do
+  case "$a" in
+    --copy) COPY=1 ;;
+    --*) FLAGS="$FLAGS $a" ;;
+    *) [ -z "$INBOX" ] && INBOX="$a" ;;
+  esac
+done
 if [ -z "$INBOX" ]; then
   printf "pasta da campanha (Enter = ~/Desktop/minha-campanha): "
   read -r INBOX || true
   INBOX=${INBOX:-$HOME/Desktop/minha-campanha}
 fi
+if [ "$COPY" = "1" ]; then
+  echo "abrindo o wizard de copy…"
+  exec .venv/bin/python -m kit.cli copy onboard "$INBOX" $FLAGS
+fi
 echo "abrindo o wizard de onboarding…"
-exec .venv/bin/python -m kit.cli onboard "$INBOX" "$@"
+exec .venv/bin/python -m kit.cli onboard "$INBOX" $FLAGS

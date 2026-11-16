@@ -1,6 +1,6 @@
 {
   "name": "campaign-kit",
-  "description": "Gera campanhas completas (imagem + vídeo) a partir de uma pasta com logo, referências e briefing. Roda local, com revisão no navegador.",
-  "version": "1.8.0",
+  "description": "Gera campanhas completas (imagem + vídeo) a partir de logo, referências e briefing — e, com /campaign-kit:copy, só o copy (PPC + overlay) a partir de briefing + exemplos. Roda local, com revisão no navegador.",
+  "version": "1.9.0",
   "author": {"name": "Dann Owczarzak"}
 }

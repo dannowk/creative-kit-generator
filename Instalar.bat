@@ -23,8 +23,19 @@ echo instalando dependencias...
 ".tools\uv.exe" pip install --python ".venv\Scripts\python.exe" -r requirements.txt
 
 set "INBOX=%~1"
+set "COPY="
+if "%~2"=="--copy" set "COPY=1"
+if "%~1"=="--copy" (
+  set "COPY=1"
+  set "INBOX=%~2"
+)
 if "%INBOX%"=="" set /p INBOX="pasta da campanha (Enter = Desktop\minha-campanha): "
 if "%INBOX%"=="" set "INBOX=%USERPROFILE%\Desktop\minha-campanha"
-echo abrindo o wizard de onboarding...
-".venv\Scripts\python.exe" -m kit.cli onboard "%INBOX%"
+if defined COPY (
+  echo abrindo o wizard de copy...
+  ".venv\Scripts\python.exe" -m kit.cli copy onboard "%INBOX%"
+) else (
+  echo abrindo o wizard de onboarding...
+  ".venv\Scripts\python.exe" -m kit.cli onboard "%INBOX%"
+)
 pause
