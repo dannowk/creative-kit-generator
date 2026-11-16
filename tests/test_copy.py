@@ -166,5 +166,59 @@ class ProgressTest(unittest.TestCase):
         self.assertEqual(copy_ui._brief_progress("## 1. Objetivo\n(o que quer)\n")[0], 0)
 
 
+class ExportTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.desktop = tempfile.TemporaryDirectory()
+        os.environ["KIT_DESKTOP_DIR"] = self.desktop.name
+        self.folder = os.path.join(self.tmp.name, "minha-campanha-copy")
+        os.makedirs(self.folder)
+
+    def tearDown(self):
+        os.environ.pop("KIT_DESKTOP_DIR", None)
+        self.tmp.cleanup()
+        self.desktop.cleanup()
+
+    def _write(self, rows):
+        copy.save(self.folder, {"concepts": ["clean"], "rows": rows})
+
+    def test_approved_only_and_files(self):
+        import csv
+        self._write([
+            _row(id="k01", destination="ppc", kind="headline", text="Inscreva-se hoje", status="approved"),
+            _row(id="k02", destination="ppc", kind="description", text="Vagas limitadas.", status="approved"),
+            _row(id="k03", destination="ppc", kind="primary_text", text="Estude design do zero.", status="approved"),
+            _row(id="k04", destination="overlay", kind="hook", text="Últimas vagas", status="approved"),
+            _row(id="k05", destination="overlay", kind="cta", text="Inscreva-se", status="approved"),
+            _row(id="k06", destination="ppc", kind="headline", text="Nao aprovada", status="pending"),
+        ])
+        s = copy.export(self.folder, "pt")
+        self.assertEqual((s["meta"], s["google_rsa"], s["overlay"], s["manifest"]), (1, 1, 1, 5))
+        self.assertIn("meta_bulk_import.csv", s["files"])
+        self.assertTrue(os.path.isfile(os.path.join(s["dir"], "meta_bulk_import.csv")))
+        self.assertTrue(os.path.isfile(os.path.join(s["dir"], "overlay.csv")))
+        with open(os.path.join(s["dir"], "copy_manifest.csv"), encoding="utf-8-sig") as f:
+            ids = [r["ID"] for r in csv.DictReader(f)]
+        self.assertIn("k01", ids)
+        self.assertNotIn("k06", ids)
+
+    def test_rsa_limit_warning(self):
+        self._write([_row(id="k01", destination="ppc", kind="headline", text="x" * 40, status="approved")])
+        s = copy.export(self.folder, "pt")
+        self.assertEqual(len(s["warnings"]), 1)
+        self.assertEqual(s["warnings"][0]["id"], "k01")
+        self.assertEqual(s["warnings"][0]["limit"], 30)
+
+    def test_deliver_counts_approved(self):
+        self._write([_row(id="k01", destination="overlay", kind="hook", text="Oi", status="approved")])
+        self.assertEqual(copy.deliver(self.folder, "pt")["exported"], 1)
+
+    def test_deliver_empty_when_none_approved(self):
+        self._write([_row(id="k01", status="pending")])
+        s = copy.deliver(self.folder, "pt")
+        self.assertEqual(s["exported"], 0)
+        self.assertEqual(s["files"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

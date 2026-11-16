@@ -197,6 +197,17 @@ _REV_T = {
         "empty": "Nenhuma linha neste filtro.",
         "p3.title": "Revisar copy",
         "p3.desc": "Aprove/rejeite/refaça linha a linha. Nada sai sem aprovação. Refazer exige uma nota.",
+        "p4.title": "Entregar",
+        "p4.desc": "Exporta só o copy aprovado para planilhas (Meta / Google RSA / overlay) na pasta Desktop.",
+        "p4.hint": "CSV + XLSX. URL/orçamento/IDs ficam em branco para o time de PPC.",
+        "continue": "Exportar aprovadas",
+        "deliver.done": "{n} linhas aprovadas exportadas para {dir}",
+        "deliver.empty": "Nenhuma copy aprovada — aprove linhas na tabela primeiro.",
+        "deliver.toast": "{n} linhas exportadas.",
+        "deliver.warn": "Limites RSA excedidos (truncado no export)",
+        "openfolder": "Abrir pasta",
+        "openfolder.toast": "Pasta aberta: {dir}",
+        "openfolder.empty": "pasta de entrega vazia — exporte primeiro",
     },
     "en": {
         "title": "Review copy",
@@ -220,6 +231,17 @@ _REV_T = {
         "empty": "No rows in this filter.",
         "p3.title": "Review copy",
         "p3.desc": "Approve/reject/redo row by row. Nothing ships unapproved. Redo requires a note.",
+        "p4.title": "Deliver",
+        "p4.desc": "Exports only approved copy to sheets (Meta / Google RSA / overlay) in the Desktop folder.",
+        "p4.hint": "CSV + XLSX. URL/budget/IDs are left blank for the PPC team.",
+        "continue": "Export approved",
+        "deliver.done": "{n} approved rows exported to {dir}",
+        "deliver.empty": "No approved copy — approve rows in the table first.",
+        "deliver.toast": "{n} rows exported.",
+        "deliver.warn": "RSA limits exceeded (truncated on export)",
+        "openfolder": "Open folder",
+        "openfolder.toast": "Folder opened: {dir}",
+        "openfolder.empty": "empty delivery folder — export first",
     },
 }
 
@@ -250,6 +272,12 @@ def review_page(lang):
 <thead><tr><th>{t['th.status']}</th><th>{t['th.dest']}</th><th>{t['th.concept']}</th><th>{t['th.axis']}</th>
 <th>{t['th.kind']}</th><th>{t['th.text']}</th><th>{t['th.lang']}</th><th>{t['th.acts']}</th></tr></thead>
 <tbody id="tbody"></tbody></table></div></div>
+<div class="panel"><h2><span class="n">4</span>{t['p4.title']}</h2>
+<p class="desc">{t['p4.desc']}</p>
+<div class="row" style="align-items:center"><button class="btn primary" onclick="continuar()">{t['continue']}</button>
+<button class="btn" id="openfolder" onclick="openFolder()" style="display:none">{t['openfolder']}</button>
+<span class="meta">{t['p4.hint']}</span></div>
+<div id="deliver-result"></div></div>
 </div>
 """ + ui._modal(lang) + ui._JS_UTIL + (
         '<script>const LANG="' + lang + '";const T='
@@ -318,6 +346,31 @@ async function poll(){
   const s=await (await fetch("/state")).json();
   if(JSON.stringify(s)!==last)applyState(s);
 }
+function setStep(n){document.querySelectorAll(".stepper .step").forEach(el=>{
+  const i=+el.dataset.step;el.classList.toggle("done",i<n);el.classList.toggle("current",i===n);
+  const d=el.querySelector(".n");if(d)d.textContent=i<n?"✓":String(i);});}
+async function continuar(){
+  const r=await fetch("/deliver",{method:"POST",body:"{}"});
+  const j=await r.json();
+  if(!r.ok){await tell(j.error||"erro");return;}
+  const box=document.getElementById("deliver-result");
+  if(j.exported===0){box.innerHTML="";notify(T["deliver.empty"]);return;}
+  let html=`<div class="callout ok">${fill(T["deliver.done"],{n:j.exported,dir:esc(j.dir)})}</div>`;
+  if(j.warnings&&j.warnings.length)
+    html+=`<div class="callout warn">${T["deliver.warn"]}: ${j.warnings.map(w=>esc(w.id+" "+w.kind+" "+w.chars+">"+w.limit)).join(", ")}</div>`;
+  html+=`<div class="row" style="flex-wrap:wrap;margin-top:10px">`+
+    j.files.map(f=>`<a class="btn" href="/download?file=${encodeURIComponent(f)}" download>${esc(f)}</a>`).join("")+`</div>`;
+  box.innerHTML=html;
+  document.getElementById("openfolder").style.display="";
+  notify(fill(T["deliver.toast"],{n:j.exported}));
+  setStep(4);
+}
+async function openFolder(){
+  const r=await fetch("/open-folder",{method:"POST",body:"{}"});
+  const j=await r.json();
+  if(!r.ok){await tell(j.error||"erro");return;}
+  notify(fill(T["openfolder.toast"],{dir:esc(j.path)}));
+}
 load();
 setInterval(poll,4000);
 </script></body></html>"""
@@ -360,6 +413,20 @@ class CopyHandler(ui.Handler):
                 payload["folder"] = os.path.basename(self.root)
                 payload["concepts"] = data.get("concepts") or []
                 self._send(200, payload)
+        elif url.path == "/download":
+            fname = os.path.basename(parse_qs(url.query).get("file", [""])[0])
+            d = copy.delivery_dir(self.root)
+            path = os.path.realpath(os.path.join(d, fname))
+            if not fname or not path.startswith(os.path.realpath(d) + os.sep) or not os.path.isfile(path):
+                return self._send(404, {"error": "not found"})
+            with open(path, "rb") as f:
+                data = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
         else:
             self._send(404, {"error": "not found"})
 
@@ -384,6 +451,16 @@ class CopyHandler(ui.Handler):
             if not found:
                 return self._send(404, {"error": "id desconhecido"})
             return self._send(200, {"ok": True})
+        if url.path == "/deliver":
+            return self._send(200, copy.deliver(self.root, lang=self._lang()))
+        if url.path == "/open-folder":
+            d = copy.delivery_dir(self.root)
+            if not os.path.isdir(d):
+                en = self._lang() == "en"
+                return self._send(400, {"error": "empty delivery folder — export first" if en
+                                        else "pasta de entrega vazia — exporte primeiro"})
+            ui._open_folder(d)
+            return self._send(200, {"ok": True, "path": d})
         self._send(404, {"error": "not found"})
 
 

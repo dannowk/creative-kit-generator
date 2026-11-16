@@ -76,7 +76,7 @@ def main(argv=None):
     p.add_argument("--no-open", action="store_true", help="não abre o navegador (headless)")
 
     p = sub.add_parser("copy", help="Copy Kit: copy independente (PPC + overlay), skill /campaign-kit:copy")
-    p.add_argument("action", choices=["onboard", "plan", "validate", "review"])
+    p.add_argument("action", choices=["onboard", "plan", "validate", "review", "deliver"])
     p.add_argument("folder")
     p.add_argument("--port", type=int, default=None, help="porta da UI (default: onboard 8767, review 8768)")
     p.add_argument("--no-ui", action="store_true", help="só scaffold + checklist, sem servidor")
@@ -240,6 +240,27 @@ def main(argv=None):
                 server.serve_forever()
             except KeyboardInterrupt:
                 server.shutdown()
+            return 0
+        if args.action == "deliver":
+            if not os.path.isfile(os.path.join(folder, "copy.json")):
+                print(("copy.json missing — generate the copy first (copy plan)." if en
+                       else "copy.json ausente — gere o copy primeiro (copy plan)."), file=sys.stderr)
+                return 1
+            s = copy.deliver(folder, lang=lang)
+            if s["exported"] == 0:
+                print(("No approved copy to export — approve rows in the review first." if en
+                       else "Nenhum copy aprovado para exportar — aprove linhas na revisão primeiro."))
+                return 0
+            print(("Exported " if en else "Exportadas ") + str(s["exported"])
+                  + (" approved rows → " if en else " linhas aprovadas → ") + s["dir"])
+            print("  " + ("files: " if en else "arquivos: ") + ", ".join(s["files"]))
+            if s["warnings"]:
+                print("  " + ("RSA limit warnings (truncated): " if en
+                              else "avisos de limite RSA (truncado): ")
+                      + ", ".join(f"{w['id']} {w['kind']} {w['chars']}>{w['limit']}" for w in s["warnings"]))
+            if not s["xlsx"]:
+                print("  " + ("XLSX unavailable (openpyxl missing) — CSV only." if en
+                              else "XLSX indisponível (openpyxl ausente) — só CSV."))
             return 0
 
     camp = campaign.load_campaign(os.path.join(ROOT, args.campaign)
