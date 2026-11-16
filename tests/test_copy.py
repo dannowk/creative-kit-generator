@@ -148,5 +148,23 @@ class ScaffoldTest(unittest.TestCase):
             self.assertIn("Copy briefing", copy.read_text(folder, "briefing.md"))
 
 
+class ProgressTest(unittest.TestCase):
+    def test_fresh_template_not_filled(self):
+        from kit import copy_ui
+        for lang in ("pt", "en"):
+            filled, total = copy_ui._brief_progress(copy.BRIEF_TEMPLATE[lang])
+            self.assertEqual(filled, 0)
+            self.assertEqual(total, 9)
+
+    def test_filled_section_counts(self):
+        from kit import copy_ui
+        text = "# Briefing\n\n## 1. Objetivo\nGerar leads.\n\n## 2. Público\n(quem)\n"
+        self.assertEqual(copy_ui._brief_progress(text), (1, 2))
+
+    def test_paren_placeholder_not_filled(self):
+        from kit import copy_ui
+        self.assertEqual(copy_ui._brief_progress("## 1. Objetivo\n(o que quer)\n")[0], 0)
+
+
 if __name__ == "__main__":
     unittest.main()

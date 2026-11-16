@@ -76,9 +76,9 @@ def main(argv=None):
     p.add_argument("--no-open", action="store_true", help="não abre o navegador (headless)")
 
     p = sub.add_parser("copy", help="Copy Kit: copy independente (PPC + overlay), skill /campaign-kit:copy")
-    p.add_argument("action", choices=["onboard", "plan", "validate"])
+    p.add_argument("action", choices=["onboard", "plan", "validate", "review"])
     p.add_argument("folder")
-    p.add_argument("--port", type=int, default=8767)
+    p.add_argument("--port", type=int, default=None, help="porta da UI (default: onboard 8767, review 8768)")
     p.add_argument("--no-ui", action="store_true", help="só scaffold + checklist, sem servidor")
     p.add_argument("--no-open", action="store_true", help="não abre o navegador (headless)")
 
@@ -173,8 +173,18 @@ def main(argv=None):
             print("  examples.txt ← " + ("paste example texts" if en else "cole textos de exemplo"))
             print("  " + ("(no logo/brandbook/refs — copy is text only)" if en
                           else "(sem logo/brandbook/refs — copy é só texto)"))
-            print(("Next: fill briefing + examples, then `copy plan <folder>`." if en
-                   else "Próximo: preencha briefing + exemplos e rode `copy plan <pasta>`."))
+            if args.no_ui:
+                print(("Next: fill briefing + examples, then `copy plan <folder>`." if en
+                       else "Próximo: preencha briefing + exemplos e rode `copy plan <pasta>`."))
+                return 0
+            from . import copy_ui
+            server, url = copy_ui.serve_onboard(folder, args.port or 8767,
+                                                open_browser=not args.no_open, lang=lang)
+            print("  " + i18n.t("cli.ctrlc", lang))
+            try:
+                server.serve_forever()
+            except KeyboardInterrupt:
+                server.shutdown()
             return 0
         if args.action == "plan":
             brief = copy.read_text(folder, "briefing.md")
@@ -217,6 +227,20 @@ def main(argv=None):
                   else (f"{len(errs)} error(s) — nothing written." if en
                         else f"{len(errs)} erro(s) — nada gravado."))
             return 0 if not errs else 1
+        if args.action == "review":
+            if not os.path.isfile(os.path.join(folder, "copy.json")):
+                print(("copy.json missing — generate the copy first (copy plan)." if en
+                       else "copy.json ausente — gere o copy primeiro (copy plan)."), file=sys.stderr)
+                return 1
+            from . import copy_ui
+            server, url = copy_ui.serve_review(folder, args.port or 8768,
+                                               open_browser=not args.no_open, lang=lang)
+            print("  " + i18n.t("cli.ctrlc", lang))
+            try:
+                server.serve_forever()
+            except KeyboardInterrupt:
+                server.shutdown()
+            return 0
 
     camp = campaign.load_campaign(os.path.join(ROOT, args.campaign)
                                   if not os.path.isabs(args.campaign) else args.campaign)
