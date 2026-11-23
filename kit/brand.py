@@ -126,7 +126,7 @@ class Brand:
         self.fonts = FontBook(data.get("type"), font_dirs([self.assets_dir, os.path.join(root, "fonts")]))
         self.voice = data.get("voice") or {}
         self.axes = data.get("axes") or []
-        self.naming = data.get("naming", "{slug}_{concept}_{size}")
+        self.naming = data.get("naming", "{slug}_{concept}{axes}_{size}")
         self.compliance = data.get("compliance") or []
         self.safe_zones = data.get("safe_zones") or {}
         self.locales = data.get("locales") or [data.get("locale_default", "en")]

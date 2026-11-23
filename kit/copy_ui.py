@@ -246,9 +246,14 @@ _REV_T = {
     "approve": "Approve", "reject": "Reject", "redo": "Redo",
     "regenask": "What to adjust in this copy? (note required)",
     "queue.title": "Working queue — {n} row(s) marked for rewrite.",
-    "queue.hint": "The agent rewrites these and the table updates by itself. You can close the browser and check later — rewritten rows come back as pending, marked NEW since your last visit.",
+    "queue.hint": "They are queued in requests.json the moment you mark them: the agent rewrites these and the table updates by itself. You can close the browser and check later — rewritten rows come back as pending, marked NEW since your last visit.",
     "queue.rewrite": "rewrite (rejected)",
     "newbadge": "NEW",
+    "handoff.title": "Batch ready — {n} row(s) for the agent.",
+    "handoff.hint": "An agent watching this folder (`kit.cli copy wait`) picks it up by itself. If none is running, paste this line in chat:",
+    "handoff.line": "Rewrite the marked copy in {req} — each row carries its note (redo) or needs a new direction (rejected). Update the text in {copy}, set those rows back to status pending, clear the note and re-stamp updated_at; the table updates by itself.",
+    "handoff.copy": "Copy the line",
+    "handoff.copied": "Line copied — paste it in chat.",
     "approvetoast": "Copy approved.", "rejecttoast": "Copy rejected — the agent recreates.",
     "regentoast": "Marked for redo — the agent rewrites with the note.",
     "empty": "No rows in this filter.",
@@ -288,6 +293,7 @@ def review_page():
 <div class="panel"><h2><span class="n">3</span>{t['p3.title']}</h2>
 <p class="desc">{t['p3.desc']}</p>
 <div class="callout warn" id="queue" style="display:none"></div>
+<div class="callout" id="handoff" style="display:none"></div>
 <div class="filters" id="filters"></div>
 <div class="filters" id="dfilters"></div>
 <div class="filters" id="pfilters"></div>
@@ -364,6 +370,15 @@ function applyState(s){
   eb.disabled=q.length>0;
   if(q.length){lh.style.display="";lh.textContent=fill(T["deliver.locked"],{n:q.length});}
   else lh.style.display="none";
+  const ho=document.getElementById("handoff");
+  if(q.length&&s.root){
+    ho.style.display="";
+    const line=fill(T["handoff.line"],{req:s.root+"/requests.json",copy:s.root+"/copy.json"});
+    ho.innerHTML=`<b>${fill(T["handoff.title"],{n:q.length})}</b> <span class="hint">${T["handoff.hint"]}</span>`+
+      `<div class="row" style="align-items:center;margin-top:8px">`+
+      `<input type="text" id="handoffline" readonly style="flex:1" value="${esc(line)}">`+
+      `<button class="btn" onclick="copyHandoff()">${T["handoff.copy"]}</button></div>`;
+  } else ho.style.display="none";
   const cc={};for(const r of s.rows)cc[r.concept]=(cc[r.concept]||0)+1;
   const concepts=(s.concepts&&s.concepts.length?s.concepts:Object.keys(cc));
   document.getElementById("cfilters").innerHTML=
@@ -426,6 +441,10 @@ async function regen(id){
   if(!r.ok){await tell((await r.json()).error);return;}
   await load();notify(T.regentoast);
 }
+async function copyHandoff(){
+  await navigator.clipboard.writeText(document.getElementById("handoffline").value);
+  notify(T["handoff.copied"]);
+}
 async function poll(){
   if(document.querySelector("dialog[open]"))return;
   const s=await (await fetch("/state")).json();
@@ -484,12 +503,15 @@ class CopyHandler(ui.Handler):
                 payload = copy.review_payload(self.root)
                 if payload is None:
                     return self._send(200, {"folder": os.path.basename(self.root),
+                                            "root": self.root, "batch": [],
                                             "rows": [], "counts": {}, "concepts": []})
                 data = copy.load(self.root)
                 payload["folder"] = os.path.basename(self.root)
+                payload["root"] = self.root
                 payload["concepts"] = data.get("concepts") or []
                 payload["strategy_note"] = data.get("strategy_note") or ""
                 payload["meta_cta"] = data.get("meta_cta") or ""
+                payload["batch"] = copy.sync_requests(self.root, data)
                 self._send(200, payload)
         elif url.path == "/download":
             fname = os.path.basename(parse_qs(url.query).get("file", [""])[0])

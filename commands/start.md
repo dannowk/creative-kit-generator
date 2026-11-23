@@ -24,13 +24,16 @@ chat with you and use the browser. Drive in this order:
    render → video`. Free-form briefing (prose/PDF/docx)? `brief --normalize <source>` →
    fill the skeleton (vision for PDF; whatever is missing stays empty, becomes a gap) → `brief --apply`.
 6. Show the ≈ cost notice before provider jobs (it is a notice, not a gatekeeper).
-7. Start `review` (opens the browser by itself). Approve/reject/redo only **mark**; the user
-   clicks **Continue** (stage 6) — or you run `deliver` — to export the approved pieces to the
-   Desktop delivery folder (`~/Desktop/Campaign Kit/<campaign>/`) and queue rejected/redo
-   in `requests.json`. The **Open folder** button opens that folder on the user's computer. Fulfill
-   the batch (actually recreate/redo, changing template/asset/copy), run `render --ids <ids>` and the
-   review updates by itself. **The export is gated:** while a batch is still queued, Continue is
-   disabled (`{"locked": n}`) — the user only exports after every change is done.
+7. Start `review` (opens the browser by itself) **and `wait <campaign>` in the background** —
+   approve marks the piece for delivery; reject/redo queue it in `requests.json` immediately and
+   `wait` hands you the batch the moment it appears (no Continue needed). Fulfill it (actually
+   recreate/redo, changing template/asset/copy — a note asking for a different image means
+   `assets <campaign> --jobs <asset_job>` first), run `render --ids <ids>`, and the review updates
+   by itself with the piece back as pending badged **NEW**. Run `wait` again for the next round.
+   The user clicks **Continue** (or you run `deliver`) to export the approved pieces to the
+   Desktop delivery folder (`~/Desktop/Campaign Kit/<campaign>/`); the **Open folder** button opens
+   it on the user's computer. **The export is gated:** while anything is still rejected/redo,
+   Continue is disabled and `deliver` returns `{"locked": n, "batch": [...]}`.
    If the user used **Adjust style** (colors/fonts of a whole concept), the `styles/<concept>.yaml`
    is already applied by the render — for that batch `render --ids` is enough. See AGENTS.md.
 8. Continue/`deliver` also generates the **PPC sheets** (Meta + Google) in `ppc/` in the

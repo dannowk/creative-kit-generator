@@ -10,7 +10,7 @@ import os
 import time
 import urllib.request
 
-from .base import Provider
+from .base import Provider, num
 
 
 def _dig(obj, path):
@@ -26,8 +26,8 @@ class HttpAPI(Provider):
     def __init__(self, cfg):
         self.cfg = cfg
         self.name = cfg.get("name", "http")
-        self.credits_per_image = cfg.get("credits_per_image", 0.0)
-        self.credits_per_video = cfg.get("credits_per_video", 0.0)
+        self.credits_per_image = num(cfg.get("credits_per_image"))
+        self.credits_per_video = num(cfg.get("credits_per_video"))
 
     def note(self):
         return self.cfg.get("note", self.cfg.get("url", ""))

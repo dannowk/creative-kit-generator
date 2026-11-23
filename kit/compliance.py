@@ -33,11 +33,25 @@ def contrast_ratio(a, b):
     return (hi + 0.05) / (lo + 0.05)
 
 
+def _num(rule, key, default):
+    """A rule value that is missing OR null (`tolerance:` left empty in YAML) → default.
+
+    Without this, an empty field reaches the comparison as None and the render crashes.
+    """
+    v = rule.get(key)
+    if v is None or isinstance(v, bool):
+        return default
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
 def check_subject_safe(img, trace, rule, brand):
     face = trace.get("face_box")
     if not face:
         return []
-    tolerance = rule.get("tolerance", 0.02)
+    tolerance = _num(rule, "tolerance", 0.02)
     out = []
     for el in trace.get("elements", []):
         if el["op"] not in ("text", "logo"):
@@ -54,8 +68,8 @@ def check_palette_forbidden(img, trace, rule, brand):
         return []
     small = img.convert("RGB").resize((min(400, img.width), min(400, img.height)))
     a = np.asarray(small).reshape(-1, 3).astype(np.int16)
-    threshold = rule.get("tolerance", 40)
-    min_area = rule.get("min_area", 0.005)
+    threshold = _num(rule, "tolerance", 40)
+    min_area = _num(rule, "min_area", 0.005)
     out = []
     for color in brand.forbidden:
         dist = np.abs(a - np.array(color, dtype=np.int16)).sum(axis=1)
@@ -68,8 +82,8 @@ def check_palette_forbidden(img, trace, rule, brand):
 
 
 def check_min_font_size(img, trace, rule, brand):
-    minimum = rule.get("px", 0)
-    relative = rule.get("scale", 0)
+    minimum = _num(rule, "px", 0)
+    relative = _num(rule, "scale", 0)
     out = []
     for el in trace.get("elements", []):
         if el["op"] != "text":
@@ -83,7 +97,7 @@ def check_min_font_size(img, trace, rule, brand):
 
 
 def check_contrast_min(img, trace, rule, brand):
-    minimum = rule.get("ratio", 4.5)
+    minimum = _num(rule, "ratio", 4.5)
     out = []
     for el in trace.get("elements", []):
         if el["op"] != "text" or not el.get("under"):

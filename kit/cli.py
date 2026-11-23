@@ -5,6 +5,7 @@
   python3 -m kit.cli assets campaigns/acme-launch
   python3 -m kit.cli render campaigns/acme-launch
   python3 -m kit.cli review campaigns/acme-launch
+  python3 -m kit.cli wait campaigns/acme-launch     # agent hook: blocks until a piece is marked
   python3 -m kit.cli deliver campaigns/acme-launch   # step 6: the review's Continue
   python3 -m kit.cli ppc campaigns/acme-launch        # bulk-upload sheets (Meta + Google)
 """
@@ -40,6 +41,7 @@ def main(argv=None):
 
     p = sub.add_parser("assets", help="cost notice + AI asset generation (image and video)")
     p.add_argument("campaign")
+    p.add_argument("--jobs", nargs="*", help="regenerate only these asset job ids (a redo that asks for a different image)")
 
     p = sub.add_parser("render", help="render the piece matrix")
     p.add_argument("campaign")
@@ -60,6 +62,10 @@ def main(argv=None):
     p = sub.add_parser("deliver", help="step 6: export approved + queue recreate/redo (the review's Continue)")
     p.add_argument("campaign")
 
+    p = sub.add_parser("wait", help="block until the review marks pieces for redo/recreate, then print the batch (agent hook)")
+    p.add_argument("campaign")
+    p.add_argument("--timeout", type=float, default=0, help="seconds to wait, 0 = until something is queued")
+
     p = sub.add_parser("ppc", help="bulk-upload sheets for the PPC team (Meta + Google), CSV + XLSX")
     p.add_argument("campaign")
     p.add_argument("--all", action="store_true", help="export all pieces, not just approved ones")
@@ -74,9 +80,10 @@ def main(argv=None):
     p.add_argument("--no-open", action="store_true", help="don't open the browser (headless)")
 
     p = sub.add_parser("copy", help="Copy Kit: standalone copy (PPC + overlay), skill /campaign-kit:copy")
-    p.add_argument("action", choices=["onboard", "plan", "validate", "review", "deliver"])
+    p.add_argument("action", choices=["onboard", "plan", "validate", "review", "wait", "deliver"])
     p.add_argument("folder")
     p.add_argument("--port", type=int, default=None, help="UI port (default: onboard 8767, review 8768)")
+    p.add_argument("--timeout", type=float, default=0, help="wait: seconds to block, 0 = until something is queued")
     p.add_argument("--no-ui", action="store_true", help="scaffold + checklist only, no server")
     p.add_argument("--no-open", action="store_true", help="don't open the browser (headless)")
 
@@ -240,14 +247,44 @@ def main(argv=None):
             except KeyboardInterrupt:
                 server.shutdown()
             return 0
+        if args.action == "wait":
+            if not os.path.isfile(os.path.join(folder, "copy.json")):
+                print("copy.json missing — generate the copy first (copy plan).", file=sys.stderr)
+                return 1
+            print("Waiting for the review table to mark rows — "
+                  + os.path.join(folder, "requests.json") + " (Ctrl+C to stop).", file=sys.stderr)
+            try:
+                batch = copy.wait_batch(folder, args.timeout)
+            except KeyboardInterrupt:
+                return 1
+            if not batch:
+                print("Timeout — nothing was marked.", file=sys.stderr)
+                return 1
+            print(json.dumps(batch, indent=2, ensure_ascii=False))
+            cjson = os.path.join(folder, "copy.json")
+            print(f"{len(batch)} row(s) to rewrite in {cjson}:", file=sys.stderr)
+            print("  reason=redo → rewrite the text applying the note; "
+                  "reason=rejected → a different direction.", file=sys.stderr)
+            print("  Keep id/destination/platform/concept/program/axis/kind/lang; write the new text,",
+                  file=sys.stderr)
+            print('  set status back to "pending", note "", origin "agent", fresh updated_at + updated_by.',
+                  file=sys.stderr)
+            print("  The table picks the rows up on its next poll — no restart, no paste. "
+                  "Stay in wait for the next round.", file=sys.stderr)
+            return 0
         if args.action == "deliver":
             if not os.path.isfile(os.path.join(folder, "copy.json")):
                 print("copy.json missing — generate the copy first (copy plan).", file=sys.stderr)
                 return 1
             s = copy.deliver(folder)
             if s.get("locked"):
+                batch = s.get("batch") or []
                 print(f"Locked — the agent is still working on {s['locked']} marked row(s). "
                       "Export only opens after every change is done.", file=sys.stderr)
+                print(json.dumps(batch, indent=2, ensure_ascii=False))
+                print("Rewrite each row in " + os.path.join(folder, "copy.json")
+                      + ' (new text, status back to "pending", note "") — the table updates itself.',
+                      file=sys.stderr)
                 return 1
             if s["exported"] == 0:
                 print("No approved copy to export — approve rows in the review first.")
@@ -266,6 +303,15 @@ def main(argv=None):
 
     if args.cmd == "assets":
         jobs = camp.get("asset_jobs") or []
+        if args.jobs:
+            known = {j.get("id") for j in jobs}
+            unknown = [j for j in args.jobs if j not in known]
+            if unknown:
+                print("Unknown asset job id(s): " + ", ".join(unknown)
+                      + " — available: " + ", ".join(sorted(x for x in known if x)), file=sys.stderr)
+                return 1
+            jobs = [j for j in jobs if j.get("id") in set(args.jobs)]
+            camp = {**camp, "asset_jobs": jobs}
         if jobs:
             print(providers.notice(providers.get_provider(camp.get("provider")).estimate(jobs)))
         try:
@@ -365,7 +411,12 @@ def main(argv=None):
             return 1
         result = campaign.deliver(camp["_root"])
         if result.get("locked"):
+            batch = result.get("batch") or []
             print(i18n.t("cli.deliver.locked", n=result["locked"]), file=sys.stderr)
+            print(json.dumps(batch, indent=2, ensure_ascii=False))
+            print(i18n.t("cli.wait.fulfill", n=result["locked"]), file=sys.stderr)
+            print("  " + i18n.t("cli.wait.next", root=camp["_root"],
+                                ids=" ".join(b["id"] for b in batch)), file=sys.stderr)
             return 1
         if result["exported"] == 0 and result["regen"] == 0:
             print(i18n.t("cli.deliver.empty"))
@@ -376,6 +427,29 @@ def main(argv=None):
         if result.get("ppc"):
             print("  " + i18n.t("cli.deliver.ppc", dir=result["ppc"]["dir"],
                                 n=len(result["ppc"]["files"])))
+        return 0
+
+    if args.cmd == "wait":
+        root = camp["_root"]
+        if not os.path.isfile(os.path.join(root, "state.json")):
+            print(i18n.t("cli.deliver.nostate"), file=sys.stderr)
+            return 1
+        print(i18n.t("cli.wait.waiting", root=root), file=sys.stderr)
+        try:
+            batch = campaign.wait_batch(root, args.timeout)
+        except KeyboardInterrupt:
+            return 1
+        if not batch:
+            print(i18n.t("cli.wait.empty"), file=sys.stderr)
+            return 1
+        print(json.dumps(batch, indent=2, ensure_ascii=False))
+        print(i18n.t("cli.wait.fulfill", n=len(batch)), file=sys.stderr)
+        jobs = sorted({b["asset_job"] for b in batch
+                       if b["reason"] == "redo" and b.get("asset_job")})
+        if jobs:
+            print("  " + i18n.t("cli.wait.asset", root=root, jobs=" ".join(jobs)), file=sys.stderr)
+        print("  " + i18n.t("cli.wait.next", root=root,
+                            ids=" ".join(b["id"] for b in batch)), file=sys.stderr)
         return 0
 
     if args.cmd == "ppc":

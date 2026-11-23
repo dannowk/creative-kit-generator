@@ -236,7 +236,7 @@ def apply(struct, base_dir, root=ROOT):
     idiomas = marca.get("idiomas") or ["en"]
     comp = struct.get("compliance") or {}
     checks = [
-        {"check": "subject_safe", "tolerance": comp.get("tolerancia_rosto", 0.02)},
+        {"check": "subject_safe", "tolerance": comp.get("tolerancia_rosto") or 0.02},
         {"check": "min_font_size", "scale": 0.018},
         {"check": "contrast_min", "ratio": 3.0},
     ]
@@ -256,7 +256,7 @@ def apply(struct, base_dir, root=ROOT):
         "voice": {"tone": voice.get("tom", ""), "highlight": "[ ]",
                   "language": idiomas[0].split("-")[0],
                   "never_promise": voice.get("nunca_prometer") or []},
-        "axes": [], "naming": "{slug}_{concept}_{size}",
+        "axes": [], "naming": "{slug}_{concept}{axes}_{size}",
         "compliance": checks,
     }
     os.makedirs(brand_root, exist_ok=True)
@@ -330,8 +330,8 @@ def apply(struct, base_dir, root=ROOT):
 
     prov = struct.get("provider") or {}
     pcfg = {"name": prov.get("nome", "manual"),
-            "credits_per_image": prov.get("creditos_imagem", 0),
-            "credits_per_video": prov.get("creditos_video", 0)}
+            "credits_per_image": prov.get("creditos_imagem") or 0,
+            "credits_per_video": prov.get("creditos_video") or 0}
     if prov.get("drop_dir"):
         pcfg["drop_dir"] = prov["drop_dir"]
     if prov.get("api_url"):

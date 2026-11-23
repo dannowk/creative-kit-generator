@@ -139,6 +139,7 @@ def decide(root, row_id, status, note="", who=""):
                 break
         if found:
             save(root, data)
+            sync_requests(root, data)
     return found
 
 
@@ -479,6 +480,66 @@ def export(root):
     return {"dir": outdir, "files": files, "xlsx": ppc._HAS_XLSX, "warnings": warnings, **counts}
 
 
+def pending_batch(data):
+    """What the agent must rewrite NOW: every row still rejected (new direction) or redo (note)."""
+    out = []
+    for r in data.get("rows") or []:
+        st = r.get("status")
+        if st not in ("rejected", "redo"):
+            continue
+        out.append({"id": r.get("id"), "destination": r.get("destination"),
+                    "platform": r.get("platform", "both") if r.get("destination") == "ppc" else "overlay",
+                    "concept": r.get("concept"), "program": r.get("program") or "",
+                    "axis": r.get("axis") or "", "kind": r.get("kind"), "text": r.get("text"),
+                    "lang": r.get("lang"), "reason": "redo" if st == "redo" else "rejected",
+                    "note": r.get("note", ""), "marked_at": r.get("updated_at", "")})
+    return out
+
+
+def sync_requests(root, data=None):
+    """Keep `<folder>/requests.json` a derived view of the marked rows — the agent's work queue.
+
+    Refreshed on every review poll, so the batch appears the moment the user marks a redo
+    (no need to press Export) and empties itself when the agent sets those rows back to
+    pending. Only rewritten when the content actually changed.
+    """
+    if data is None:
+        if not os.path.isfile(_path(root)):
+            return []
+        data = load(root)
+    batch = pending_batch(data)
+    req = os.path.join(root, "requests.json")
+    prior = None
+    if os.path.isfile(req):
+        try:
+            with open(req, encoding="utf-8") as f:
+                prior = json.load(f)
+        except (OSError, ValueError):
+            prior = None
+    if prior != batch:
+        with open(req, "w", encoding="utf-8") as f:
+            json.dump(batch, f, indent=2, ensure_ascii=False)
+    return batch
+
+
+def wait_batch(root, timeout=0, interval=2.0):
+    """Block until the review table produces work, then return the batch (the agent's hook).
+
+    The user marks redo/reject in the browser; this returns as soon as there is something to
+    rewrite, so the agent can do it and the table updates by itself — no paste needed.
+    `timeout` 0 = wait forever. Returns [] on timeout.
+    """
+    import time
+    deadline = time.time() + timeout if timeout else None
+    while True:
+        batch = sync_requests(root)
+        if batch:
+            return batch
+        if deadline is not None and time.time() >= deadline:
+            return []
+        time.sleep(interval)
+
+
 def deliver(root):
     """The copy 'Continue': exports approved rows to the Desktop folder + download.
 
@@ -486,17 +547,21 @@ def deliver(root):
     exports — all changes must be done first. Returns {"locked": n} in that case.
     """
     empty = {"dir": delivery_dir(root), "files": [], "exported": 0, "xlsx": False,
-             "warnings": [], "locked": 0, "meta": 0, "google_rsa": 0, "overlay": 0, "manifest": 0}
+             "warnings": [], "locked": 0, "batch": [], "requests_path": "requests.json",
+             "meta": 0, "google_rsa": 0, "overlay": 0, "manifest": 0}
     if not os.path.isfile(_path(root)):
         return empty
-    rows = load(root).get("rows") or []
-    working = sum(1 for r in rows if r.get("status") in ("rejected", "redo"))
-    if working:
-        return {**empty, "locked": working}
+    data = load(root)
+    batch = sync_requests(root, data)
+    if batch:
+        return {**empty, "locked": len(batch), "batch": batch}
+    rows = data.get("rows") or []
     approved = sum(1 for r in rows if r.get("status") == "approved")
     if approved == 0:
         return empty
     s = export(root)
     s["exported"] = approved
     s["locked"] = 0
+    s["batch"] = []
+    s["requests_path"] = "requests.json"
     return s

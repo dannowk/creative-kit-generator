@@ -18,6 +18,20 @@ IMG_EXT = (".png", ".jpg", ".jpeg", ".webp")
 VID_EXT = (".mp4", ".mov", ".webm", ".m4v")
 
 
+def num(v, default=0.0):
+    """Config value that is missing OR null (`credits_per_video:` left empty) → default.
+
+    An empty YAML field arrives as None; without this the estimate multiplies by None and
+    `assets` crashes before generating anything.
+    """
+    if v is None or isinstance(v, bool):
+        return default
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
 class NeedsAgent(Exception):
     """This provider's transport is the agent (MCP). The CLI stops and hands it the jobs."""
 
@@ -35,7 +49,7 @@ class Provider:
     def estimate(self, jobs):
         ni = sum(j.get("n", 1) for j in jobs if j.get("kind", "image") == "image")
         nv = sum(j.get("n", 1) for j in jobs if j.get("kind") == "video")
-        credits = ni * self.credits_per_image + nv * self.credits_per_video
+        credits = ni * num(self.credits_per_image) + nv * num(self.credits_per_video)
         return {"provider": self.name, "images": ni, "videos": nv, "count": ni + nv,
                 "credits": round(credits, 2), "note": self.note()}
 

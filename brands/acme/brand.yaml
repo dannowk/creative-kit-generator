@@ -19,7 +19,7 @@ voice:
   highlight: '[ ]'
   language: en
 axes: []
-naming: '{slug}_{concept}_{size}'
+naming: '{slug}_{concept}{axes}_{size}'
 compliance:
 - check: subject_safe
   tolerance: 0.02

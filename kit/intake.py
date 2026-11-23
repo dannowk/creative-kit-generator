@@ -167,7 +167,7 @@ def run(inbox, brand_id, brands_dir):
         "logo": {"file": "assets/logo.png", "scale": 0.30},
         "voice": {"tone": "", "highlight": "[ ]", "language": "en"},
         "axes": [],
-        "naming": "{slug}_{concept}_{size}",
+        "naming": "{slug}_{concept}{axes}_{size}",
         "compliance": [
             {"check": "subject_safe", "tolerance": 0.02},
             {"check": "min_font_size", "scale": 0.018},

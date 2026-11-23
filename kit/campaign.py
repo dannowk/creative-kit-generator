@@ -9,6 +9,7 @@ import itertools
 import json
 import os
 import glob
+import re
 import shutil
 import sys
 from datetime import datetime, timezone
@@ -66,14 +67,40 @@ def lookup(mapping, combo):
     return None
 
 
+def axis_suffix(combo):
+    """'angle-urgency_locale-en' — the axes in a file-name-safe form ('' when there are none)."""
+    return "_".join(f"{k}-{re.sub(r'[^A-Za-z0-9]+', '-', str(v)).strip('-')}"
+                    for k, v in sorted((combo or {}).items()))
+
+
 def piece_name(brand, campaign, combo, concept, format_name, n=1):
+    axes = axis_suffix(combo)
     fields = {"slug": campaign.get("slug", "campaign"), "concept": concept,
               "size": formats.label(format_name), "format": format_name,
               "n": n, "V": f"V{n}", "brand": brand.id,
+              "axes": f"_{axes}" if axes else "",
+              "axis": axes,
               "locale": combo.get("locale", campaign.get("locale", brand.locale_default))}
     fields.update(combo)
     pattern = campaign.get("naming") or brand.naming
     return pattern.format_map(_Safe(fields))
+
+
+def unique_name(name, combo, used):
+    """A pattern that ignores the axes makes every variation resolve to the same file, so
+    they silently overwrite each other. When that happens, append the axes (then a counter).
+    """
+    if name not in used:
+        used.add(name)
+        return name
+    axes = axis_suffix(combo)
+    cand = f"{name}_{axes}" if axes and axes not in name else name
+    base, n = cand, 2
+    while cand in used:
+        cand = f"{base}_{n}"
+        n += 1
+    used.add(cand)
+    return cand
 
 
 class _Safe(dict):
@@ -177,6 +204,7 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
     copy_map = campaign.get("copy") or {}
 
     pieces = []
+    used_names = set()
     for combo in combos:
         photo, fx, asset_path = resolve_asset(campaign, combo, overrides)
         copy = lookup(copy_map, combo) or {}
@@ -196,7 +224,8 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
                 print(f"  no copy.hook for {concept} in {combo or 'campaign'} — concept skipped")
                 continue
             for fmt in names:
-                name = piece_name(brand, campaign, combo, concept, fmt)
+                name = unique_name(piece_name(brand, campaign, combo, concept, fmt),
+                                   combo, used_names)
                 if only_ids and name not in only_ids:
                     continue
                 geo = formats.geometry(fmt, brand)
@@ -244,6 +273,7 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
     if not dry:
         with open(os.path.join(root, "state.json"), "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
+        sync_requests(root, state)
     return state
 
 
@@ -322,6 +352,68 @@ def delivery_dir(root):
     return os.path.join(desktop_dir(), "Campaign Kit", name)
 
 
+def pending_batch(state):
+    """What the agent must do NOW: every piece still rejected (recreate) or redo (with note)."""
+    out = []
+    for p in state.get("pieces") or []:
+        st = p.get("status")
+        if st not in ("rejected", "redo"):
+            continue
+        out.append({"id": p["id"], "concept": p["concept"], "format": p["format"],
+                    "axes": p.get("axes", {}), "path": p["path"],
+                    "kind": p.get("kind", "image"), "asset": p.get("asset"),
+                    "asset_job": os.path.splitext(p["asset"])[0] if p.get("asset") else None,
+                    "reason": "redo" if st == "redo" else "rejected",
+                    "note": p.get("note", ""), "marked_at": p.get("decided_at", "")})
+    return out
+
+
+def sync_requests(root, state=None):
+    """Keep `requests.json` a derived view of the marked pieces — the agent's work queue.
+
+    Written on every review poll and after every render, so it appears the moment the user
+    marks a redo (no need to press Continue) and empties itself when the agent re-renders
+    those pieces back to pending. Only rewritten when the content actually changed.
+    """
+    if state is None:
+        path = os.path.join(root, "state.json")
+        if not os.path.isfile(path):
+            return []
+        with open(path, encoding="utf-8") as f:
+            state = json.load(f)
+    batch = pending_batch(state)
+    req = os.path.join(root, "requests.json")
+    prior = None
+    if os.path.isfile(req):
+        try:
+            with open(req, encoding="utf-8") as f:
+                prior = json.load(f)
+        except (OSError, ValueError):
+            prior = None
+    if prior != batch:
+        with open(req, "w", encoding="utf-8") as f:
+            json.dump(batch, f, indent=2, ensure_ascii=False)
+    return batch
+
+
+def wait_batch(root, timeout=0, interval=2.0):
+    """Block until the review produces work, then return the batch (the agent's hook).
+
+    The user marks redo/reject in the browser; this returns as soon as `requests.json` has
+    items, so the agent can fulfill them and re-render without the user pasting anything.
+    `timeout` 0 = wait forever. Returns [] on timeout.
+    """
+    import time
+    deadline = time.time() + timeout if timeout else None
+    while True:
+        batch = sync_requests(root)
+        if batch:
+            return batch
+        if deadline is not None and time.time() >= deadline:
+            return []
+        time.sleep(interval)
+
+
 def deliver(root):
     """Step 6 — the Continue button: exports approved pieces and queues recreation/redo.
 
@@ -333,23 +425,21 @@ def deliver(root):
     pieces exported, it also generates the PPC bulk-upload sheets (Meta + Google) in `ppc/`
     inside the same delivery folder.
 
-    Gated: while a previous batch is still queued (the agent is regenerating), nothing
+    Gated: while any piece is still rejected/redo (the agent is working on it), nothing
     exports — all changes must be done first. Returns {"locked": n} in that case.
     """
     with open(os.path.join(root, "state.json"), encoding="utf-8") as f:
         state = json.load(f)
     delivery = delivery_dir(root)
-    in_progress = [p for p in state["pieces"]
-                   if p.get("queued") and p.get("status") in ("rejected", "redo")]
-    if in_progress:
-        return {"locked": len(in_progress), "exported": 0, "regen": 0, "exported_ids": [],
-                "delivery_dir": delivery, "requests_path": "requests.json", "batch": [],
+    batch = sync_requests(root, state)
+    if batch:
+        return {"locked": len(batch), "exported": 0, "regen": 0, "exported_ids": [],
+                "delivery_dir": delivery, "requests_path": "requests.json", "batch": batch,
                 "ppc": None}
     os.makedirs(delivery, exist_ok=True)
-    exported, batch = [], []
+    exported = []
     for p in state["pieces"]:
-        st = p.get("status")
-        if st == "approved":
+        if p.get("status") == "approved":
             src = os.path.join(root, "out", p["path"])
             if os.path.isfile(src):
                 dest = os.path.join(delivery, p["concept"], os.path.basename(p["path"]))
@@ -358,17 +448,9 @@ def deliver(root):
                 p["delivered"] = True
                 p["delivery_path"] = dest
                 exported.append(p["id"])
-        elif st in ("rejected", "redo"):
-            p["queued"] = True
-            batch.append({"id": p["id"], "concept": p["concept"], "format": p["format"],
-                          "axes": p.get("axes", {}), "path": p["path"],
-                          "kind": p.get("kind", "image"), "asset": p.get("asset"),
-                          "reason": "redo" if st == "redo" else "rejected",
-                          "note": p.get("note", "")})
     with open(os.path.join(root, "state.json"), "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2, ensure_ascii=False)
-    with open(os.path.join(root, "requests.json"), "w", encoding="utf-8") as f:
-        json.dump(batch, f, indent=2, ensure_ascii=False)
+    sync_requests(root, state)
     ppc_summary = None
     if exported:
         from . import ppc

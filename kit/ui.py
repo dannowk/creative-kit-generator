@@ -228,6 +228,7 @@ def review_page():
 <div class="panel"><h2><span class="n">5</span>{i18n.t('rv.p5.title')}</h2>
 <p class="desc">{i18n.t('rv.p5.desc')}</p>
 <div class="callout warn" id="queue" style="display:none"></div>
+<div class="callout" id="handoff" style="display:none"></div>
 <div class="filters" id="filters"></div>
 <div class="row" style="align-items:center"><span class="meta">{i18n.t('rv.concept')}</span><div class="filters" id="cfilters"></div>
 <button class="btn" id="stylebtn" onclick="toggleStyle()" style="display:none">{i18n.t('rv.adjust')}</button></div>
@@ -300,12 +301,26 @@ function applyState(s){
         return `<li><b>${esc(p.id)}</b> — ${esc(p.concept)} · ${esc(p.format)} — ${what} <span class="hint">[${st}${when}]</span></li>`;
       }).join("")+`</ul>`;
   } else qel.style.display="none";
-  const inprog=q.filter(p=>p.queued).length;
+  const inprog=q.length;
   document.querySelectorAll(".contbtn").forEach(b=>b.disabled=inprog>0);
   const lh=document.getElementById("lockhint");
   if(inprog>0){lh.style.display="";lh.textContent=fill(T["continue.locked"],{n:inprog});}
   else lh.style.display="none";
+  const ho=document.getElementById("handoff");
+  if(inprog>0&&state.root){
+    ho.style.display="";
+    const line=fill(T["handoff.line"],{req:state.root+"/requests.json",root:state.root,
+      ids:q.map(p=>p.id).join(" ")});
+    ho.innerHTML=`<b>${fill(T["handoff.title"],{n:inprog})}</b> <span class="hint">${T["handoff.hint"]}</span>`+
+      `<div class="row" style="align-items:center;margin-top:8px">`+
+      `<input type="text" id="handoffline" readonly style="flex:1" value="${esc(line)}">`+
+      `<button class="btn" onclick="copyHandoff()">${T["handoff.copy"]}</button></div>`;
+  } else ho.style.display="none";
   draw();
+}
+async function copyHandoff(){
+  await navigator.clipboard.writeText(document.getElementById("handoffline").value);
+  notify(T["handoff.copied"]);
 }
 function setFilter(f){filter=f;draw();}
 function setConcept(k){cfilter=k;draw();
@@ -757,7 +772,9 @@ class Handler(BaseHTTPRequestHandler):
             if self.mode == "onboard":
                 return self._send(200, onboard.status(self.root))
             with open(os.path.join(self.root, "state.json"), encoding="utf-8") as f:
-                self._send(200, json.load(f))
+                state = json.load(f)
+            campaign.sync_requests(self.root, state)
+            self._send(200, state)
         elif url.path == "/img":
             rel = parse_qs(url.query).get("path", [""])[0]
             path = self._safe(rel)
@@ -811,15 +828,17 @@ class Handler(BaseHTTPRequestHandler):
                             p.pop("note", None)
                         if p["status"] in ("rejected", "redo"):
                             p["decided_at"] = now
+                            p["queued"] = True
                         else:
                             p.pop("decided_at", None)
+                            p.pop("queued", None)
                         if p["status"] != "approved":
                             p.pop("delivered", None)
                             p.pop("delivery_path", None)
-                        p.pop("queued", None)
                 with open(state_path, "w", encoding="utf-8") as f:
                     json.dump(state, f, indent=2, ensure_ascii=False)
-            self._send(200, {"ok": True})
+                batch = campaign.sync_requests(self.root, state)
+            self._send(200, {"ok": True, "queued": len(batch)})
         elif self.path == "/concept-style":
             concept = payload.get("concept", "")
             camp = campaign.load_campaign(self.root)
@@ -860,13 +879,15 @@ class Handler(BaseHTTPRequestHandler):
                         p["note"] = rnote
                         p["restyle"] = True
                         p["decided_at"] = now
+                        p["queued"] = True
                         p.pop("delivered", None)
                         p.pop("delivery_path", None)
-                        p.pop("queued", None)
                         count += 1
                 with open(state_path, "w", encoding="utf-8") as f:
                     json.dump(state, f, indent=2, ensure_ascii=False)
-            self._send(200, {"ok": True, "concept": concept, "count": count})
+                batch = campaign.sync_requests(self.root, state)
+            self._send(200, {"ok": True, "concept": concept, "count": count,
+                             "queued": len(batch)})
         elif self.path == "/continue":
             if not os.path.isfile(state_path):
                 return self._send(400, {"error": i18n.t("rv.err.nostate")})

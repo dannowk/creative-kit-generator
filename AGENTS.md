@@ -89,6 +89,7 @@ python3 -m kit.cli plan campaigns/acme-launch
 # 4. AI assets (image and video) — informative cost notice, no gatekeeper
 python3 -m kit.cli assets campaigns/acme-launch
 #    prints "≈ X credits (N image(s) + M video(s))" and generates/collects.
+#    --jobs <id> ...  regenerates ONLY those asset jobs (a redo asking for a different image)
 
 # 5. Render the piece matrix (concepts × formats × axes)
 python3 -m kit.cli render campaigns/acme-launch
@@ -99,16 +100,22 @@ python3 -m kit.cli render campaigns/acme-launch
 python3 -m kit.cli video campaigns/acme-launch
 
 # 6. Local review (127.0.0.1, free port starting at 8765): approve / reject / redo per piece.
-#    Each click only MARKS the piece (intent); nothing runs until the "Continue" button (UI stage 6).
+#    Approve/reject/redo MARK the piece and queue it in requests.json right away; the regeneration
+#    is yours and does not wait for "Continue" (Continue only exports the approved ones).
 #    Opens the browser by itself and writes OPEN-REVIEW.html in the campaign folder (clickable shortcut).
 #    --no-open for headless. The URL also appears at the top of the screen and at the end of render/video.
 python3 -m kit.cli review campaigns/acme-launch
 
+# 6b. YOUR trigger while the user reviews: blocks until requests.json has items, then prints the
+#     batch + the commands to fulfill it. Run it in the background, fulfill, run it again.
+#     --timeout N gives up after N seconds (0 = wait forever).
+python3 -m kit.cli wait campaigns/acme-launch
+
 # 7. Delivery — headless equivalent of "Continue". Exports the approved pieces to the delivery folder
-#    on the Desktop (~/Desktop/Campaign Kit/<campaign>/<concept>/) and queues rejected (recreate) +
-#    redo (with the note) in requests.json. The regeneration is YOURS (agent): fulfill the batch and run
-#    `render --ids`. See "Stage 6 — Delivery and regeneration". With the approved pieces exported, it also
-#    generates the PPC sheets in ppc/ in the same delivery folder (Meta + Google).
+#    on the Desktop (~/Desktop/Campaign Kit/<campaign>/<concept>/). Locked while anything is still
+#    rejected/redo: it then prints the batch to fulfill instead of exporting. See "Stage 6 —
+#    Delivery and regeneration". With the approved pieces exported, it also generates the PPC sheets
+#    in ppc/ in the same delivery folder (Meta + Google).
 python3 -m kit.cli deliver campaigns/acme-launch
 
 # 8. Bulk-upload sheets for the PPC team (Meta + Google), CSV + XLSX, in ppc/ in the delivery folder (Desktop).
@@ -181,6 +188,19 @@ approve/reject/redo without mixing. With a concept filtered, the **Adjust style*
 changes colors/fonts of **all** pieces of that concept at once (see "Per-concept style
 adjustment").
 
+### File naming (`naming` in `brand.yaml`/`campaign.json`)
+
+Default `{slug}_{concept}{axes}_{size}`. Fields: `slug`, `concept`, `size` (format label),
+`format`, `brand`, `n`/`V`, `locale`, each axis key by name (`{angle}`, `{product}`…) and
+`{axes}`/`{axis}` — every axis as `key-value` joined by `_` (`_angle-urgency_locale-en`), or an
+empty string when the campaign has no axes.
+
+**Always keep `{axes}` (or the axis keys) in the pattern.** A pattern that ignores the axes makes
+every variation of the same concept+format resolve to the same file name, so they silently
+overwrite each other and the user sees one piece instead of N. The render guards against it
+(`unique_name` appends the axes, then `_2`, `_3`…), but the guard only kicks in on collision —
+the explicit pattern is what makes the names readable.
+
 ## Video
 
 The `kit/video.py` module edits locally with the embedded ffmpeg (no system ffmpeg):
@@ -216,10 +236,12 @@ composed frame (overlay + middle frame), same as images.
 3. **Video is a provider job** (`kind:"video"`), generated via the user's MCP (e.g.
    Magnific) — there is no local video render. `credits_per_video` is separate from
    `credits_per_image`.
-4. **Per-piece review, in batch:** approve / reject / redo only **mark** the piece
-   (intent in `state.json`); nothing runs until **Continue** (stage 6). Status filters
-   and compliance findings on the card. The **approved pieces stay only in the approved list** (they leave
-   the working grid); rejected/redo update **on the same page** after regeneration.
+4. **Per-piece review, mark → agent runs it:** approve / reject / redo write the intent to
+   `state.json` and queue rejected/redo in `requests.json` **immediately** — you pick the batch
+   up with `wait` and re-render; **Continue** only exports the approved ones (and is locked while
+   anything is still marked). Status filters and compliance findings on the card. The **approved
+   pieces stay only in the approved list** (they leave the working grid); rejected/redo update
+   **on the same page** after regeneration.
    Marked pieces appear in a **Working queue** panel (what the agent is redoing, with the
    note and when it was marked); pieces the agent regenerated come back pending with a
    **NEW** badge (updated since the user's last visit — the browser remembers it).
@@ -228,6 +250,10 @@ composed frame (overlay + middle frame), same as images.
    explicitly asking the user.
 6. **Design follows the briefing/refs.** `plan` gives you the raw material; the art direction is
    yours, not a fixed template.
+7. **An empty field is not a crash.** Briefing/brand YAML left blank arrives as `None`
+   (`credits_per_video:`, `tolerancia_rosto:`…): read those through the null-safe helpers
+   (`providers.base.num`, `compliance._num`) or `or <default>` so the pipeline keeps running with
+   the documented default instead of dying mid-render.
 
 ## Providers (contract = folder + manifest, not API)
 
@@ -262,40 +288,63 @@ The deterministic guarantee is the **validate + apply**, not your reading of the
 ## Stage 6 — Delivery (Continue) and regeneration
 
 Same logic as providers/normalize: Python prepares and exports, the agent regenerates,
-Python re-renders and the UI updates. The review is **batched** — deciding runs nothing.
+Python re-renders and the UI updates. The review is **batched** — a click marks the piece and
+writes it to `requests.json` right away; the regeneration is yours and starts **without** the
+user pressing Continue.
 
-**What each click does (marks only, in `state.json`):**
+**What each click does (marks in `state.json` + queues in `requests.json`):**
 - **Approve** → `status:"approved"`. The piece leaves the working grid and stays **only in the
   approved list**, marked to go to the delivery folder (Desktop).
-- **Reject** → `status:"rejected"`. Marked to **recreate** (no note).
-- **Redo** → `status:"redo"` + `note` (what to adjust). Marked to **redo with the note**.
+- **Reject** → `status:"rejected"`. Queued to **recreate** (no note).
+- **Redo** → `status:"redo"` + `note` (what to adjust). Queued to **redo with the note**.
 - **Adjust style** (per concept, when a concept is filtered) → writes `styles/<concept>.yaml`
-  (colors/fonts/note) and marks **all** pieces of that concept as `redo`. See below.
+  (colors/fonts/note) and queues **all** pieces of that concept as `redo`. See below.
 
-**The "Continue" button (or `kit.cli deliver`) runs the batch:**
+`requests.json` is a **derived view** of the marked pieces, refreshed on every review poll,
+after every `render` and on `deliver` — so it appears the moment the user marks something and
+empties itself when you re-render those pieces back to `pending`. Each item:
+`{id, concept, format, axes, path, kind, asset, asset_job, reason:"rejected"|"redo", note, marked_at}`.
+
+**Stay watching while the user reviews — `wait` is your trigger:**
+
+```bash
+python3 -m kit.cli review campaigns/<slug>      # the user's browser
+python3 -m kit.cli wait campaigns/<slug>        # you: blocks until something is marked
+```
+
+`wait` returns as soon as `requests.json` has items: it prints the batch JSON on stdout and the
+exact commands to fulfill it on stderr (`--timeout N` to give up; 0 = wait forever). Run it again
+after fulfilling for the next round. If no `wait` is running, the review shows a **handoff**
+callout with a paste-ready line — that is the manual fallback, not the normal path.
+
+**The "Continue" button (or `kit.cli deliver`) exports:**
 1. **Exports** the approved pieces from `out/` to `~/Desktop/Campaign Kit/<campaign>/<concept>/`
    (local copy, immediate) and marks `delivered:true` + `delivery_path` (absolute path).
-2. **Queues** rejected + redo in `requests.json` — a batch with
-   `{id, concept, format, axes, path, kind, asset, reason:"rejected"|"redo", note}`.
-3. The UI reports what was exported/queued, shows the **Open folder** button (opens the
-   delivery folder on the Desktop) and advances the stepper to stage 6 (Deliver).
+2. The UI reports what was exported, shows the **Open folder** button (opens the delivery folder
+   on the Desktop) and advances the stepper to stage 6 (Deliver).
+3. If anything is still marked, `deliver` does **not** export: it returns `{"locked": n, "batch": [...]}`
+   (exit 1) with the same fulfillment instructions as `wait`.
 
-**The export is gated:** while a batch is still queued (you are regenerating), Continue/
-`deliver` is **locked** (button disabled + `{"locked": n}`) — the user can only export the
-sheets again after every change is done (all queued pieces re-rendered via `render --ids`).
+**The export is gated:** while any piece is still rejected/redo (you are working on it), Continue/
+`deliver` is **locked** (button disabled + `{"locked": n}`) — the user can only export after every
+change is done (all marked pieces re-rendered via `render --ids`).
 
-**YOUR JOB as the agent — fulfill the `requests.json` batch:**
+**YOUR JOB as the agent — fulfill the batch:**
 1. For each piece: `reason:"redo"` → apply the `note` (adjust the template/copy/asset);
    `reason:"rejected"` → **recreate** (new direction, new asset via MCP, or a layout variation).
    The render is **deterministic**: re-rendering the same spec gives the same image — to change
    the result you **must** change an input (template, asset, copy or fx).
+   A note asking for **a different image** means regenerating that asset: rewrite the prompt of
+   the job in `campaign.json.asset_jobs` (id = `asset_job`) and run
+   `python3 -m kit.cli assets campaigns/<slug> --jobs <asset_job>` — `--jobs` limits the spend to
+   that asset instead of regenerating everything.
 2. Run `render <campaign> --ids <id1> <id2> ...` to re-render **only** those pieces.
    `run` **merges** with the previous `state.json`: approved/delivered are preserved,
    the re-rendered pieces go back to `pending` (no `note`/`queued`) for a new review, and the
    rest stay intact. **Never** re-render the whole matrix after approving — use `--ids`.
 3. The review **updates by itself** (4 s poll of `state.json`): the rejected/redo pieces
-   reappear as pending with the new image, on the same page; the approved ones stay only in the
-   approved list. The user reviews again and clicks Continue again until done.
+   reappear as pending with the new image, on the same page, badged **NEW**; the approved ones stay
+   only in the approved list. The user reviews again until done.
 
 The final delivery folder (approved + PPC) lives at `~/Desktop/Campaign Kit/<campaign>/`, on the
 user's Desktop — the **Open folder** button in the review opens it. `out/` (inside
@@ -307,9 +356,9 @@ the merge and the PPC use `state.json`/`out/`, so the Desktop delivery does not 
 To change **colors, fonts etc. of all pieces of a concept at once**, the user
 filters the concept in the review and clicks **Adjust style**: tweaks the palette roles
 (`primary/accent/ink/paper/dark`), the type roles (`display/text/accent`) and a
-free note. That writes `campaigns/<slug>/styles/<concept>.yaml` and marks all pieces of the
-concept as `redo` (approved ones go back to `pending`). **Nothing renders immediately** — same
-as redo, the batch goes out on **Continue** (`requests.json`).
+free note. That writes `campaigns/<slug>/styles/<concept>.yaml` and queues all pieces of the
+concept as `redo` (approved ones go back to `pending`) — they land in `requests.json` right away,
+like any other redo.
 
 **The override is applied by the render itself**, per concept: `campaign.run` merges
 `styles/<concept>.yaml` over the base brand's palette/typography (`styled_brand`) before

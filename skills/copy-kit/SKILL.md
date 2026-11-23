@@ -65,14 +65,26 @@ uses 8767 (wizard) / 8768 (table). Do not start both in the same session.
    in the folder). Each row has approve / reject / redo+note and is labeled with **Concept,
    Program, Platform and a readable Type** (Headline ≤30 / Primary text / Hook / CTA button…) —
    the raw `axis` only appears as a small hint. Filters by status, destination (PPC/overlay),
-   platform, concept and program. Only **marks** the row (intent). **Fulfill the batch:**
+   platform, concept and program.
+   Marking a row writes it to **`<folder>/requests.json` immediately** (a derived queue refreshed
+   on every poll) — the rewrite is yours and does **not** wait for Export. **Stay watching:**
+   ```bash
+   python3 -m kit.cli copy review <folder>    # the user's table
+   python3 -m kit.cli copy wait  <folder>     # you: blocks until a row is marked
+   ```
+   `copy wait` prints the batch (`id`, `concept`, `program`, `kind`, `text`, `reason`, `note`) plus
+   the contract; `--timeout N` gives up after N seconds (0 = wait forever). **Fulfill it:**
    `rejected` → rewrite the copy (new direction from the briefing/examples); `redo` →
    apply the `note`. Change the `text`, set `status:"pending"` back, clear `note`, re-stamp
-   `updated_at`/`updated_by`. The table updates by itself (4 s poll). Repeat until done.
+   `updated_at`/`updated_by`. The table updates by itself (4 s poll), the row comes back badged
+   **NEW** and `requests.json` empties. Run `copy wait` again for the next round.
+   If no `wait` is running, the table shows a **handoff** callout with a paste-ready line —
+   that is the manual fallback, not the normal path.
 8. **Delivery:** everything approved → the user clicks **Export approved** in the table (or you
    run **`copy deliver <folder>`**). **The export is gated:** while any row is still
-   rejected/redo, the button is disabled and `deliver` returns `{"locked": n}` — the user can
-   only export after every change is done (you rewrote all marked rows back to pending).
+   rejected/redo, the button is disabled and `deliver` returns `{"locked": n, "batch": [...]}` —
+   the user can only export after every change is done (you rewrote all marked rows back to
+   pending).
    Generates **CSV + XLSX** sheets in `~/Desktop/Copy Kit/<folder>/`:
    - **`copy_manifest`** and **`overlay`** are the **approval sheets: vertical, one text per
      row**, labeled `Concept | Program | Platform | Variation | Type | Text | Chars`.

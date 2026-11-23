@@ -11,7 +11,7 @@ import os
 from PIL import Image
 
 from .. import primitives as P
-from .base import IMG_EXT, NeedsAgent, Provider, notice, record_manifest, sha256
+from .base import IMG_EXT, NeedsAgent, Provider, notice, num, record_manifest, sha256
 from .http_api import HttpAPI
 from .manual import Manual
 from .mcp import MagnificMCP
@@ -22,7 +22,7 @@ def get_provider(cfg):
     name = cfg.get("name", "manual")
     if name in ("magnific-mcp", "mcp"):
         return MagnificMCP(cfg.get("drop_dir", "~/Downloads"),
-                           cfg.get("credits_per_image", 0.0), cfg.get("credits_per_video", 0.0))
+                           num(cfg.get("credits_per_image")), num(cfg.get("credits_per_video")))
     if name == "manual":
         return Manual(cfg.get("drop_dir", "~/Downloads"))
     return HttpAPI(cfg)
@@ -49,7 +49,7 @@ def run_assets(campaign):
     for j in jobs:
         paths = provider.generate(j)
         kind = j.get("kind", "image")
-        rate = provider.credits_per_video if kind == "video" else provider.credits_per_image
+        rate = num(provider.credits_per_video if kind == "video" else provider.credits_per_image)
         for p in paths:
             generated.append(p)
             entries.append({"id": j["id"], "provider": provider.name, "prompt": j["prompt"],

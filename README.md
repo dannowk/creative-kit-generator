@@ -112,25 +112,28 @@ terminal). Before generating any paid asset, the agent shows the ≈ credits not
 ### 4. Approve in the browser — then click Continue to deliver
 
 `review` **opens the browser by itself** at `http://127.0.0.1:8765` (or the next free
-port). On screen you decide piece by piece — **each click only marks, nothing runs immediately**:
+port). On screen you decide piece by piece — **reject and redo start working right away**:
 
 - **✓ approve** → the piece is marked to go to the delivery folder (on your Desktop) and
   leaves the working grid (it goes only to the **Approved** list).
-- **✕ reject** → marked for the system to **recreate** another one automatically.
-- **↻ redo** → you write what to adjust; the note is saved.
+- **✕ reject** → the agent **recreates** another one automatically.
+- **↻ redo** → you write what to adjust; the agent applies your note and re-renders that piece.
 - **Adjust style (the whole concept)** → filter a concept and click **Adjust style** to
   change **colors and fonts of all its pieces at once** (palette and type roles, plus a free
   note). The adjustment is saved to `styles/<concept>.yaml` and every piece of the concept
   enters the redo queue — the agent re-renders with the new look (and it applies to future
   renders too).
 
-When you finish marking, click the **Continue** button (stage 6). Only then does everything
-run at once: the approved pieces are **exported to the delivery folder on your Desktop**
-(`~/Desktop/Campaign Kit/<campaign>/`) and the rejected/redo ones enter the regeneration
-queue. An **Open folder** button appears next to Continue and opens that folder on your
-computer (Finder on Mac, Explorer on Windows). The **agent recreates/redoes** the queued
-pieces and they **update on this same page** by themselves, ready to review again. Approved
-pieces stay only in the approved list. Repeat until the campaign is done.
+Marking writes the piece to the campaign's `requests.json`, and the agent watching the campaign
+picks it up immediately: it recreates/redoes, re-renders only those pieces and they
+**update on this same page** by themselves, back as pending with a **NEW** badge. You keep
+reviewing; nothing to paste, no button to press.
+
+The **Continue** button (stage 6) is the delivery step: the approved pieces are **exported to the
+delivery folder on your Desktop** (`~/Desktop/Campaign Kit/<campaign>/`), together with the PPC
+sheets. An **Open folder** button appears next to Continue and opens that folder on your
+computer (Finder on Mac, Explorer on Windows). Continue stays **locked while the agent is still
+working** on marked pieces — it unlocks when every change is done.
 
 - Lost the link? Clickable shortcut **`OPEN-REVIEW.html`** inside the campaign folder;
   the address is also at the top of the screen and at the end of `render` / `video` in the terminal.
@@ -138,6 +141,8 @@ pieces stay only in the approved list. Repeat until the campaign is done.
   the review — what the agent is working on, with your note and the time you marked it.
   You can close the browser and check later: regenerated pieces come back as pending with
   a **NEW** badge (updated since your last visit).
+- **No agent watching?** The review shows a **handoff** line with the exact instruction — copy it
+  into the chat and the agent runs the batch.
 - Delivered (approved) pieces: `~/Desktop/Campaign Kit/<campaign>/<concept>/` (png/mp4), on
   your Desktop. The working render lives in `campaigns/<campaign>/out/<concept>/` + contact
   sheet `review/sheet_<concept>.png`.
@@ -227,11 +232,13 @@ python3 -m kit.cli brief ~/inbox/briefing.yaml --apply   # validates and writes 
 python3 -m kit.cli brief --normalize ~/inbox/briefing.pdf   # agent fills it → brief <out> --apply
 python3 -m kit.cli plan    campaigns/acme-launch
 python3 -m kit.cli assets  campaigns/acme-launch
+python3 -m kit.cli assets  campaigns/acme-launch --jobs <job-id>   # regenerate only that asset (a redo asking for a different image)
 python3 -m kit.cli render  campaigns/acme-launch
 python3 -m kit.cli video   campaigns/acme-launch   # trim/reframe/overlay/concat/captions
 python3 -m kit.cli review  campaigns/acme-launch   # opens the browser by itself; shortcut OPEN-REVIEW.html in the folder
-python3 -m kit.cli deliver campaigns/acme-launch   # stage 6: the "Continue" — exports approved + queues recreation/redo
-#  the agent fulfils requests.json and re-renders only the batch pieces (preserves the approved):
+python3 -m kit.cli wait    campaigns/acme-launch   # the agent's trigger: blocks until a piece is marked, prints the batch
+python3 -m kit.cli deliver campaigns/acme-launch   # stage 6: the "Continue" — exports the approved (locked while anything is marked)
+#  the agent fulfils the batch and re-renders only those pieces (preserves the approved):
 python3 -m kit.cli render  campaigns/acme-launch --ids <id1> <id2>
 python3 -m kit.cli ppc     campaigns/acme-launch   # bulk-upload sheets (Meta + Google), CSV + XLSX, in ppc/ in the delivery folder (Desktop)
 python3 -m kit.cli ppc     campaigns/acme-launch --all   # export every piece, not just the approved ones
@@ -319,9 +326,11 @@ The step-by-step is the same as the visual one, but lighter:
    `axis`/`kind` jargon (the axis appears only as a small hint). Filters by status,
    destination, platform, concept and program, exact
    character counters per row (`[28/30]`, red when over) and the strategist's note.
-   Each click only marks; marked rows go to a **Working queue** panel (with your note and
-   the time), the agent rewrites them and the table updates by itself — rewritten rows
-   come back as pending with a **NEW** badge, so you can close the browser and check later.
+   Reject/redo **start working right away**: the row goes to `requests.json` and to a
+   **Working queue** panel (with your note and the time), the agent rewrites it and the table
+   updates by itself — rewritten rows come back as pending with a **NEW** badge, so you can
+   close the browser and check later. No agent watching? The table shows a **handoff** line to
+   paste in the chat.
 4. **Deliver** — all approved → click **Export approved** (or `copy deliver`):
    **CSV + XLSX** sheets in `~/Desktop/Copy Kit/<folder>/`, with **download** in the
    table itself and an **Open folder** button.
@@ -345,6 +354,7 @@ python3 -m kit.cli copy plan     ~/Desktop/my-campaign-copy   # prints briefing 
 #  the agent authors copy.json (concepts + rows) from that, then:
 python3 -m kit.cli copy validate ~/Desktop/my-campaign-copy   # checks the shape (error → nothing written)
 python3 -m kit.cli copy review   ~/Desktop/my-campaign-copy   # opens the table in the browser
+python3 -m kit.cli copy wait     ~/Desktop/my-campaign-copy   # the agent's trigger: blocks until a row is marked, prints the batch
 python3 -m kit.cli copy deliver  ~/Desktop/my-campaign-copy   # exports only the approved (CSV + XLSX) to Desktop/Copy Kit
 ```
 

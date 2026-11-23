@@ -34,16 +34,28 @@ and the browser.**
    briefing (prose/PDF/docx)? `brief --normalize <source>` → fill the skeleton (vision
    for PDF; whatever is missing stays empty, becomes a gap) → `brief <out> --apply`.
 6. **Cost is a notice**: show ≈ credits before provider jobs and proceed.
-7. **Review + delivery (stage 6)**: start `review` (opens the browser by itself; shortcut
-   `OPEN-REVIEW.html` in the campaign folder). Approve/reject/redo only **mark** the piece;
-   the user clicks **Continue** (or you run `deliver`) to export the approved pieces to the
-   Desktop delivery folder (`~/Desktop/Campaign Kit/<campaign>/`) and queue rejected
-   (recreate) + redo (with the note) in `requests.json`. The **Open folder** button in the review opens
-   that folder on the user's computer.
-   **Fulfill the batch**: adjust template/asset/copy (actually recreate — the render is deterministic),
-   run `render --ids <ids>` (preserves the approved) and the review updates by itself. Repeat until done.
-   **The export is gated:** while a batch is still queued, Continue is disabled (`{"locked": n}`) —
-   the user only exports again after every change is done.
+7. **Review + regeneration (stage 6)**: start `review` (opens the browser by itself; shortcut
+   `OPEN-REVIEW.html` in the campaign folder). Approve marks the piece for delivery;
+   reject/redo **queue it in `requests.json` right away** — the work is yours and does not wait
+   for Continue. **Stay watching while the user reviews:**
+   ```bash
+   python3 -m kit.cli review campaigns/<slug>   # the user's browser
+   python3 -m kit.cli wait campaigns/<slug>     # you: blocks until something is marked
+   ```
+   `wait` prints the batch (`id`, `concept`, `format`, `axes`, `asset`, `asset_job`, `reason`,
+   `note`) plus the exact commands; `--timeout N` gives up (0 = wait forever). Run it again after
+   fulfilling for the next round. No `wait` running → the review shows a **handoff** callout with
+   a paste-ready line (manual fallback).
+   **Fulfill the batch**: adjust template/asset/copy (actually recreate — the render is
+   deterministic). A note asking for **a different image** = regenerate that asset: rewrite the
+   prompt of the job whose id is `asset_job` in `campaign.json.asset_jobs` and run
+   `assets campaigns/<slug> --jobs <asset_job>` (only that asset, not the whole set). Then
+   `render --ids <ids>` (preserves the approved) and the review updates by itself, with the
+   re-rendered pieces back as pending badged **NEW**.
+   **Continue** (or `deliver`) exports the approved pieces to the Desktop delivery folder
+   (`~/Desktop/Campaign Kit/<campaign>/`); the **Open folder** button opens it on the user's
+   computer. **The export is gated:** while anything is still rejected/redo, Continue is disabled
+   and `deliver` returns `{"locked": n, "batch": [...]}` instead of exporting.
    **Per-concept style adjustment**: if the user used **Adjust style** in the review, there is a
    `styles/<concept>.yaml` (colors/fonts) that the **render itself applies** — for that batch
    `render --ids` is enough, no template editing. See "Per-concept style adjustment" in AGENTS.md.
