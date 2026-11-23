@@ -8,7 +8,12 @@ concept × axis × kind). English-only.
 
 import json
 import os
+import threading
 from datetime import datetime, timezone
+
+# The review table serves concurrently: without this, two fast clicks read-modify-write
+# copy.json in parallel and the second decision clobbers the first.
+_LOCK = threading.Lock()
 
 DESTINATIONS = ("ppc", "overlay")
 KINDS = {
@@ -90,6 +95,8 @@ def validate(data):
                         f"({'/'.join(KINDS[dest])})")
         if dest == "ppc" and r.get("platform", "both") not in PLATFORMS:
             errs.append(f"row {i}: invalid platform: {r.get('platform')!r} (google/meta/both)")
+        if r.get("program") is not None and not isinstance(r.get("program"), str):
+            errs.append(f"row {i}: program must be a string (the advertised program/product)")
         if not str(r.get("text") or "").strip():
             errs.append(f"row {i}: empty text")
         if concepts and r.get("concept") not in concepts:
@@ -115,22 +122,23 @@ def decide(root, row_id, status, note="", who=""):
         raise ValueError(f"invalid status: {status}")
     if status == "redo" and not str(note).strip():
         raise ValueError("redo requires a note (what to adjust)")
-    data = load(root)
-    found = False
-    for r in data.get("rows") or []:
-        if r.get("id") == row_id:
-            r["status"] = status
-            if status == "redo":
-                r["note"] = note
-            else:
-                r.pop("note", None)
-            r["updated_at"] = now_iso()
-            if who:
-                r["updated_by"] = who
-            found = True
-            break
-    if found:
-        save(root, data)
+    with _LOCK:
+        data = load(root)
+        found = False
+        for r in data.get("rows") or []:
+            if r.get("id") == row_id:
+                r["status"] = status
+                if status == "redo":
+                    r["note"] = note
+                else:
+                    r.pop("note", None)
+                r["updated_at"] = now_iso()
+                if who:
+                    r["updated_by"] = who
+                found = True
+                break
+        if found:
+            save(root, data)
     return found
 
 
@@ -257,8 +265,32 @@ def delivery_dir(root):
     return os.path.join(desktop_dir(), "Copy Kit", name)
 
 
-OVERLAY_COLUMNS = ["Concept", "Axis", "Lang", "Hook", "Kicker", "Program", "CTA"]
-MANIFEST_COLUMNS = ["ID", "Destination", "Concept", "Axis", "Kind", "Text", "Lang", "Chars"]
+OVERLAY_COLUMNS = ["Concept", "Program", "Platform", "Variation", "Type", "Text", "Chars"]
+MANIFEST_COLUMNS = ["ID", "Concept", "Program", "Platform", "Destination",
+                    "Variation", "Type", "Text", "Chars", "Lang"]
+
+TYPE_LABELS = {
+    "headline": "Headline (≤30)",
+    "description": "Description (≤90)",
+    "primary_text": "Primary text (Meta)",
+    "link_description": "Link description (Meta)",
+    "cta": "CTA button",
+    "hook": "Hook (big line)",
+    "kicker": "Kicker (small line above)",
+    "program": "Program line",
+}
+
+PLATFORM_LABELS = {"google": "Google", "meta": "Meta", "both": "Google + Meta"}
+
+
+def type_label(kind):
+    return TYPE_LABELS.get(kind, kind or "")
+
+
+def platform_label(row):
+    if row.get("destination") != "ppc":
+        return "Overlay (on the piece)"
+    return PLATFORM_LABELS.get(row.get("platform", "both"), "Google + Meta")
 
 
 def _groups(rows):
@@ -331,23 +363,35 @@ def _rsa_rows(rows, name):
 
 
 def _overlay_rows(rows):
+    """Verticalized: one text per row (easier to approve), labeled by concept + program."""
     from . import ppc
     out = []
     for concept, axis, lang in _groups(rows):
-        def first(kind):
-            t = _texts(rows, concept, axis, lang, kind)
-            return ppc._clean(t[0]) if t else ""
-        out.append({"Concept": concept, "Axis": axis, "Lang": lang,
-                    "Hook": first("hook"), "Kicker": first("kicker"),
-                    "Program": first("program"), "CTA": first("cta")})
+        for r in rows:
+            if r.get("destination") != "overlay" or r.get("concept") != concept \
+                    or (r.get("axis") or "") != axis or r.get("lang") != lang:
+                continue
+            text = ppc._clean(r.get("text"))
+            out.append({"Concept": concept, "Program": r.get("program") or "",
+                        "Platform": "Overlay (on the piece)",
+                        "Variation": axis or "", "Type": type_label(r.get("kind")),
+                        "Text": text, "Chars": len(text)})
     return out
 
 
 def _manifest_rows(rows):
+    """Every approved text on its own row — the vertical approval sheet for all copy."""
     from . import ppc
-    return [{"ID": r.get("id"), "Destination": r.get("destination"), "Concept": r.get("concept"),
-             "Axis": r.get("axis") or "", "Kind": r.get("kind"), "Text": ppc._clean(r.get("text")),
-             "Lang": r.get("lang"), "Chars": len(ppc._clean(r.get("text")))} for r in rows]
+    out = []
+    for r in rows:
+        text = ppc._clean(r.get("text"))
+        out.append({"ID": r.get("id"), "Concept": r.get("concept"),
+                    "Program": r.get("program") or "",
+                    "Platform": platform_label(r),
+                    "Destination": r.get("destination"), "Variation": r.get("axis") or "",
+                    "Type": type_label(r.get("kind")), "Text": text, "Chars": len(text),
+                    "Lang": r.get("lang")})
+    return out
 
 
 def volume_report(rows):
@@ -370,11 +414,17 @@ def volume_report(rows):
 _NOTES = """COPY KIT — APPROVED COPY
 ========================
 Files (each as CSV and XLSX):
+  copy_manifest      → APPROVAL SHEET: every approved text on its own row, labeled with
+                       Concept, Program, Platform and Type (Headline / Primary text / Hook…).
+  overlay            → APPROVAL SHEET for the text over the piece: one line per text
+                       (hook / kicker / program line / CTA), labeled by Concept + Program.
   meta_bulk_import   → Meta Ads Manager → Import/Export → Import Ads in Bulk (text only).
+                       Kept in Meta's own column layout so the import works.
   google_search_rsa  → Google Ads Editor / Bulk actions → Uploads. Responsive Search Ads.
-  overlay            → copy over the piece: hook / kicker / program / CTA per concept × axis.
-  copy_manifest      → human reference: every approved row (destination, concept, kind, text, chars).
+                       Kept in Google's own column layout (Headline 1–15, Description 1–4)
+                       so the upload works.
 
+Read/approve in copy_manifest (vertical, one text per row); upload with the Meta/Google files.
 Only APPROVED copy ships. Final URL, budget, targeting and IDs are left blank for the PPC
 team. Everything ships PAUSED/Paused.
 
@@ -418,10 +468,10 @@ def export(root):
         if limit and n > limit:
             warnings.append({"id": r.get("id"), "kind": r.get("kind"), "chars": n, "limit": limit})
 
+    emit("copy_manifest", MANIFEST_COLUMNS, _manifest_rows(rows), "Copy manifest (approval)", "manifest")
+    emit("overlay", OVERLAY_COLUMNS, _overlay_rows(ov_rows), "Overlay (approval)", "overlay")
     emit("meta_bulk_import", ppc.META_COLUMNS, _meta_rows(ppc_rows, name), "Meta bulk import", "meta")
     emit("google_search_rsa", ppc.RSA_COLUMNS, _rsa_rows(ppc_rows, name), "Google Search RSA", "google_rsa")
-    emit("overlay", OVERLAY_COLUMNS, _overlay_rows(ov_rows), "Overlay", "overlay")
-    emit("copy_manifest", MANIFEST_COLUMNS, _manifest_rows(rows), "Copy manifest", "manifest")
 
     with open(os.path.join(outdir, "README.txt"), "w", encoding="utf-8") as f:
         f.write(_NOTES)
@@ -430,14 +480,23 @@ def export(root):
 
 
 def deliver(root):
-    """The copy 'Continue': exports approved rows to the Desktop folder + download."""
+    """The copy 'Continue': exports approved rows to the Desktop folder + download.
+
+    Gated: while any row is still rejected/redo (the agent is rewriting it), nothing
+    exports — all changes must be done first. Returns {"locked": n} in that case.
+    """
     empty = {"dir": delivery_dir(root), "files": [], "exported": 0, "xlsx": False,
-             "warnings": [], "meta": 0, "google_rsa": 0, "overlay": 0, "manifest": 0}
+             "warnings": [], "locked": 0, "meta": 0, "google_rsa": 0, "overlay": 0, "manifest": 0}
     if not os.path.isfile(_path(root)):
         return empty
-    approved = sum(1 for r in load(root).get("rows") or [] if r.get("status") == "approved")
+    rows = load(root).get("rows") or []
+    working = sum(1 for r in rows if r.get("status") in ("rejected", "redo"))
+    if working:
+        return {**empty, "locked": working}
+    approved = sum(1 for r in rows if r.get("status") == "approved")
     if approved == 0:
         return empty
     s = export(root)
     s["exported"] = approved
+    s["locked"] = 0
     return s

@@ -199,8 +199,11 @@ def main(argv=None):
             print("  YOUR JOB: author "
                   + os.path.join(folder, "copy.json") + ' = {"concepts":[...], "rows":[...]}')
             print("    each row: id, destination(ppc/overlay), platform(google/meta/both, ppc only),")
-            print("    concept, axis, kind, text, lang(en), status:\"pending\", origin:\"agent\",")
+            print("    concept, program (the advertised program/product/course of that text, from the")
+            print("    briefing), axis, kind, text, lang(en), status:\"pending\", origin:\"agent\",")
             print("    updated_at, updated_by. Top level: strategy_note + meta_cta.")
+            print("    concept + program are what the user sees per row in the review table and in the")
+            print("    delivered approval sheets (vertical: one text per row) — always fill program.")
             print("    Never invent copy beyond briefing+examples+attachments; never mark approved (the user does).")
             print("    Then: copy validate <folder> → copy review <folder>.")
             return 0
@@ -242,6 +245,10 @@ def main(argv=None):
                 print("copy.json missing — generate the copy first (copy plan).", file=sys.stderr)
                 return 1
             s = copy.deliver(folder)
+            if s.get("locked"):
+                print(f"Locked — the agent is still working on {s['locked']} marked row(s). "
+                      "Export only opens after every change is done.", file=sys.stderr)
+                return 1
             if s["exported"] == 0:
                 print("No approved copy to export — approve rows in the review first.")
                 return 0
@@ -357,6 +364,9 @@ def main(argv=None):
             print(i18n.t("cli.deliver.nostate"), file=sys.stderr)
             return 1
         result = campaign.deliver(camp["_root"])
+        if result.get("locked"):
+            print(i18n.t("cli.deliver.locked", n=result["locked"]), file=sys.stderr)
+            return 1
         if result["exported"] == 0 and result["regen"] == 0:
             print(i18n.t("cli.deliver.empty"))
             return 0

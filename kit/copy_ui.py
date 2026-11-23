@@ -28,6 +28,10 @@ table.copy tr:hover td{background:#fbfcfd}
 table.copy .txt{min-width:240px;max-width:440px}
 table.copy .cnt{color:var(--mut);font-size:11.5px;white-space:nowrap}
 table.copy .cnt.over{color:#B42318;font-weight:600}
+.tag.new{background:var(--ok-bg);border-color:var(--ok-line);color:var(--ok)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.queuelist{margin:8px 0 0;padding-left:18px}
+.queuelist li{margin:3px 0}
 table.copy .acts{white-space:nowrap}
 table.copy .acts button{min-height:28px;padding:3px 9px;font-size:12.5px}
 .fieldlabel{font-size:12.5px;color:var(--mut);font-weight:600}
@@ -229,19 +233,32 @@ _REV_T = {
     "metacta": "Recommended Meta CTA:",
     "allconcepts": "All concepts ({n})",
     "concept": "Concept:",
-    "th.status": "Status", "th.dest": "Dest", "th.concept": "Concept", "th.axis": "Axis",
-    "th.kind": "Kind", "th.text": "Text", "th.lang": "Lang", "th.acts": "Actions",
+    "allprograms": "All programs",
+    "program": "Program:",
+    "th.status": "Status", "th.concept": "Concept", "th.program": "Program",
+    "th.platform": "Platform", "th.type": "Type", "th.text": "Text", "th.acts": "Actions",
+    "axis.hint": "axis",
+    "pl.google": "Google", "pl.meta": "Meta", "pl.both": "Google + Meta", "pl.overlay": "Overlay",
+    "kind.headline": "Headline", "kind.description": "Description",
+    "kind.primary_text": "Primary text", "kind.link_description": "Link description",
+    "kind.cta": "CTA button", "kind.hook": "Hook", "kind.kicker": "Kicker",
+    "kind.program": "Program line",
     "approve": "Approve", "reject": "Reject", "redo": "Redo",
     "regenask": "What to adjust in this copy? (note required)",
+    "queue.title": "Working queue — {n} row(s) marked for rewrite.",
+    "queue.hint": "The agent rewrites these and the table updates by itself. You can close the browser and check later — rewritten rows come back as pending, marked NEW since your last visit.",
+    "queue.rewrite": "rewrite (rejected)",
+    "newbadge": "NEW",
     "approvetoast": "Copy approved.", "rejecttoast": "Copy rejected — the agent recreates.",
     "regentoast": "Marked for redo — the agent rewrites with the note.",
     "empty": "No rows in this filter.",
     "p3.title": "Review copy",
     "p3.desc": "Approve/reject/redo row by row. Nothing ships unapproved. Redo requires a note.",
     "p4.title": "Deliver",
-    "p4.desc": "Exports only approved copy to sheets (Meta / Google RSA / overlay) in the Desktop folder.",
-    "p4.hint": "CSV + XLSX. URL/budget/IDs are left blank for the PPC team.",
+    "p4.desc": "Exports only approved copy to the Desktop folder: copy_manifest + overlay (vertical — one text per row, with Concept and Program) and the Meta / Google RSA import files.",
+    "p4.hint": "CSV + XLSX. Approve in the vertical sheets; upload with the Meta/Google ones. URL/budget/IDs are left blank for the PPC team.",
     "continue": "Export approved",
+    "deliver.locked": "Export is locked — the agent is still working on {n} marked row(s). It unlocks when every change is done.",
     "deliver.done": "{n} approved rows exported to {dir}",
     "deliver.empty": "No approved copy — approve rows in the table first.",
     "deliver.toast": "{n} rows exported.",
@@ -270,29 +287,35 @@ def review_page():
 <div class="wrap">
 <div class="panel"><h2><span class="n">3</span>{t['p3.title']}</h2>
 <p class="desc">{t['p3.desc']}</p>
+<div class="callout warn" id="queue" style="display:none"></div>
 <div class="filters" id="filters"></div>
 <div class="filters" id="dfilters"></div>
 <div class="filters" id="pfilters"></div>
 <div class="row" style="align-items:center"><span class="meta">{t['concept']}</span><div class="filters" id="cfilters"></div></div>
+<div class="row" id="prow" style="align-items:center;display:none"><span class="meta">{t['program']}</span><div class="filters" id="prfilters"></div></div>
 <div class="callout" id="strat" style="display:none"></div>
 <div class="tablewrap"><table class="copy">
-<thead><tr><th>{t['th.status']}</th><th>{t['th.dest']}</th><th>{t['th.concept']}</th><th>{t['th.axis']}</th>
-<th>{t['th.kind']}</th><th>{t['th.text']}</th><th>{t['th.lang']}</th><th>{t['th.acts']}</th></tr></thead>
+<thead><tr><th>{t['th.status']}</th><th>{t['th.concept']}</th><th>{t['th.program']}</th>
+<th>{t['th.platform']}</th><th>{t['th.type']}</th><th>{t['th.text']}</th><th>{t['th.acts']}</th></tr></thead>
 <tbody id="tbody"></tbody></table></div></div>
 <div class="panel"><h2><span class="n">4</span>{t['p4.title']}</h2>
 <p class="desc">{t['p4.desc']}</p>
-<div class="row" style="align-items:center"><button class="btn primary" onclick="continueBatch()">{t['continue']}</button>
+<div class="row" style="align-items:center"><button class="btn primary" id="exportbtn" onclick="continueBatch()">{t['continue']}</button>
 <button class="btn" id="openfolder" onclick="openFolder()" style="display:none">{t['openfolder']}</button>
 <span class="meta">{t['p4.hint']}</span></div>
+<div class="callout warn" id="lockhint" style="display:none"></div>
 <div id="deliver-result"></div></div>
 </div>
 """ + ui._modal() + ui._JS_UTIL + (
         '<script>const T=' + json.dumps(t, ensure_ascii=False) + ';</script>') + """
 <script>
-let state=null,filter="working",dest="all",pf="all",cf="all",last="";
+let state=null,filter="working",dest="all",pf="all",cf="all",prf="all",last="",seenBefore=null;
 const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"]};
 const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"]};
 const LIM={headline:30,description:90,link_description:40};
+const KIND={};for(const k of ["headline","description","primary_text","link_description","cta","hook","kicker","program"])KIND[k]=T["kind."+k]||k;
+const PLAT={google:T["pl.google"],meta:T["pl.meta"],both:T["pl.both"]};
+const platLbl=r=>r.destination==="ppc"?(PLAT[r.platform||"both"]||T["pl.both"]):T["pl.overlay"];
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fill=(s,o)=>s.replace(/\\{(\\w+)\\}/g,(m,k)=>(k in o?o[k]:m));
 async function load(){applyState(await (await fetch("/state")).json());}
@@ -320,35 +343,72 @@ function applyState(s){
     st.innerHTML=(s.strategy_note?`<b>${T.stratnote}:</b> ${esc(s.strategy_note)}`:"")+
       (s.meta_cta?`${s.strategy_note?" &middot; ":""}<b>${T.metacta}</b> ${esc(s.meta_cta)}`:"");
   }else{st.style.display="none";}
+  if(seenBefore===null&&s.folder){
+    const k="ck.lastseen.copy."+s.folder;
+    seenBefore=localStorage.getItem(k)||"";
+    localStorage.setItem(k,new Date().toISOString());
+  }
+  const q=s.rows.filter(r=>r.status==="rejected"||r.status==="redo");
+  const qel=document.getElementById("queue");
+  if(q.length){
+    qel.style.display="";
+    qel.innerHTML=`<b>${fill(T["queue.title"],{n:q.length})}</b> <span class="hint">${T["queue.hint"]}</span>`+
+      `<ul class="queuelist">`+q.map(r=>{
+        const what=r.status==="redo"?`↻ ${esc(r.note||"")}`:`✕ ${T["queue.rewrite"]}`;
+        const when=r.updated_at?` · ${new Date(r.updated_at).toLocaleString()}`:"";
+        const prog=r.program?` · ${esc(r.program)}`:"";
+        return `<li><b>${esc(r.id)}</b> — ${esc(r.concept)}${prog} · ${platLbl(r)} · ${esc(KIND[r.kind]||r.kind)} — ${what}<span class="hint">${when}</span></li>`;
+      }).join("")+`</ul>`;
+  }else qel.style.display="none";
+  const eb=document.getElementById("exportbtn"),lh=document.getElementById("lockhint");
+  eb.disabled=q.length>0;
+  if(q.length){lh.style.display="";lh.textContent=fill(T["deliver.locked"],{n:q.length});}
+  else lh.style.display="none";
   const cc={};for(const r of s.rows)cc[r.concept]=(cc[r.concept]||0)+1;
   const concepts=(s.concepts&&s.concepts.length?s.concepts:Object.keys(cc));
   document.getElementById("cfilters").innerHTML=
     `<button class="${cf==='all'?'on':''}" onclick="setConcept('all')">${fill(T.allconcepts,{n:s.rows.length})}</button>`+
     concepts.map(k=>`<button class="${cf===k?'on':''}" onclick="setConcept('${esc(k)}')">${esc(k)} (${cc[k]||0})</button>`).join("");
+  const pc2={};for(const r of s.rows){const p=(r.program||"").trim();if(p)pc2[p]=(pc2[p]||0)+1;}
+  const progs=Object.keys(pc2).sort();
+  const prow=document.getElementById("prow");
+  if(progs.length>1){
+    prow.style.display="";
+    document.getElementById("prfilters").innerHTML=
+      `<button class="${prf==='all'?'on':''}" onclick="setProgram('all')">${T.allprograms} (${s.rows.length})</button>`+
+      progs.map(p=>`<button class="${prf===p?'on':''}" onclick="setProgram('${esc(p)}')">${esc(p)} (${pc2[p]})</button>`).join("");
+  }else{prow.style.display="none";prf="all";}
   draw();
 }
 function setFilter(f){filter=f;draw();}
 function setDest(d){dest=d;draw();}
 function setPf(p){pf=p;draw();}
 function setConcept(k){cf=k;draw();}
+function setProgram(p){prf=p;draw();}
 function draw(){
   const items=state.rows.filter(r=>
     (filter==="working"?r.status!=="approved":r.status===filter)&&
     (dest==="all"||r.destination===dest)&&
     (pf==="all"||r.destination!=="ppc"||(r.platform||"both")==="both"||(r.platform||"both")===pf)&&
-    (cf==="all"||r.concept===cf));
+    (cf==="all"||r.concept===cf)&&
+    (prf==="all"||(r.program||"")===prf));
   const tb=document.getElementById("tbody");
-  if(!items.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty">${T.empty}</div></td></tr>`;return;}
+  if(!items.length){tb.innerHTML=`<tr><td colspan="7"><div class="empty">${T.empty}</div></td></tr>`;return;}
   tb.innerHTML=items.map(r=>{
     const note=(r.status==="redo"&&r.note)?`<div class="hint">↻ ${esc(r.note)}</div>`:"";
     const n=(r.text||"").length,lim=LIM[r.kind];
     const cnt=lim?` <span class="cnt${n>lim?" over":""}">[${n}/${lim}]</span>`
       :(r.destination==="ppc"?` <span class="cnt">[${n}]</span>`:"");
-    const plat=r.destination==="ppc"&&r.platform&&r.platform!=="both"?" · "+esc(r.platform):"";
+    const axis=(r.axis&&r.axis!=="default")?`<div class="hint">${T["axis.hint"]}: ${esc(r.axis)}</div>`:"";
+    const isnew=(seenBefore&&r.updated_at&&r.updated_at>seenBefore&&r.status==="pending")
+      ?` <span class="tag new"><span class="dot"></span>${T.newbadge}</span>`:"";
     return `<tr>
-      <td><span class="tag ${r.status}"><span class="dot"></span>${SING[r.status]}</span></td>
-      <td>${esc(r.destination)}${plat}</td><td>${esc(r.concept)}</td><td>${esc(r.axis)}</td>
-      <td>${esc(r.kind)}</td><td class="txt">${esc(r.text)}${cnt}${note}</td><td>${esc(r.lang)}</td>
+      <td><span class="tag ${r.status}"><span class="dot"></span>${SING[r.status]}</span>${isnew}</td>
+      <td><b>${esc(r.concept)}</b>${axis}</td>
+      <td>${esc(r.program||"—")}</td>
+      <td>${esc(platLbl(r))}</td>
+      <td>${esc(KIND[r.kind]||r.kind)}</td>
+      <td class="txt">${esc(r.text)}${cnt}${note}</td>
       <td class="acts">
         <button class="btn ok" onclick="decide('${r.id}','approved')">${T.approve}</button>
         <button class="btn no" onclick="decide('${r.id}','rejected')">${T.reject}</button>
@@ -379,6 +439,7 @@ async function continueBatch(){
   const j=await r.json();
   if(!r.ok){await tell(j.error||"error");return;}
   const box=document.getElementById("deliver-result");
+  if(j.locked>0){box.innerHTML="";notify(fill(T["deliver.locked"],{n:j.locked}));return;}
   if(j.exported===0){box.innerHTML="";notify(T["deliver.empty"]);return;}
   let html=`<div class="callout ok">${fill(T["deliver.done"],{n:j.exported,dir:esc(j.dir)})}</div>`;
   if(j.warnings&&j.warnings.length)

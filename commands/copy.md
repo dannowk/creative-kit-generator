@@ -21,7 +21,8 @@ chat and use the browser. This command is the **copy kit** (independent of
 5. `copy plan <folder>` → read the briefing + examples + any listed attached files
    (`attachments/` — plain text: read directly; PDF/docx/image: extract with your tools) →
    **author `copy.json`** (concepts + rows: id, destination ppc/overlay, platform
-   google/meta/both, concept, axis, kind, text, lang, status pending, origin agent,
+   google/meta/both, concept, program — the advertised program/product of that text,
+   always filled — axis, kind, text, lang, status pending, origin agent,
    updated_at/by + top-level `strategy_note` and `meta_cta`). PPC kinds:
    headline/description/primary_text/link_description/cta. Overlay:
    hook/kicker/program/cta. **Platform playbook per concept×axis:** Google RSA = 15
@@ -31,13 +32,18 @@ chat and use the browser. This command is the **copy kit** (independent of
    5 link_description (≤40) + 1 cta row (recommended native button). **Never invent copy**
    beyond the briefing+examples+attachments; **never mark approved** (it's the user's).
 6. `copy validate <folder>` → fix errors (nothing written on error).
-7. `copy review <folder>` → opens the **table** (shortcut `OPEN-COPY-REVIEW.html`). The user
+7. `copy review <folder>` → opens the **table** (shortcut `OPEN-COPY-REVIEW.html`). Each row is
+   labeled with **Concept, Program, Platform and a readable Type** (not raw axis/kind). The user
    approves/rejects/redo+note per row. Fulfill rejected/redo by rewriting the text,
    setting pending back and re-stamping updated_at/by; the table updates by itself.
 8. Everything approved → the user clicks **Export approved** (or you run `copy deliver
-   <folder>`): CSV+XLSX sheets (Meta / Google RSA / overlay / manifest) in
-   `~/Desktop/Copy Kit/<folder>/`, approved only, with download + **Open folder**. RSA
-   limits (≤30/≤90) become a warning. URL/budget/IDs blank for the PPC team — do not invent.
+   <folder>`): CSV+XLSX sheets in `~/Desktop/Copy Kit/<folder>/`, approved only, with download
+   + **Open folder**. `copy_manifest` and `overlay` are **vertical approval sheets** (one text
+   per row: Concept | Program | Platform | Variation | Type | Text | Chars);
+   `meta_bulk_import` and `google_search_rsa` keep each platform's own layout so the import
+   works. RSA limits (≤30/≤90) become a warning. URL/budget/IDs blank for the PPC team — do not invent.
+   **Export is gated:** while any row is still rejected/redo the button is disabled
+   (`{"locked": n}`) — rewrite every marked row back to pending first.
 
 **One flow at a time in the UI:** do not start the visual wizard/review and the copy one in the same session.
 Independent of the visual: does not touch the visual campaign/render/ppc.

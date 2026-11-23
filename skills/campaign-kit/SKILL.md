@@ -42,6 +42,8 @@ and the browser.**
    that folder on the user's computer.
    **Fulfill the batch**: adjust template/asset/copy (actually recreate — the render is deterministic),
    run `render --ids <ids>` (preserves the approved) and the review updates by itself. Repeat until done.
+   **The export is gated:** while a batch is still queued, Continue is disabled (`{"locked": n}`) —
+   the user only exports again after every change is done.
    **Per-concept style adjustment**: if the user used **Adjust style** in the review, there is a
    `styles/<concept>.yaml` (colors/fonts) that the **render itself applies** — for that batch
    `render --ids` is enough, no template editing. See "Per-concept style adjustment" in AGENTS.md.

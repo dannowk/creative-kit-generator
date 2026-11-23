@@ -22,6 +22,10 @@ import yaml
 
 from . import campaign, i18n, intake, onboard
 
+# ThreadingHTTPServer serves concurrently: without this, two fast review clicks
+# read-modify-write state.json in parallel and the second clobbers the first.
+_STATE_LOCK = threading.Lock()
+
 _STYLE = """<style>
 :root{color-scheme:light;
  --bg:#f5f6f8;--surface:#ffffff;--line:#dfe3e8;--ink:#182026;--mut:#5a6673;
@@ -80,6 +84,10 @@ a.btn{text-decoration:none}
 .tag.rejected{background:var(--bad-bg);border-color:var(--bad-line);color:var(--bad)}
 .tag.redo{background:#e7f0fb;border-color:#bcd6f2;color:var(--accent)}
 .tag.blocked{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn)}
+.tag.new{background:var(--ok-bg);border-color:var(--ok-line);color:var(--ok)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.queuelist{margin:8px 0 0;padding-left:18px}
+.queuelist li{margin:3px 0}
 .tag .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
 .hint{color:var(--mut);font-size:13px;margin:0}
 .files{margin:0;padding:0;list-style:none;font-size:13px;display:grid;gap:4px}
@@ -204,7 +212,7 @@ def review_page():
     return _head(i18n.t("rv.title")) + f"""
 <header><span class="brand">campaign-kit</span><h1 id="title">{i18n.t('rv.title')}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
-<button class="btn primary" onclick="continueBatch()">{i18n.t('rv.js.continue')}</button>
+<button class="btn primary contbtn" onclick="continueBatch()">{i18n.t('rv.js.continue')}</button>
 <button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
 """ + _stepper(5, 4) + f"""
@@ -219,6 +227,7 @@ def review_page():
 <div class="wrap">
 <div class="panel"><h2><span class="n">5</span>{i18n.t('rv.p5.title')}</h2>
 <p class="desc">{i18n.t('rv.p5.desc')}</p>
+<div class="callout warn" id="queue" style="display:none"></div>
 <div class="filters" id="filters"></div>
 <div class="row" style="align-items:center"><span class="meta">{i18n.t('rv.concept')}</span><div class="filters" id="cfilters"></div>
 <button class="btn" id="stylebtn" onclick="toggleStyle()" style="display:none">{i18n.t('rv.adjust')}</button></div>
@@ -236,15 +245,16 @@ def review_page():
 <div class="panel"><h2><span class="n">6</span>{i18n.t('rv.p6.title')}</h2>
 <p class="desc">{i18n.t('rv.p6.desc')}</p>
 <div class="stats" id="deliver-summary"></div>
-<div class="row" style="align-items:center"><button class="btn primary" onclick="continueBatch()">{i18n.t('rv.js.continue')}</button>
+<div class="row" style="align-items:center"><button class="btn primary contbtn" onclick="continueBatch()">{i18n.t('rv.js.continue')}</button>
 <button class="btn" id="opendelivery" onclick="openDelivery()" style="display:none">{i18n.t('rv.js.openfolder')}</button>
 <span class="meta">{i18n.t('rv.p6.hint')}</span></div>
+<div class="callout warn" id="lockhint" style="display:none"></div>
 <div id="deliver-result"></div></div>
 </div>
 <dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
 """ + _modal() + _JS_UTIL + _inject("rv.js") + """
 <script>
-let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null;
+let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null, seenBefore=null;
 const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"],blocked:T["lbl.blocked"]};
 const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"],blocked:T["sing.blocked"]};
 const fmsg=f=>f.message;
@@ -273,6 +283,28 @@ function applyState(s){
     {approved:c("approved"),regen:c("rejected")+c("redo")});
   document.getElementById("opendelivery").style.display = delivered>0 ? "" : "none";
   if(delivered>0) setStep(6);
+  if(seenBefore===null&&state.campaign){
+    const k="ck.lastseen."+state.campaign;
+    seenBefore=localStorage.getItem(k)||"";
+    localStorage.setItem(k,new Date().toISOString());
+  }
+  const q=state.pieces.filter(p=>p.status==="rejected"||p.status==="redo");
+  const qel=document.getElementById("queue");
+  if(q.length){
+    qel.style.display="";
+    qel.innerHTML=`<b>${fill(T["queue.title"],{n:q.length})}</b> <span class="hint">${T["queue.hint"]}</span>`+
+      `<ul class="queuelist">`+q.map(p=>{
+        const what=p.status==="redo"?`↻ ${esc(p.note||"")}`:`✕ ${T["queue.recreate"]}`;
+        const when=p.decided_at?` · ${new Date(p.decided_at).toLocaleString()}`:"";
+        const st=p.queued?T.queued:T["queue.waiting"];
+        return `<li><b>${esc(p.id)}</b> — ${esc(p.concept)} · ${esc(p.format)} — ${what} <span class="hint">[${st}${when}]</span></li>`;
+      }).join("")+`</ul>`;
+  } else qel.style.display="none";
+  const inprog=q.filter(p=>p.queued).length;
+  document.querySelectorAll(".contbtn").forEach(b=>b.disabled=inprog>0);
+  const lh=document.getElementById("lockhint");
+  if(inprog>0){lh.style.display="";lh.textContent=fill(T["continue.locked"],{n:inprog});}
+  else lh.style.display="none";
   draw();
 }
 function setFilter(f){filter=f;draw();}
@@ -332,7 +364,9 @@ function draw(){
       : `<img loading="lazy" src="/img?path=${encodeURIComponent("review/thumbs/"+p.path)}"
            onclick="zoom('${encodeURIComponent(p.path)}')" alt="${p.id}">`;
     const badges=(p.delivered?`<span class="tag approved"><span class="dot"></span>${T.delivered}</span>`:"")
-      +(p.queued?`<span class="tag"><span class="dot"></span>${T.queued}</span>`:"");
+      +(p.queued?`<span class="tag"><span class="dot"></span>${T.queued}</span>`:"")
+      +(seenBefore&&p.updated_at&&p.updated_at>seenBefore&&p.status==="pending"
+        ?`<span class="tag new"><span class="dot"></span>${T.newbadge}</span>`:"");
     const note=(p.status==="redo"&&p.note)?`<p class="hint">↻ ${esc(p.note)}</p>`:"";
     return `<div class="card rcard">
       ${media}
@@ -369,6 +403,7 @@ async function continueBatch(){
   if(!r.ok){await tell(j.error||"error");return;}
   await load();
   const box=document.getElementById("deliver-result");
+  if(j.locked>0){box.innerHTML="";notify(fill(T["continue.locked"],{n:j.locked}));return;}
   if(j.exported===0&&j.regen===0){box.innerHTML="";notify(T["continue.empty"]);return;}
   box.innerHTML=`<div class="callout ok">${fill(T["continue.done"],{n:j.exported,dir:j.delivery_dir,m:j.regen,req:j.requests_path})}</div>`;
   if(j.ppc&&j.ppc.files&&j.ppc.files.length){
@@ -761,22 +796,29 @@ class Handler(BaseHTTPRequestHandler):
         payload = json.loads(self.rfile.read(length) or b"{}")
         state_path = os.path.join(self.root, "state.json")
         if self.path in ("/decision", "/regen"):
-            with open(state_path, encoding="utf-8") as f:
-                state = json.load(f)
-            redo = self.path == "/regen"
-            for p in state["pieces"]:
-                if p["id"] == payload.get("id"):
-                    p["status"] = "redo" if redo else payload.get("status", "pending")
-                    if redo:
-                        p["note"] = payload.get("note", "")
-                    else:
-                        p.pop("note", None)
-                    if p["status"] != "approved":
-                        p.pop("delivered", None)
-                        p.pop("delivery_path", None)
-                    p.pop("queued", None)
-            with open(state_path, "w", encoding="utf-8") as f:
-                json.dump(state, f, indent=2, ensure_ascii=False)
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            with _STATE_LOCK:
+                with open(state_path, encoding="utf-8") as f:
+                    state = json.load(f)
+                redo = self.path == "/regen"
+                for p in state["pieces"]:
+                    if p["id"] == payload.get("id"):
+                        p["status"] = "redo" if redo else payload.get("status", "pending")
+                        if redo:
+                            p["note"] = payload.get("note", "")
+                        else:
+                            p.pop("note", None)
+                        if p["status"] in ("rejected", "redo"):
+                            p["decided_at"] = now
+                        else:
+                            p.pop("decided_at", None)
+                        if p["status"] != "approved":
+                            p.pop("delivered", None)
+                            p.pop("delivery_path", None)
+                        p.pop("queued", None)
+                with open(state_path, "w", encoding="utf-8") as f:
+                    json.dump(state, f, indent=2, ensure_ascii=False)
             self._send(200, {"ok": True})
         elif self.path == "/concept-style":
             concept = payload.get("concept", "")
@@ -805,21 +847,25 @@ class Handler(BaseHTTPRequestHandler):
             os.makedirs(os.path.dirname(sp), exist_ok=True)
             with open(sp, "w", encoding="utf-8") as f:
                 yaml.safe_dump(style, f, allow_unicode=True, sort_keys=False)
-            with open(state_path, encoding="utf-8") as f:
-                state = json.load(f)
             rnote = note or i18n.t("rv.restyle.defaultnote")
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             count = 0
-            for p in state["pieces"]:
-                if p["concept"] == concept:
-                    p["status"] = "redo"
-                    p["note"] = rnote
-                    p["restyle"] = True
-                    p.pop("delivered", None)
-                    p.pop("delivery_path", None)
-                    p.pop("queued", None)
-                    count += 1
-            with open(state_path, "w", encoding="utf-8") as f:
-                json.dump(state, f, indent=2, ensure_ascii=False)
+            with _STATE_LOCK:
+                with open(state_path, encoding="utf-8") as f:
+                    state = json.load(f)
+                for p in state["pieces"]:
+                    if p["concept"] == concept:
+                        p["status"] = "redo"
+                        p["note"] = rnote
+                        p["restyle"] = True
+                        p["decided_at"] = now
+                        p.pop("delivered", None)
+                        p.pop("delivery_path", None)
+                        p.pop("queued", None)
+                        count += 1
+                with open(state_path, "w", encoding="utf-8") as f:
+                    json.dump(state, f, indent=2, ensure_ascii=False)
             self._send(200, {"ok": True, "concept": concept, "count": count})
         elif self.path == "/continue":
             if not os.path.isfile(state_path):

@@ -96,6 +96,18 @@ class DecideTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             copy.decide(self.root, "k01", "bogus")
 
+    def test_concurrent_decisions_do_not_clobber(self):
+        """Two fast clicks in the table must both land (the JSON write is serialized)."""
+        import threading
+        ts = [threading.Thread(target=copy.decide, args=(self.root, rid, "approved"))
+              for rid in ("k01", "k02")]
+        for t in ts:
+            t.start()
+        for t in ts:
+            t.join()
+        got = {r["id"]: r["status"] for r in copy.load(self.root)["rows"]}
+        self.assertEqual(got, {"k01": "approved", "k02": "approved"})
+
     def test_approve_clears_note(self):
         copy.decide(self.root, "k01", "redo", note="adjust")
         copy.decide(self.root, "k01", "approved")
@@ -210,15 +222,20 @@ class ExportTest(unittest.TestCase):
     def test_approved_only_and_files(self):
         import csv
         self._write([
-            _row(id="k01", destination="ppc", kind="headline", text="Enroll today", status="approved"),
-            _row(id="k02", destination="ppc", kind="description", text="Limited seats.", status="approved"),
-            _row(id="k03", destination="ppc", kind="primary_text", text="Study design from scratch.", status="approved"),
-            _row(id="k04", destination="overlay", kind="hook", text="Last seats", status="approved"),
-            _row(id="k05", destination="overlay", kind="cta", text="Enroll", status="approved"),
+            _row(id="k01", destination="ppc", kind="headline", text="Enroll today", status="approved",
+                 program="Design Sprint"),
+            _row(id="k02", destination="ppc", kind="description", text="Limited seats.", status="approved",
+                 program="Design Sprint"),
+            _row(id="k03", destination="ppc", kind="primary_text", text="Study design from scratch.",
+                 status="approved", program="Design Sprint"),
+            _row(id="k04", destination="overlay", kind="hook", text="Last seats", status="approved",
+                 program="Design Sprint"),
+            _row(id="k05", destination="overlay", kind="cta", text="Enroll", status="approved",
+                 program="Design Sprint"),
             _row(id="k06", destination="ppc", kind="headline", text="Not approved", status="pending"),
         ])
         s = copy.export(self.folder)
-        self.assertEqual((s["meta"], s["google_rsa"], s["overlay"], s["manifest"]), (1, 1, 1, 5))
+        self.assertEqual((s["meta"], s["google_rsa"], s["overlay"], s["manifest"]), (1, 1, 2, 5))
         self.assertIn("meta_bulk_import.csv", s["files"])
         self.assertTrue(os.path.isfile(os.path.join(s["dir"], "meta_bulk_import.csv")))
         self.assertTrue(os.path.isfile(os.path.join(s["dir"], "overlay.csv")))
@@ -226,6 +243,48 @@ class ExportTest(unittest.TestCase):
             ids = [r["ID"] for r in csv.DictReader(f)]
         self.assertIn("k01", ids)
         self.assertNotIn("k06", ids)
+
+    def test_approval_sheets_are_vertical_and_labeled(self):
+        """One text per row, with Concept + Program + Platform + a readable Type."""
+        import csv
+        self._write([
+            _row(id="k01", destination="ppc", platform="google", kind="headline",
+                 text="Learn UI design", status="approved", program="Design Sprint"),
+            _row(id="k02", destination="overlay", kind="hook", text="Last seats",
+                 status="approved", program="Design Sprint"),
+            _row(id="k03", destination="overlay", kind="cta", text="Enroll",
+                 status="approved", program="Design Sprint"),
+        ])
+        s = copy.export(self.folder)
+        self.assertEqual(s["overlay"], 2)
+
+        def read(name):
+            with open(os.path.join(s["dir"], name), encoding="utf-8-sig") as f:
+                return list(csv.DictReader(f))
+
+        ov = read("overlay.csv")
+        self.assertEqual(copy.OVERLAY_COLUMNS, list(ov[0].keys()))
+        self.assertEqual([r["Text"] for r in ov], ["Last seats", "Enroll"])
+        self.assertEqual([r["Type"] for r in ov], ["Hook (big line)", "CTA button"])
+        self.assertEqual({r["Concept"] for r in ov}, {"clean"})
+        self.assertEqual({r["Program"] for r in ov}, {"Design Sprint"})
+        self.assertEqual({r["Platform"] for r in ov}, {"Overlay (on the piece)"})
+        self.assertEqual([r["Chars"] for r in ov], ["10", "6"])
+
+        man = read("copy_manifest.csv")
+        self.assertEqual(copy.MANIFEST_COLUMNS, list(man[0].keys()))
+        self.assertEqual(len(man), 3)
+        self.assertEqual([r["Type"] for r in man],
+                         ["Headline (≤30)", "Hook (big line)", "CTA button"])
+        self.assertEqual([r["Platform"] for r in man],
+                         ["Google", "Overlay (on the piece)", "Overlay (on the piece)"])
+        self.assertEqual({r["Program"] for r in man}, {"Design Sprint"})
+        self.assertTrue(s["files"].index("copy_manifest.csv") < s["files"].index("google_search_rsa.csv"))
+
+    def test_program_must_be_string(self):
+        errs = copy.validate(_data([_row(program=7)]))
+        self.assertTrue(any("program" in e for e in errs))
+        self.assertEqual(copy.validate(_data([_row(program="Design Sprint")])), [])
 
     def test_rsa_limit_warning(self):
         self._write([_row(id="k01", destination="ppc", kind="headline", text="x" * 40, status="approved")])
@@ -237,6 +296,19 @@ class ExportTest(unittest.TestCase):
     def test_deliver_counts_approved(self):
         self._write([_row(id="k01", destination="overlay", kind="hook", text="Hi", status="approved")])
         self.assertEqual(copy.deliver(self.folder)["exported"], 1)
+
+    def test_deliver_locked_while_working(self):
+        self._write([_row(id="k01", status="approved"),
+                     _row(id="k02", destination="ppc", kind="headline", text="Headline",
+                          status="redo", note="shorter")])
+        s = copy.deliver(self.folder)
+        self.assertEqual(s["locked"], 1)
+        self.assertEqual(s["exported"], 0)
+        self.assertEqual(s["files"], [])
+        copy.decide(self.folder, "k02", "pending")
+        s = copy.deliver(self.folder)
+        self.assertEqual(s["locked"], 0)
+        self.assertEqual(s["exported"], 1)
 
     def test_deliver_empty_when_none_approved(self):
         self._write([_row(id="k01", status="pending")])

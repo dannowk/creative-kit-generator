@@ -6,7 +6,8 @@ description: Use when the user wants to generate only the COPY of a campaign (te
 # copy-kit
 
 Generates the copy locally: the agent writes from the briefing + examples, the kit validates
-the shape and exports **only the approved** (Meta / Google RSA / overlay sheets). Review in a
+the shape and exports **only the approved** (vertical approval sheets — one text per row with
+Concept + Program — plus the Meta / Google RSA import files). Review in a
 browser **table** (approve/reject/redo+note per row). **The user does not open a
 terminal or type a command — you run everything; they use the chat and the browser.**
 
@@ -39,6 +40,8 @@ uses 8767 (wizard) / 8768 (table). Do not start both in the same session.
    **YOUR JOB:** author `<folder>/copy.json` = `{"concepts":[...], "rows":[...]}`.
    Each row: `id` (`k01`…, next free), `destination` (`ppc`/`overlay`), `platform`
    (`google`/`meta`/`both`, ppc rows only), `concept`,
+   `program` (the advertised program/product/course of that text, from the briefing —
+   always fill it: it labels every row in the review table and in the delivered sheets),
    `axis` (optional), `kind`, `text`, `lang` (`en`), `status:"pending"`,
    `origin:"agent"`, `updated_at` (ISO UTC now), `updated_by` (your name/user).
    - **ppc kinds:** `headline` (≤30), `description` (≤90), `primary_text` (hook in the
@@ -59,15 +62,24 @@ uses 8767 (wizard) / 8768 (table). Do not start both in the same session.
 6. **`copy validate <folder>`** checks the shape (valid destinations/kinds/status/lang, non-empty
    text, unique ids, declared concept). Error → nothing written; fix and revalidate.
 7. **`copy review <folder>`** opens the **table** in the browser (shortcut `OPEN-COPY-REVIEW.html`
-   in the folder). Each row has approve / reject / redo+note; filters by status,
-   destination (PPC/overlay) and concept. Only **marks** the row (intent). **Fulfill the batch:**
+   in the folder). Each row has approve / reject / redo+note and is labeled with **Concept,
+   Program, Platform and a readable Type** (Headline ≤30 / Primary text / Hook / CTA button…) —
+   the raw `axis` only appears as a small hint. Filters by status, destination (PPC/overlay),
+   platform, concept and program. Only **marks** the row (intent). **Fulfill the batch:**
    `rejected` → rewrite the copy (new direction from the briefing/examples); `redo` →
    apply the `note`. Change the `text`, set `status:"pending"` back, clear `note`, re-stamp
    `updated_at`/`updated_by`. The table updates by itself (4 s poll). Repeat until done.
 8. **Delivery:** everything approved → the user clicks **Export approved** in the table (or you
-   run **`copy deliver <folder>`**). Generates **CSV + XLSX** sheets in
-   `~/Desktop/Copy Kit/<folder>/`: `meta_bulk_import`, `google_search_rsa`, `overlay`
-   (concept × axis × kind), `copy_manifest` + README. **Only the approved rows ship.** RSA
+   run **`copy deliver <folder>`**). **The export is gated:** while any row is still
+   rejected/redo, the button is disabled and `deliver` returns `{"locked": n}` — the user can
+   only export after every change is done (you rewrote all marked rows back to pending).
+   Generates **CSV + XLSX** sheets in `~/Desktop/Copy Kit/<folder>/`:
+   - **`copy_manifest`** and **`overlay`** are the **approval sheets: vertical, one text per
+     row**, labeled `Concept | Program | Platform | Variation | Type | Text | Chars`.
+   - **`meta_bulk_import`** and **`google_search_rsa`** stay in each platform's own column
+     layout (that is what their importers require) — they are the upload files, not the
+     reading ones.
+   Plus README. **Only the approved rows ship.** RSA
    limits (headline ≤30 / description ≤90) become a **warning + truncation**, not a gatekeeper.
    URL/budget/targeting/IDs stay **blank for the PPC team** — do not invent.
    Everything ships PAUSED. The **Open folder** button opens the folder on the user's computer; the

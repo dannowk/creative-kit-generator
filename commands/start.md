@@ -29,7 +29,8 @@ chat with you and use the browser. Drive in this order:
    Desktop delivery folder (`~/Desktop/Campaign Kit/<campaign>/`) and queue rejected/redo
    in `requests.json`. The **Open folder** button opens that folder on the user's computer. Fulfill
    the batch (actually recreate/redo, changing template/asset/copy), run `render --ids <ids>` and the
-   review updates by itself.
+   review updates by itself. **The export is gated:** while a batch is still queued, Continue is
+   disabled (`{"locked": n}`) — the user only exports after every change is done.
    If the user used **Adjust style** (colors/fonts of a whole concept), the `styles/<concept>.yaml`
    is already applied by the render — for that batch `render --ids` is enough. See AGENTS.md.
 8. Continue/`deliver` also generates the **PPC sheets** (Meta + Google) in `ppc/` in the

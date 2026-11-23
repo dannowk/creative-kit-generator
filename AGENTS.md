@@ -220,6 +220,9 @@ composed frame (overlay + middle frame), same as images.
    (intent in `state.json`); nothing runs until **Continue** (stage 6). Status filters
    and compliance findings on the card. The **approved pieces stay only in the approved list** (they leave
    the working grid); rejected/redo update **on the same page** after regeneration.
+   Marked pieces appear in a **Working queue** panel (what the agent is redoing, with the
+   note and when it was marked); pieces the agent regenerated come back pending with a
+   **NEW** badge (updated since the user's last visit — the browser remembers it).
    Keep this format.
 5. **Local files and control.** Do not create a public URL, remote or deploy without
    explicitly asking the user.
@@ -276,6 +279,10 @@ Python re-renders and the UI updates. The review is **batched** — deciding run
    `{id, concept, format, axes, path, kind, asset, reason:"rejected"|"redo", note}`.
 3. The UI reports what was exported/queued, shows the **Open folder** button (opens the
    delivery folder on the Desktop) and advances the stepper to stage 6 (Deliver).
+
+**The export is gated:** while a batch is still queued (you are regenerating), Continue/
+`deliver` is **locked** (button disabled + `{"locked": n}`) — the user can only export the
+sheets again after every change is done (all queued pieces re-rendered via `render --ids`).
 
 **YOUR JOB as the agent — fulfill the `requests.json` batch:**
 1. For each piece: `reason:"redo"` → apply the `note` (adjust the template/copy/asset);

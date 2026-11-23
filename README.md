@@ -134,6 +134,10 @@ pieces stay only in the approved list. Repeat until the campaign is done.
 
 - Lost the link? Clickable shortcut **`OPEN-REVIEW.html`** inside the campaign folder;
   the address is also at the top of the screen and at the end of `render` / `video` in the terminal.
+- **Working queue:** everything you marked as reject/redo appears in a panel at the top of
+  the review — what the agent is working on, with your note and the time you marked it.
+  You can close the browser and check later: regenerated pieces come back as pending with
+  a **NEW** badge (updated since your last visit).
 - Delivered (approved) pieces: `~/Desktop/Campaign Kit/<campaign>/<concept>/` (png/mp4), on
   your Desktop. The working render lives in `campaigns/<campaign>/out/<concept>/` + contact
   sheet `review/sheet_<concept>.png`.
@@ -308,14 +312,24 @@ The step-by-step is the same as the visual one, but lighter:
    + 5 link descriptions (≤40) + the recommended native CTA; and **overlay**
    (hook/kicker/program/cta) for the pieces. It never invents beyond the
    briefing/examples/attachments.
-3. **Review (table)** — approve / reject / redo+note **row by row** in a browser table,
-   with filters by status, destination, platform (Google/Meta) and concept, exact
+3. **Review (table)** — approve / reject / redo+note **row by row** in a browser table.
+   Every row says plainly **which concept and which program** it belongs to, plus the
+   **platform** (Google / Meta / Google + Meta / Overlay) and a **readable type**
+   (Headline ≤30, Primary text, Link description, CTA button, Hook, Kicker…) — no raw
+   `axis`/`kind` jargon (the axis appears only as a small hint). Filters by status,
+   destination, platform, concept and program, exact
    character counters per row (`[28/30]`, red when over) and the strategist's note.
-   Each click only marks; the agent rewrites the rejected/redo rows and the table updates by itself.
+   Each click only marks; marked rows go to a **Working queue** panel (with your note and
+   the time), the agent rewrites them and the table updates by itself — rewritten rows
+   come back as pending with a **NEW** badge, so you can close the browser and check later.
 4. **Deliver** — all approved → click **Export approved** (or `copy deliver`):
-   **CSV + XLSX** sheets in `~/Desktop/Copy Kit/<folder>/` (`meta_bulk_import`,
-   `google_search_rsa`, `overlay`, `copy_manifest` + README), with **download** in the
-   table itself and an **Open folder** button. **Only the approved rows ship.** Google
+   **CSV + XLSX** sheets in `~/Desktop/Copy Kit/<folder>/`, with **download** in the
+   table itself and an **Open folder** button.
+   - `copy_manifest` + `overlay` are the **approval sheets: vertical, one text per row**,
+     labeled `Concept | Program | Platform | Variation | Type | Text | Chars`.
+   - `meta_bulk_import` + `google_search_rsa` keep **each platform's own column layout** —
+     that is what Meta Ads Manager and Google Ads Editor require to import.
+   Plus README. **Only the approved rows ship.** Google
    RSA limits (headline ≤30 / description ≤90) become a warning + truncation, not a
    gatekeeper. URL/budget/targeting/IDs stay blank for the PPC team.
 

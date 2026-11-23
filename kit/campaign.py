@@ -11,6 +11,7 @@ import os
 import glob
 import shutil
 import sys
+from datetime import datetime, timezone
 
 import yaml
 from PIL import Image
@@ -259,6 +260,7 @@ def _merge_prior(root, pieces):
     with open(prior_path, encoding="utf-8") as f:
         prior = {p["id"]: p for p in json.load(f).get("pieces", [])}
     rendered = {p["id"] for p in pieces}
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     for p in pieces:
         old = prior.get(p["id"])
         if old and old.get("status") == "approved":
@@ -267,6 +269,8 @@ def _merge_prior(root, pieces):
                 p["delivered"] = True
             if old.get("delivery_path"):
                 p["delivery_path"] = old["delivery_path"]
+        elif old and old.get("status") in ("rejected", "redo"):
+            p["updated_at"] = now
     for pid, old in prior.items():
         if pid not in rendered:
             pieces.append(old)
@@ -328,10 +332,19 @@ def deliver(root):
     recreates/redoes, runs `render --ids` and the review updates itself. With approved
     pieces exported, it also generates the PPC bulk-upload sheets (Meta + Google) in `ppc/`
     inside the same delivery folder.
+
+    Gated: while a previous batch is still queued (the agent is regenerating), nothing
+    exports — all changes must be done first. Returns {"locked": n} in that case.
     """
     with open(os.path.join(root, "state.json"), encoding="utf-8") as f:
         state = json.load(f)
     delivery = delivery_dir(root)
+    in_progress = [p for p in state["pieces"]
+                   if p.get("queued") and p.get("status") in ("rejected", "redo")]
+    if in_progress:
+        return {"locked": len(in_progress), "exported": 0, "regen": 0, "exported_ids": [],
+                "delivery_dir": delivery, "requests_path": "requests.json", "batch": [],
+                "ppc": None}
     os.makedirs(delivery, exist_ok=True)
     exported, batch = [], []
     for p in state["pieces"]:
