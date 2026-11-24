@@ -43,7 +43,10 @@ then clears copy.json, adjustments and the queue — briefing, examples and atta
    `.md`/`.txt` content goes into the field, any file lands in `attachments/` for you to read.
    Point out the third field, **Technical direction** (optional): limits per platform, how many
    variants they need, terms that must appear or never be cut, languages, delivery formats.
-   Wait for the user's "ready".
+   Then start `python3 -m kit.cli copy wait <folder>` in the background: the wizard's last
+   panel has a **Next step →** button — when the user presses it, `wait` returns
+   `stage:"ready"` and you continue in chat (the copy-phrase fallback under the button
+   works too).
 5. **`copy plan <folder>`** prints the briefing + examples + **the technical direction** +
    **attached files** (if any) + the destinations/kinds vocabulary. **Read the attachments**
    (plain text directly; PDF/docx/image: extract with your tools) — they are part of the source
@@ -115,3 +118,8 @@ then clears copy.json, adjustments and the queue — briefing, examples and atta
 The copy is independent: it delivers its own file. There is no automatic import by the visual kit
 (handoff = a future step, if the user wants it). The voice comes from the briefing + pasted examples,
 not from a logo/brandbook.
+
+**Attachments are session-scoped:** when the user attaches a file, read THAT file — even if
+a same-named file appeared in another session, project or copy folder. Never say "I already
+have this file" from a past session; same name ≠ same content, and nothing attached needs to
+be carried across sessions. Re-uploads coexist (`name (2).ext`), they are never refused.

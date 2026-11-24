@@ -1002,9 +1002,13 @@ def onboard_page():
 <div class="panel"><h2><span class="n">5</span>{i18n.t('ob.p4.title')}</h2>
 <p class="desc">{i18n.t('ob.p4.desc')}</p>
 <span class="meta">{i18n.t('ob.p4.pipe')}</span>
-<p class="desc" style="margin-top:10px">{i18n.t('ob.p4.paste')}</p>
+<div class="row" style="margin-top:12px;align-items:center">
+<button class="btn primary" id="nextbtn" onclick="nextStep()">{i18n.t('ob.js.next')}</button>
+<span class="meta" id="nextmsg"></span></div>
+<div id="nextfallback" style="display:none">
+<p class="desc" style="margin-top:10px">{i18n.t('ob.js.next.fallback')}</p>
 <div class="row"><input type="text" id="agentline" readonly>
-<button class="btn primary" onclick="copyAgent()">{i18n.t('ob.p4.copy')}</button></div></div>
+<button class="btn" onclick="copyAgent()">{i18n.t('ob.p4.copy')}</button></div></div></div>
 </div>
 """ + _modal() + _JS_UTIL + _flow_js("visual", "wizard") + _inject("ob.js") + """
 <script>
@@ -1024,6 +1028,8 @@ async function load(){
   const fs=document.getElementById("cfsaved");
   if(S.folder_saved){fs.textContent=fill(T["folder.already"],{path:S.inbox});fs.style.display="";}
   else fs.style.display="none";
+  document.getElementById("nextmsg").textContent=S.next?T["next.waiting"]:"";
+  document.getElementById("nextfallback").style.display=S.next?"":"none";
   const slotsOk=Object.values(S.slots).filter(s=>s.ok).length;
   const secOk=S.briefing.sections.filter(x=>x.filled).length;
   document.getElementById("slotprog").textContent =
@@ -1136,6 +1142,12 @@ async function removeSlotFile(slot,name){
 async function copyAgent(){
   await navigator.clipboard.writeText(document.getElementById("agentline").value);
   notify(T.copied);
+}
+async function nextStep(){
+  const r=await pj("/ready",{method:"POST"});
+  if(!r.ok){tell(T["next.failed"]);return;}
+  document.getElementById("nextmsg").textContent=T["next.waiting"];
+  document.getElementById("nextfallback").style.display="";
 }
 async function derive(){
   const id=document.getElementById("bid").value.trim();
@@ -1253,6 +1265,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def _onboard_post(self, length):
         url = urlparse(self.path)
+        if url.path == "/ready":
+            self.rfile.read(length)
+            onboard.press_ready(self.root)
+            return self._send(200, {"ok": True})
         if url.path == "/upload":
             q = parse_qs(url.query)
             slot = q.get("slot", [""])[0]

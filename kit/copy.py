@@ -554,7 +554,7 @@ def restart(root):
     """
     import shutil
     from . import campaign
-    for f in ("copy.json", "requests.json"):
+    for f in ("copy.json", "requests.json", "ready.json"):
         p = os.path.join(root, f)
         if os.path.isfile(p):
             os.remove(p)
@@ -571,8 +571,12 @@ def wait_batch(root, timeout=0, interval=2.0):
     `timeout` 0 = wait forever. Returns [] on timeout.
     """
     import time
+    from . import onboard
     deadline = time.time() + timeout if timeout else None
     while True:
+        pressed = onboard.take_ready(root)
+        if pressed:
+            return [{"stage": "ready", "reason": "next", "id": None, "at": pressed.get("at")}]
         batch = sync_requests(root)
         if batch:
             return batch

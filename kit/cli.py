@@ -324,10 +324,7 @@ def main(argv=None):
                 server.shutdown()
             return 0
         if args.action == "wait":
-            if not os.path.isfile(os.path.join(folder, "copy.json")):
-                print("copy.json missing — generate the copy first (copy plan).", file=sys.stderr)
-                return 1
-            print("Waiting for the review table to mark rows — "
+            print("Waiting for the wizard's Next step or the review table to mark rows — "
                   + os.path.join(folder, "requests.json") + " (Ctrl+C to stop).", file=sys.stderr)
             try:
                 batch = copy.wait_batch(folder, args.timeout)
@@ -337,6 +334,9 @@ def main(argv=None):
                 print("Timeout — nothing was marked.", file=sys.stderr)
                 return 1
             print(json.dumps(batch, indent=2, ensure_ascii=False))
+            if batch[0].get("stage") == "ready":
+                print(i18n.t("cli.copy.wait.ready", folder=folder), file=sys.stderr)
+                return 0
             cjson = os.path.join(folder, "copy.json")
             print(f"{len(batch)} row(s) to rewrite in {cjson}:", file=sys.stderr)
             print("  reason=redo → rewrite the text applying the note; "
@@ -373,6 +373,49 @@ def main(argv=None):
             if not s["xlsx"]:
                 print("  XLSX unavailable (openpyxl missing) — CSV only.")
             return 0
+
+    # wait runs from the wizard onward (no campaign.json yet): the Next step signal and
+    # the redo queues only need the folder path.
+    if args.cmd == "wait":
+        root = os.path.abspath(os.path.expanduser(args.campaign))
+        print(i18n.t("cli.wait.waiting", root=root), file=sys.stderr)
+        try:
+            batch = campaign.wait_batch(root, args.timeout)
+        except KeyboardInterrupt:
+            return 1
+        if not batch:
+            print(i18n.t("cli.wait.empty"), file=sys.stderr)
+            return 1
+        print(json.dumps(batch, indent=2, ensure_ascii=False))
+        if batch[0].get("stage") == "ready":
+            print(i18n.t("cli.wait.ready", root=root), file=sys.stderr)
+            return 0
+        if batch[0].get("reason") == "all_approved":
+            print(i18n.t("cli.wait.allapproved", n=batch[0].get("count") or 0, root=root),
+                  file=sys.stderr)
+            return 0
+        marked = [b for b in batch if b.get("stage") == "assets"]
+        pieces = [b for b in batch if b.get("stage") not in ("assets", "rules", "ready")]
+        ruled = [b for b in batch if b.get("stage") == "rules"]
+        if ruled:
+            for b in ruled:
+                print("  " + i18n.t("cli.rules.agreed" if b["reason"] == "agreed"
+                                    else "cli.rules.kept", target=b["target"]), file=sys.stderr)
+            print("  " + i18n.t("cli.wait.rerender", root=root), file=sys.stderr)
+            return 0
+        if marked:
+            print(i18n.t("cli.wait.assets", n=len(marked), root=root,
+                         jobs=" ".join(assets.jobs_for(marked))), file=sys.stderr)
+        if pieces:
+            print(i18n.t("cli.wait.fulfill", n=len(pieces)), file=sys.stderr)
+            _print_reject_check(pieces)
+            jobs = sorted({b["asset_job"] for b in pieces
+                           if b["reason"] == "redo" and b.get("asset_job")})
+            if jobs:
+                print("  " + i18n.t("cli.wait.asset", root=root, jobs=" ".join(jobs)), file=sys.stderr)
+            print("  " + i18n.t("cli.wait.next", root=root,
+                                ids=" ".join(b["id"] for b in pieces)), file=sys.stderr)
+        return 0
 
     camp = campaign.load_campaign(os.path.join(ROOT, args.campaign)
                                   if not os.path.isabs(args.campaign) else args.campaign)
@@ -536,44 +579,6 @@ def main(argv=None):
                                 n=len(result["ppc"]["files"]),
                                 platforms=_platforms(result["ppc"])))
             _print_truncated(result["ppc"].get("warnings"))
-        return 0
-
-    if args.cmd == "wait":
-        root = camp["_root"]
-        print(i18n.t("cli.wait.waiting", root=root), file=sys.stderr)
-        try:
-            batch = campaign.wait_batch(root, args.timeout)
-        except KeyboardInterrupt:
-            return 1
-        if not batch:
-            print(i18n.t("cli.wait.empty"), file=sys.stderr)
-            return 1
-        print(json.dumps(batch, indent=2, ensure_ascii=False))
-        if batch[0].get("reason") == "all_approved":
-            print(i18n.t("cli.wait.allapproved", n=batch[0].get("count") or 0, root=root),
-                  file=sys.stderr)
-            return 0
-        marked = [b for b in batch if b.get("stage") == "assets"]
-        pieces = [b for b in batch if b.get("stage") not in ("assets", "rules")]
-        ruled = [b for b in batch if b.get("stage") == "rules"]
-        if ruled:
-            for b in ruled:
-                print("  " + i18n.t("cli.rules.agreed" if b["reason"] == "agreed"
-                                    else "cli.rules.kept", target=b["target"]), file=sys.stderr)
-            print("  " + i18n.t("cli.wait.rerender", root=root), file=sys.stderr)
-            return 0
-        if marked:
-            print(i18n.t("cli.wait.assets", n=len(marked), root=root,
-                         jobs=" ".join(assets.jobs_for(marked))), file=sys.stderr)
-        if pieces:
-            print(i18n.t("cli.wait.fulfill", n=len(pieces)), file=sys.stderr)
-            _print_reject_check(pieces)
-            jobs = sorted({b["asset_job"] for b in pieces
-                           if b["reason"] == "redo" and b.get("asset_job")})
-            if jobs:
-                print("  " + i18n.t("cli.wait.asset", root=root, jobs=" ".join(jobs)), file=sys.stderr)
-            print("  " + i18n.t("cli.wait.next", root=root,
-                                ids=" ".join(b["id"] for b in pieces)), file=sys.stderr)
         return 0
 
     if args.cmd == "rules":

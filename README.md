@@ -37,8 +37,10 @@ onboarding in the browser and walks you through to review. You just **chat with 
 2. Say: *"read AGENTS.md and start a campaign"*. The agent follows the repository
    rules, installs the dependencies (`pip install -r requirements.txt`, once) and opens
    the onboarding in a **local browser tab** (`127.0.0.1`).
-3. Everything is managed in the browser: you fill the inbox in the wizard and approve
-   pieces in the review; the agent drives the rest from the chat. No plugin or native
+3. Everything is managed in the browser: you fill the inbox in the wizard and press
+   **Next step →** in its last card — the agent picks up the signal and continues in the
+   chat (a copy-phrase fallback stays under the button). You approve pieces in the review;
+   the agent drives the rest. No plugin or native
    install is required — any agent that reads `AGENTS.md` can drive it.
 
 ### 2. Fill in YOUR folder (the campaign inbox)
@@ -84,6 +86,10 @@ delivery constraints. It is saved as `direction.md`, printed in full by `plan`, 
 everything the agent authors after it: templates, formats, image prompts and copy. The copy kit has
 the same field (limits per platform, how many variants, terms that must not be cut, languages).
 If it conflicts with the briefing, the agent asks instead of guessing.
+
+**Done filling?** Press **Next step →** in the wizard's last card — the agent is watching
+and continues the pipeline in the chat. If nothing happens (no agent watching), a phrase
+appears under the button to copy and paste in the chat.
 
 **Already have a briefing in any format** (Word, PDF, text, email)? No need to rewrite
 anything: the agent **normalizes** it into the kit template and asks you only about what
@@ -381,7 +387,8 @@ The step-by-step is the same as the visual one, but lighter:
    **drag-and-drop / browse zone**: already have the copy in a file? Drop it — `.md`/`.txt`
    content goes straight into the field, and any file (PDF/docx included) is saved in
    `attachments/` for the agent to read. Only `briefing.md` + `examples.txt` + attachments —
-   no logo/brandbook/refs/photos/videos.
+   no logo/brandbook/refs/photos/videos. Done? Press **Next step →** in the last card and
+   the agent continues in the chat (copy-phrase fallback under the button).
 2. **Generate** — the agent writes the copy from the briefing + examples + attached files,
    in volume (concepts × axes × destinations × versions), following the platform playbook:
    **Google RSA** — 15 headlines (≤30) + 4 descriptions (≤90) per concept × axis, keywords

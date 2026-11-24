@@ -35,7 +35,11 @@ phrase and `<kit>/.last-inbox` carry the current path (`intake` falls back to th
 the old path is gone). Saving the card writes `folder.json` inside the folder — the shared
 "already saved" record both wizards read, so the card stays visible with a notice instead of
 asking again. `onboard` does the scaffold (`logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ briefing.md`).
-Announce in the chat that onboarding opened, wait for the "ready" and follow the pipeline.
+Announce in the chat that onboarding opened, then start `python3 -m kit.cli wait <inbox>`
+in the background — it works from the wizard onward (no campaign.json needed yet). When the
+user presses **Next step →** in the wizard's last panel, `wait` returns `stage:"ready"` and
+you follow the pipeline. The wizard keeps a copy-phrase fallback under the button (shown
+after the press) for when no `wait` is running; a pasted "ready" phrase works the same way.
 
 **ffmpeg / codecs:** do not install system ffmpeg or codecs. `imageio-ffmpeg` embeds
 the ffmpeg binary (used by the video module for trim/reframe/overlay/concat/captions).
@@ -73,6 +77,9 @@ python3 -m kit.cli onboard ~/inbox/acme
 #    copy: copy.json, styles/ and the queue. Briefing, uploads, generated asset files
 #    (assets/manifest.json included) and delivered files are kept. After clearing, the
 #    review lands back on the wizard; the agent re-runs the pipeline from the briefing.
+#    The last panel has a **Next step →** button: it writes ready.json in the folder; the
+#    agent's background `wait <inbox>` returns stage:"ready" (consumed once) and the pipeline
+#    continues in chat. The copy-phrase row stays as a fallback under the button.
 #    --no-ui = scaffold + checklist only, no server.
 
 # 2. Derive the brand from the dropped folder (palette, logo, refs analysis, gaps)
@@ -352,6 +359,12 @@ composed frame (overlay + middle frame), same as images.
    instead (rule 9). `wait` hands you the answer (`stage:"rules"`, `reason:"agreed"|"kept"`):
    agreed → re-render what it blocked; kept → the checklist. Manual fallback
    `rules <campaign> --decide <id> --agree|--keep`; list with `rules <campaign>`.
+12. **Attachments are session-scoped — always read the new file.** When the user attaches a
+   file (chat attachment or wizard upload), read THAT file, even if a file with the same name
+   was seen in another session, project or campaign folder. Never answer "I already have
+   this file" from memory of a past session: same name ≠ same content, and nothing attached
+   needs to be carried across sessions. Each campaign/copy folder keeps its own uploads;
+   re-uploads coexist (`name (2).ext`), they are never refused as duplicates.
 
 ## Providers (contract = folder + manifest, not API)
 

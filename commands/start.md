@@ -28,8 +28,12 @@ chat with you and use the browser. Drive in this order:
    (optional). In the briefing area there is 'Supporting documents' to attach several files:
    ad copy, layout rules, safe areas, logo safety — and a 'Technical direction' field for the
    constraints of this whole creation (formats, margins, minimum font size and line count, what
-   must never be covered). Let me know when you're done."*
-   Wait for the OK. `plan` prints the technical direction (`direction.md`) in full: it binds the
+   must never be covered). When you're done, press **Next step →** in the last card and I'll
+   continue here in the chat."*
+   Start `python3 -m kit.cli wait <inbox>` in the **background** right after opening the
+   wizard: the **Next step →** button writes `ready.json` and `wait` returns `stage:"ready"`
+   — your signal to run the pipeline (a pasted "ready" phrase works as fallback). `plan`
+   prints the technical direction (`direction.md`) in full: it binds the
    templates, formats, asset prompts and copy.
 5. Read `AGENTS.md` and follow the pipeline: `intake (or brief --apply) → plan → assets →
    approve → render → video`. Free-form briefing (prose/PDF/docx)? `brief --normalize <source>` →
@@ -76,3 +80,5 @@ chat with you and use the browser. Drive in this order:
    targeting/IDs stay blank for PPC — do not invent. See "Step 7b — PPC sheets" in AGENTS.md.
 
 Do not skip compliance (never cover faces) and do not hardcode brand visuals.
+Attachments are session-scoped: always read the file the user just attached, even if a
+same-named file appeared in another session or project — never claim to already have it.

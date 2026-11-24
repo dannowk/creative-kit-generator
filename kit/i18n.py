@@ -67,15 +67,18 @@ _CATALOG = {
     "ob.p3.idph": "brand id (e.g. acme)",
     "ob.p3.run": "run intake",
     "ob.p4.title": "Next steps (the agent continues)",
-    "ob.p4.desc": "After the brand, the agent runs:",
+    "ob.p4.desc": "Press Next step and the agent continues in chat. After the brand, it runs:",
     "ob.p4.pipe": "<code>plan</code> art direction from the briefing + refs → "
                   "<code>assets</code> generates image/video with a ≈ cost notice → "
                   "<code>render</code> assembles the pieces → "
                   "<code>review</code> you approve / reject / redo (step 5).",
-    "ob.p4.paste": "Paste this into your agent (Claude, Codex, Qoder…) opened on the kit folder:",
     "ob.p4.copy": "copy phrase",
     # dynamic wizard JS
     "ob.js.agentline": "read AGENTS.md and run the campaign for {inbox}",
+    "ob.js.next": "Next step →",
+    "ob.js.next.waiting": "Signal sent — the agent continues in chat and opens the next step.",
+    "ob.js.next.fallback": "Nothing happening? The agent may not be watching — paste this phrase in chat:",
+    "ob.js.next.failed": "Could not send the signal — try again.",
     "ob.js.mode.hint": "Copy mode is live — switch keeps everything you typed here",
     "ob.js.mode.off": "Copy mode is not running — ask the agent: copy onboard <folder>",
     "ob.js.dirsaved": "Briefing and technical direction saved.",
@@ -394,9 +397,13 @@ _CATALOG = {
     "cli.deliver.nostate": "no state.json — run render before deliver",
     "cli.deliver.ppc": "PPC sheets (Meta + Google) in {dir}/ — {n} files (CSV + XLSX): {platforms}",
     "cli.ppc.truncated": "{n} copy field(s) cut to the platform limit — shorten them in the briefing/copy and export again: {list}",
-    "cli.wait.waiting": "waiting for the approval page or the review to mark work — "
-                        "{root}/assets/requests.json + {root}/requests.json (Ctrl+C to stop)",
+    "cli.wait.waiting": "waiting for the wizard's Next step, the approval page or the review to mark work — "
+                        "{root}/ready.json + {root}/assets/requests.json + {root}/requests.json (Ctrl+C to stop)",
     "cli.wait.empty": "timeout — nothing was marked",
+    "cli.wait.ready": "Next step pressed in the wizard — run the pipeline for {root}: "
+                      "intake (if the brand is not derived yet) → plan → assets (cost notice first) → render → review.",
+    "cli.copy.wait.ready": "Next step pressed in the copy wizard — generate the copy for {folder}: "
+                           "copy plan → write copy.json → copy review.",
     "cli.wait.fulfill": "{n} item(s) to work on: reason=redo → apply the note; reason=rejected → readjust the layout and recreate",
     "cli.wait.rejectcheck": "rejected is a layout brief, not a re-roll — check every one before re-rendering: "
                             "(1) framing for this format, persona and action realigned to the middle of the scene; "

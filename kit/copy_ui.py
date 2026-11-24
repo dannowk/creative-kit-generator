@@ -121,8 +121,12 @@ _WIZ_T = {
     "mode.hint": "Visual mode is live — switching keeps everything you typed here",
     "mode.off": "Visual mode is not running — ask the agent: onboard <folder>",
     "p2.title": "Generate with the agent",
-    "p2.desc": "Copy the line below and paste it in chat. The agent generates copy and opens the table review.",
+    "p2.desc": "Press Next step and the agent continues in chat — it generates the copy and opens the table review.",
     "agentline": "Ready! Briefing and examples in {folder} — generate the copy (PPC + overlay) and open the review.",
+    "next": "Next step →",
+    "next.waiting": "Signal sent — the agent continues in chat and opens the next step.",
+    "next.fallback": "Nothing happening? The agent may not be watching — paste this phrase in chat:",
+    "next.failed": "Could not send the signal — use the phrase below instead.",
     "copy": "Copy",
     "copied": "Line copied — paste it in chat.",
     "hascopy": "copy.json already exists in this folder — the agent can open the review directly.",
@@ -169,8 +173,13 @@ def wizard_page():
 <div class="row"><button class="btn primary" onclick="save()">{t['save']}</button></div></div>
 <div class="panel"><h2><span class="n">3</span>{t['p2.title']}</h2>
 <p class="desc">{t['p2.desc']}</p>
+<div class="row" style="margin-top:12px;align-items:center">
+<button class="btn primary" id="nextbtn" onclick="nextStep()">{t['next']}</button>
+<span class="meta" id="nextmsg"></span></div>
+<div id="nextfallback" style="display:none">
+<p class="desc" style="margin-top:10px">{t['next.fallback']}</p>
 <div class="row"><input type="text" id="agentline" readonly style="flex:1">
-<button class="btn primary" onclick="copyAgent()">{t['copy']}</button></div>
+<button class="btn" onclick="copyAgent()">{t['copy']}</button></div></div>
 <p class="hint" id="copynote"></p></div>
 </div>
 """ + ui._modal() + ui._JS_UTIL + ui._flow_js("copy", "wizard") + (
@@ -208,6 +217,8 @@ async function load(){
     `<button title="Remove" onclick="detach('${esc(a.name)}')">×</button></span>`).join("");
   document.getElementById("agentline").value=fill(T.agentline,{folder:S.folder});
   document.getElementById("copynote").textContent=S.has_copy?T.hascopy:T.nocopy;
+  document.getElementById("nextmsg").textContent=S.next?T["next.waiting"]:"";
+  document.getElementById("nextfallback").style.display=S.next?"":"none";
 }
 async function persist(){
   await fetch("/save",{method:"POST",body:JSON.stringify({
@@ -257,6 +268,12 @@ async function detach(name){
 async function copyAgent(){
   await navigator.clipboard.writeText(document.getElementById("agentline").value);
   notify(T.copied);
+}
+async function nextStep(){
+  const {ok}=await pj("/ready",{method:"POST",body:"{}"});
+  if(!ok){await tell(T["next.failed"]);return;}
+  document.getElementById("nextmsg").textContent=T["next.waiting"];
+  document.getElementById("nextfallback").style.display="";
 }
 async function pickFolder(){
   const {ok,j}=await pj("/pick-folder",{method:"POST",body:"{}"});
@@ -678,6 +695,7 @@ class CopyHandler(ui.Handler):
                     "direction": copy.read_text(self.root, "direction.md"),
                     "attachments": copy.attachments(self.root),
                     "filled": filled, "total": total, "ready": filled > 0,
+                    "next": onboard.ready_pending(self.root),
                     "has_copy": os.path.isfile(os.path.join(self.root, "copy.json"))})
             else:
                 payload = copy.review_payload(self.root)
@@ -735,6 +753,9 @@ class CopyHandler(ui.Handler):
                 stored = copy.save_attachment(self.root, name, raw)
                 return self._send(200, {"ok": True, "name": stored})
             payload = json.loads(raw or b"{}")
+            if url.path == "/ready":
+                onboard.press_ready(self.root)
+                return self._send(200, {"ok": True})
             if url.path == "/pick-folder":
                 try:
                     picked = ui._pick_folder()

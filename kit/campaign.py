@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 import yaml
 from PIL import Image
 
-from . import compliance, formats, primitives as P, render, rules
+from . import compliance, formats, onboard, primitives as P, render, rules
 from .brand import Brand, load_brand
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -510,7 +510,7 @@ def restart(root):
         p = os.path.join(root, d)
         if os.path.isdir(p):
             shutil.rmtree(p)
-    for f in ("requests.json",
+    for f in ("requests.json", "ready.json",
               os.path.join(assets.DIR, "state.json"),
               os.path.join(assets.DIR, "requests.json")):
         p = os.path.join(root, f)
@@ -539,6 +539,9 @@ def wait_batch(root, timeout=0, interval=2.0):
     import time
     deadline = time.time() + timeout if timeout else None
     while True:
+        pressed = onboard.take_ready(root)
+        if pressed:
+            return [{"stage": "ready", "reason": "next", "id": None, "at": pressed.get("at")}]
         batch = approval.sync_requests(root) + sync_requests(root)
         if batch:
             return batch

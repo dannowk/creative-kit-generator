@@ -33,7 +33,10 @@ and the browser.**
    and generated assets stay).
    Deps already installed → just reopen the wizard.
 4. **Announce in the chat** that onboarding opened; ask for the logo (required) + photos/refs +
-   briefing (brandbook is optional) and wait for the user's "ready". In the briefing area there is
+   briefing (brandbook is optional), then start `python3 -m kit.cli wait <inbox>` in the
+   background. The wizard's last panel has a **Next step →** button — when the user presses
+   it, `wait` returns `stage:"ready"` and you continue the pipeline in chat (the copy-phrase
+   fallback under the button works too). In the briefing area there is
    **"Supporting documents"** (several, they add up): ad copy, layout rules, safe
    areas, logo safety — text/PDF/Word/image/spreadsheet. `plan` lists them all; read and
    apply (copy → campaign.json.copy; rules → geometry/safe_zones/compliance).
@@ -120,3 +123,8 @@ and the browser.**
 
 The asset provider (the user's MCP, e.g. Magnific) lives in the agent, not in the kit:
 briefing `provider` section + `assets/jobs.json` → MCP → `drop_dir` → collection.
+
+**Attachments are session-scoped:** when the user attaches a file, read THAT file — even if
+a same-named file appeared in another session, project or campaign folder. Never say "I
+already have this file" from a past session; same name ≠ same content, and nothing attached
+needs to be carried across sessions.
