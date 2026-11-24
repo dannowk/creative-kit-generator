@@ -122,7 +122,7 @@ _CATALOG = {
     "rv.p7.desc": "Continue exports the approved pieces to the delivery folder on your Desktop (Desktop/Campaign Kit) and generates the PPC sheets (Meta + Google) beside them. Rejected/redo pieces are already queued for the agent — they come back to this same page as pending, badged NEW; approved pieces stay only in the approved list. Use Open folder to see the files on your Desktop.",
     "rv.p7.hint": "Marking starts the work right away — Continue only exports, and stays locked while the agent is working.",
     "rv.err.nostate": "No state.json — run render first.",
-    "rv.err.concept": "Invalid concept.",
+    "rv.err.concept": "Unknown concept “{concept}” — pick a concept in the filter above first.",
     "rv.adjust": "Adjust style",
     "rv.applystyle": "Apply to all pieces of the concept",
     "rv.stylenote": "Note (optional) — any other look rule",
@@ -209,6 +209,7 @@ _CATALOG = {
     "rv.js.style.big": "That file is over the 15 MB limit.",
     "rv.js.style.badtype": "References must be images (png/jpg/webp/gif) or a PDF.",
     "rv.js.style.refgone": "That reference is no longer attached.",
+    "rv.js.style.noconcept": "Pick a concept in the filter above before adjusting its style.",
     "rv.js.deliver.summary": '<span class="stat"><b>{approved}</b> approved → delivery folder (Desktop)</span>'
                              '<span class="stat"><b>{regen}</b> to recreate/redo</span>',
     "rv.js.continue.done": "{n} approved exported to <b>{dir}/</b>{queued}.",

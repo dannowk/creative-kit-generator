@@ -514,6 +514,7 @@ async function openStyle(concept){
   document.getElementById("stylemsg").textContent="";
   document.getElementById("stylepanel").hidden=false;}
 async function applyStyle(){
+  if(!styleConcept){await tell(T["style.noconcept"]);return;}
   const palette={};document.querySelectorAll("#stylecolors input[type=color]").forEach(i=>palette[i.dataset.role]=i.value);
   const type={};document.querySelectorAll("#stylefonts input[type=text]").forEach(i=>{if(i.value.trim())type[i.dataset.font]=i.value.trim();});
   const note=document.getElementById("stylenote").value.trim();
@@ -529,6 +530,7 @@ function drawRefs(refs){document.getElementById("stylerefs").innerHTML=(refs||[]
   `onclick="delRef('${esc(n)}')">×</button></span>`).join("");}
 function pickRefs(){document.getElementById("reffile").click();}
 async function uploadRefs(files){
+  if(!styleConcept){await tell(T["style.noconcept"]);return;}
   for(const f of files){
     const {ok,j}=await pj("/style-ref?concept="+encodeURIComponent(styleConcept)+
       "&name="+encodeURIComponent(f.name),{method:"POST",body:f});
@@ -536,6 +538,7 @@ async function uploadRefs(files){
     drawRefs(j.refs);
   }}
 async function delRef(name){
+  if(!styleConcept){await tell(T["style.noconcept"]);return;}
   const {ok,j}=await pj("/style-ref-delete?concept="+encodeURIComponent(styleConcept)+
     "&name="+encodeURIComponent(name));
   if(!ok){await tell(j.error||T.failed);return;}
@@ -1236,14 +1239,22 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, {"error": "not found"})
 
+    def _known_concepts(self):
+        camp = campaign.load_campaign(self.root)
+        known = set(campaign.available_concepts()) | set(camp.get("concepts") or [])
+        state_path = os.path.join(self.root, "state.json")
+        if os.path.isfile(state_path):
+            with open(state_path, encoding="utf-8") as f:
+                known |= {p.get("concept", "") for p in json.load(f).get("pieces", [])}
+        known.discard("")
+        return known
+
     def _style_ref(self, length):
         url = urlparse(self.path)
         q = parse_qs(url.query)
         concept = q.get("concept", [""])[0]
-        camp = campaign.load_campaign(self.root)
-        known = set(campaign.available_concepts()) | set(camp.get("concepts") or [])
-        if not re.fullmatch(r"[A-Za-z0-9_-]+", concept) or concept not in known:
-            return self._send(400, {"error": i18n.t("rv.err.concept")})
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", concept) or concept not in self._known_concepts():
+            return self._send(400, {"error": i18n.t("rv.err.concept", concept=concept)})
         name = q.get("name", [""])[0]
         if url.path == "/style-ref-delete":
             if not campaign.drop_ref(self.root, concept, name):
@@ -1340,10 +1351,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"ok": True, "queued": len(batch)})
         elif self.path == "/concept-style":
             concept = payload.get("concept", "")
-            camp = campaign.load_campaign(self.root)
-            known = set(campaign.available_concepts()) | set(camp.get("concepts") or [])
-            if not re.fullmatch(r"[A-Za-z0-9_-]+", concept) or concept not in known:
-                return self._send(400, {"error": i18n.t("rv.err.concept")})
+            if not re.fullmatch(r"[A-Za-z0-9_-]+", concept) or concept not in self._known_concepts():
+                return self._send(400, {"error": i18n.t("rv.err.concept", concept=concept)})
             pal = {}
             for r, v in (payload.get("palette") or {}).items():
                 if r in ("primary", "accent", "ink", "paper", "dark") and \
