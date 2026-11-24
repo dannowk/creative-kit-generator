@@ -50,7 +50,8 @@ and the browser.**
    come back as pending badged **NEW** — untouched files keep their approval. The marked card
    shows a **processing overlay** until the new file lands, and its `sha` in the image URL makes
    the regenerated file replace the old one in place (no reload, no cached copy). The **All**
-   filter shows every file at once — approved, pending and still regenerating.
+   filter shows every file at once — approved, pending and still regenerating. A rule proposal
+   (step 8) pops its blocking alarm here too, and locks **Next: render** until it is answered.
    **`render` is gated**: it refuses to run while any asset is unapproved (`--force` skips it).
    `wait` covers this queue too and, when everything is approved and there is no `state.json` yet,
    returns `{"stage":"assets","reason":"all_approved"}` — your signal to render.
@@ -81,6 +82,19 @@ and the browser.**
    the scene → safe zones clear → text contrast readable → nothing over a face → then refit the
    elements to the frame (font size, one/two/more lines, `width`/`max_h`) so the copy never hides
    the image and no word is cut in half. `wait` prints it whenever the batch has a reject.
+   **A rule change is the user's call** — never edit `kit/`, `brand.yaml` or `campaign.json` to
+   make a render pass; file it: `rules campaigns/<slug> --propose --scope brand|campaign
+   --target "compliance[check=contrast_min].ratio" --value 2.5 --reason "<why>"
+   [--affected N --total M]` (a dotted path; `compliance[check=disclaimer_required].when_text`
+   makes the disclaimer conditional on that text). A **blocking alarm** pops in the review *and*
+   in the asset page (+ desktop notification + ⚠ badge in the header) and Continue/Next stay
+   locked until the user picks **Accept the change** — the patch goes to
+   `campaigns/<slug>/rules/overrides.yaml` and is merged on every load, so the YAMLs stay
+   pristine — or **Keep the original rule**, which leaves the finding in place (fix the
+   layout/copy instead). `wait` hands you the answer as
+   `{"stage":"rules","reason":"agreed"|"kept"}`: agreed → re-render what it blocked
+   (`render --ids`); kept → the checklist above. No browser: `rules campaigns/<slug>
+   --decide <id> --agree|--keep`; list with `rules campaigns/<slug>`.
    **Continue** (or `deliver`) exports the approved pieces to the Desktop delivery folder
    (`~/Desktop/Campaign Kit/<campaign>/`); the **Open folder** button opens it on the user's
    computer. **The export is gated:** while anything is still rejected/redo, Continue is disabled

@@ -48,6 +48,14 @@ chat with you and use the browser. Drive in this order:
    realigned to the middle of the scene) → safe zones → text contrast → nothing over a face →
    refit the elements to the frame (font size, one/two/more lines, box) so nothing hides the image
    and no word is cut in half. See "A reject is a layout brief" in AGENTS.md.
+   **Never patch a rule to make it pass**: if a compliance check or a briefing field is what
+   blocks you, propose the change — `rules <campaign> --propose --scope brand|campaign
+   --target "compliance[check=contrast_min].ratio" --value 2.5 --reason "<why>"`. A **blocking
+   alarm** pops in the review and in the asset page (+ desktop notification + ⚠ badge) and
+   Continue/Next stay locked until the user picks **Accept the change** (saved to
+   `rules/overrides.yaml`, merged on every load; `brand.yaml`/`campaign.json` stay pristine) or
+   **Keep the original rule** (the finding stays → fix the layout/copy). `wait` returns the answer
+   as `{"stage":"rules","reason":"agreed"|"kept"}` — agreed: re-render what it blocked.
    The user clicks **Continue** (or you run `deliver`) to export the approved pieces to the
    Desktop delivery folder (`~/Desktop/Campaign Kit/<campaign>/`); the **Open folder** button opens
    it on the user's computer. **The export is gated:** while anything is still rejected/redo,

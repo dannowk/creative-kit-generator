@@ -20,7 +20,7 @@ from urllib.parse import urlparse, parse_qs
 
 import yaml
 
-from . import assets, campaign, i18n, intake, onboard
+from . import assets, campaign, i18n, intake, onboard, rules
 
 # ThreadingHTTPServer serves concurrently: without this, two fast review clicks
 # read-modify-write state.json in parallel and the second clobbers the first.
@@ -135,6 +135,20 @@ code{background:var(--pend-bg);border:1px solid var(--pend-line);border-radius:6
 .findings li.warn{color:var(--warn)}
 dialog{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:14px;max-width:92vw;padding:8px}
 dialog img{max-width:88vw;max-height:82vh;display:block;border-radius:8px}
+dialog#rulealarm{max-width:min(720px,94vw);padding:0;border:2px solid var(--accent);
+ box-shadow:0 18px 60px rgba(12,34,68,.3)}
+.rulebody{padding:18px 20px 16px}
+.rulebody h3{margin:0;font-size:17px}
+.rulemeta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 4px}
+.rulecmp{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0}
+.rulecmp pre{margin:4px 0 0;padding:10px;border-radius:10px;background:var(--bg);
+ border:1px solid var(--line);font-size:12.5px;white-space:pre-wrap;word-break:break-word;
+ max-height:190px;overflow:auto}
+.rulecmp .new pre{border-color:var(--accent);background:#eef5ff}
+.rulewhy{margin:6px 0 14px;font-size:13.5px}
+.rulebadge{cursor:pointer;background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn)}
+.rulehist{margin-top:12px;font-size:12px;color:var(--mut);display:grid;gap:3px}
+@media (max-width:640px){.rulecmp{grid-template-columns:1fr}}
 dialog::backdrop{background:rgba(20,26,32,.55)}
 .empty{padding:60px 20px;color:var(--mut);text-align:center}
 .filters{display:flex;gap:8px;flex-wrap:wrap}
@@ -184,6 +198,79 @@ def _modal():
 <button class="btn" id="msgcancel">{i18n.t('modal.cancel')}</button>
 <button class="btn primary" id="msgok">{i18n.t('modal.ok')}</button></div></div></dialog>
 <div id="toast" class="toast" hidden></div>
+"""
+
+
+def _rule_alarm(group):
+    """The blocking alarm: a rule change is the user's call, so it cannot be dismissed.
+
+    `group` is the page's i18n prefix ("rv.js" / "as.js") — the same keys both sides.
+    """
+    t = lambda k: i18n.t(f"{group}.rule.{k}")
+    return f"""
+<dialog id="rulealarm"><div class="rulebody">
+<h3>{t('title')}</h3>
+<p class="desc">{t('desc')}</p>
+<div class="rulemeta" id="rulemeta"></div>
+<div class="rulecmp"><div><div class="stylelabel">{t('now')}</div><pre id="rulenow"></pre></div>
+<div class="new"><div class="stylelabel">{t('proposed')}</div><pre id="rulenew"></pre></div></div>
+<div class="rulewhy"><b>{t('why')}:</b> <span id="rulewhy"></span></div>
+<div class="row"><span class="sp"></span>
+<button class="btn" onclick="decideRule(false)">{t('keep')}</button>
+<button class="btn primary" onclick="decideRule(true)">{t('agree')}</button></div>
+<div class="rulehist" id="rulehist"></div>
+</div></dialog>
+"""
+
+
+_RULE_JS = """<script>
+let ruleOpen=null, ruleSeen=0;
+const rulePend=()=>((state&&state.rule_proposals)||{}).pending||[];
+const ruleVal=v=>v==null||v===""?"—":(typeof v==="string"?v:JSON.stringify(v,null,1));
+function syncRules(){
+  const pend=rulePend(), hist=((state&&state.rule_proposals)||{}).decided||[];
+  const b=document.getElementById("rulebadge");
+  b.hidden=!pend.length;
+  b.textContent=fill(T["rule.badge"],{n:pend.length});
+  if(pend.length>ruleSeen){ruleSeen=pend.length;desktopNotify(T["rule.notify"]);}
+  if(!pend.length&&ruleSeen===0) ruleSeen=0;
+  const h=document.getElementById("rulehist");
+  h.innerHTML=hist.slice(-4).map(p=>fill(T["rule.history"],
+    {target:esc(p.target),status:T["rule.status."+p.status]||p.status})).join("");
+  const d=document.getElementById("rulealarm");
+  if(!pend.length){if(d.open)d.close();ruleOpen=null;return 0;}
+  const cur=pend.find(p=>p.id===ruleOpen)||pend[0];
+  if(ruleOpen!==cur.id||!d.open){
+    ruleOpen=cur.id;
+    document.getElementById("rulemeta").innerHTML=
+      `<span class="tag">${esc(T["rule.scope."+cur.scope]||cur.scope)}</span>`+
+      `<span class="tag">${esc(cur.target)}</span>`+
+      (cur.affected!=null&&cur.total!=null
+        ?`<span class="hint">${fill(T["rule.affected"],{affected:cur.affected,total:cur.total})}</span>`:"")+
+      (pend.length>1?`<span class="hint">${esc(cur.id)} · ${pend.length}</span>`:"");
+    document.getElementById("rulenow").textContent=ruleVal(cur.current);
+    document.getElementById("rulenew").textContent=ruleVal(cur.value);
+    document.getElementById("rulewhy").textContent=cur.reason||"—";
+    if(!d.open) d.showModal();
+  }
+  return pend.length;
+}
+async function decideRule(agree){
+  const id=ruleOpen; if(!id) return;
+  const d=document.getElementById("rulealarm");
+  d.close(); ruleOpen=null; ruleSeen=Math.max(0,ruleSeen-1);
+  const r=await fetch("/rule-decision",{method:"POST",body:JSON.stringify({id:id,agree:agree})});
+  const j=await r.json();
+  if(!r.ok){await tell(j.error||"error");await load();return;}
+  notify(fill(T[agree?"rule.agreed":"rule.kept"],{target:j.target||id}));
+  await load();
+}
+function desktopNotify(msg){
+  if(!("Notification" in window)) return;
+  if(Notification.permission==="granted"){try{new Notification("campaign-kit",{body:msg});}catch(e){}}
+  else if(Notification.permission!=="denied"){try{Notification.requestPermission();}catch(e){}}
+}
+</script>
 """
 
 
@@ -268,6 +355,7 @@ def review_page():
     return _head(i18n.t("rv.title")) + f"""
 <header><span class="brand">campaign-kit</span><h1 id="title">{i18n.t('rv.title')}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
+<button class="btn rulebadge" id="rulebadge" hidden onclick="ruleOpen=null;syncRules()"></button>
 <button class="btn primary contbtn" onclick="continueBatch()">{i18n.t('rv.js.continue')}</button>
 <button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
@@ -309,7 +397,7 @@ def review_page():
 <div id="deliver-result"></div></div>
 </div>
 <dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
-""" + _modal() + _JS_UTIL + _inject("rv.js") + """
+""" + _modal() + _rule_alarm("rv.js") + _JS_UTIL + _inject("rv.js") + _RULE_JS + """
 <script>
 let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null, seenBefore=null;
 let busyAt={}, timer=null, pollMs=0;
@@ -364,10 +452,11 @@ function applyState(s){
         return `<li><b>${esc(p.id)}</b> — ${esc(p.concept)} · ${esc(p.format)} — ${what} <span class="hint">[${st}${when}]</span></li>`;
       }).join("")+`</ul>`;
   } else qel.style.display="none";
-  const inprog=q.length;
-  document.querySelectorAll(".contbtn").forEach(b=>b.disabled=inprog>0);
+  const inprog=q.length, rulewait=syncRules();
+  document.querySelectorAll(".contbtn").forEach(b=>b.disabled=inprog>0||rulewait>0);
   const lh=document.getElementById("lockhint");
-  if(inprog>0){lh.style.display="";lh.textContent=fill(T["continue.locked"],{n:inprog});}
+  if(rulewait>0){lh.style.display="";lh.textContent=fill(T["rule.locked"],{n:rulewait});}
+  else if(inprog>0){lh.style.display="";lh.textContent=fill(T["continue.locked"],{n:inprog});}
   else lh.style.display="none";
   const ho=document.getElementById("handoff");
   if(inprog>0&&state.root){
@@ -535,6 +624,7 @@ def assets_page():
     return _head(i18n.t("as.title")) + f"""
 <header><span class="brand">campaign-kit</span><h1 id="title">{i18n.t('as.title')}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
+<button class="btn rulebadge" id="rulebadge" hidden onclick="ruleOpen=null;syncRules()"></button>
 <button class="btn primary nextbtn" onclick="nextStep()" disabled>{i18n.t('as.js.next')}</button>
 <button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
@@ -562,7 +652,7 @@ def assets_page():
 <div id="next-result"></div></div>
 </div>
 <dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
-""" + _modal() + _JS_UTIL + _inject("as.js") + """
+""" + _modal() + _rule_alarm("as.js") + _JS_UTIL + _inject("as.js") + _RULE_JS + """
 <script>
 let state=null, filter="working", lastState="", seenBefore=null;
 let busyAt={}, timer=null, pollMs=0;
@@ -611,10 +701,12 @@ function applyState(s){
       `<input type="text" id="handoffline" readonly style="flex:1" value="${esc(line)}">`+
       `<button class="btn" onclick="copyHandoff()">${T["handoff.copy"]}</button></div>`;
   } else ho.style.display="none";
-  const ready=A.length>0&&working===0;
+  const rulewait=syncRules();
+  const ready=A.length>0&&working===0&&rulewait===0;
   document.querySelectorAll(".nextbtn").forEach(b=>b.disabled=!ready);
   const g=document.getElementById("gate");
-  if(A.length&&!ready){g.style.display="";g.textContent=fill(T["next.locked"],{n:working});}
+  if(rulewait>0){g.style.display="";g.textContent=fill(T["rule.locked"],{n:rulewait});}
+  else if(A.length&&!ready){g.style.display="";g.textContent=fill(T["next.locked"],{n:working});}
   else g.style.display="none";
   if(ready) setStep(6);
   const now={}; for(const a of A) if(isBusy(a)) now[a.path]=a.sha||a.updated_at||"";
@@ -1074,6 +1166,7 @@ class Handler(BaseHTTPRequestHandler):
             with open(os.path.join(self.root, "state.json"), encoding="utf-8") as f:
                 state = json.load(f)
             campaign.sync_requests(self.root, state)
+            state["rule_proposals"] = rules.payload(self.root)
             self._send(200, state)
         elif url.path == "/img":
             rel = parse_qs(url.query).get("path", [""])[0]
@@ -1115,6 +1208,7 @@ class Handler(BaseHTTPRequestHandler):
                 camp = json.load(f)
         payload["campaign"] = camp.get("name") or camp.get("slug") or os.path.basename(self.root)
         payload["brand"] = camp.get("brand", "")
+        payload["rule_proposals"] = rules.payload(self.root)
         return payload
 
     def _assets_post(self, path, payload):
@@ -1146,6 +1240,12 @@ class Handler(BaseHTTPRequestHandler):
         if self.mode == "onboard":
             return self._onboard_post(length)
         payload = json.loads(self.rfile.read(length) or b"{}")
+        if self.path == "/rule-decision":
+            prop = rules.decide(self.root, payload.get("id", ""), bool(payload.get("agree")), who="user")
+            if prop is None:
+                return self._send(400, {"error": i18n.t("cli.rules.err.unknown",
+                                                        id=payload.get("id", ""))})
+            return self._send(200, {"ok": True, "status": prop["status"], "target": prop["target"]})
         if self.mode == "assets":
             return self._assets_post(self.path, payload)
         state_path = os.path.join(self.root, "state.json")

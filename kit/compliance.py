@@ -115,6 +115,9 @@ def check_disclaimer_required(img, trace, rule, brand):
     if not required:
         return []
     haystack = " ".join(el.get("text", "") for el in trace.get("elements", []))
+    when = rule.get("when_text")
+    if when and str(when).lower() not in haystack.lower():
+        return []
     if required.lower() not in haystack.lower():
         return [{"check": "disclaimer_required", "level": "fail",
                  "message": i18n.t("cmp.disclaimer_required", text=required)}]

@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 import yaml
 from PIL import Image
 
-from . import compliance, formats, primitives as P, render
+from . import compliance, formats, primitives as P, render, rules
 from .brand import Brand, load_brand
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -31,12 +31,14 @@ def load_campaign(path):
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
     data["_root"] = os.path.dirname(os.path.abspath(path))
-    return data
+    return rules.apply(data, data["_root"], "campaign")
 
 
 def brand_for(campaign, brands_dir=None):
     brands_dir = brands_dir or os.path.join(ROOT, "brands")
-    return load_brand(os.path.join(brands_dir, campaign["brand"]))
+    brand = load_brand(os.path.join(brands_dir, campaign["brand"]))
+    root = campaign.get("_root")
+    return rules.brand_for(root, brand) if root else brand
 
 
 def expand_axes(brand, campaign):
@@ -401,10 +403,11 @@ def wait_batch(root, timeout=0, interval=2.0):
     """Block until there is work, then return the batch (the agent's hook for BOTH stages).
 
     One trigger for the whole loop: marked assets (`assets/requests.json`, regenerate with the
-    provider) and marked pieces (`requests.json`, re-render). When nothing is marked but every
-    generated asset is approved and no piece has been rendered yet, it returns a single
-    `all_approved` item — that is the signal to run `render` (logos, overlays, copy, compliance).
-    `timeout` 0 = wait forever. Returns [] on timeout.
+    provider) and marked pieces (`requests.json`, re-render). A rule proposal the user answered
+    in the alarm comes back here too (`stage: rules`), so the agreed override gets re-rendered.
+    When nothing is marked but every generated asset is approved and no piece has been rendered
+    yet, it returns a single `all_approved` item — that is the signal to run `render` (logos,
+    overlays, copy, compliance). `timeout` 0 = wait forever. Returns [] on timeout.
     """
     from . import assets as approval
     import time
@@ -413,6 +416,11 @@ def wait_batch(root, timeout=0, interval=2.0):
         batch = approval.sync_requests(root) + sync_requests(root)
         if batch:
             return batch
+        decided = rules.take_decisions(root)
+        if decided:
+            return [{"stage": "rules", "reason": p["status"], "id": p["id"], "scope": p["scope"],
+                     "target": p["target"], "value": p["value"], "affected": p.get("affected")}
+                    for p in decided]
         ok, total = approval.all_approved(root)
         if ok and not os.path.isfile(os.path.join(root, "state.json")):
             return [{"stage": "assets", "reason": "all_approved", "id": None, "count": total}]

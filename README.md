@@ -159,6 +159,14 @@ working** on marked pieces — it unlocks when every change is done.
   the browser never serves a cached copy) and a toast tells you it arrived.
   You can close the browser and check later: regenerated pieces come back as pending with
   a **NEW** badge (updated since your last visit).
+- **A rule needs your decision:** the agent may not change a compliance rule or a briefing
+  field on its own — it files a proposal, and the page (review **and** asset approval) pops a
+  **blocking alarm**: the rule as it is now, what the agent proposes, why, and how many pieces
+  it touches. You also get a **desktop notification** (macOS/Windows) and a ⚠ badge in the
+  header, and Continue/Next stay locked until you answer. **Accept the change** saves the patch
+  to `campaigns/<campaign>/rules/overrides.yaml` — it is merged on every render, so `brand.yaml`
+  and `campaign.json` stay exactly as you wrote them. **Keep the original rule** leaves the rule
+  (and the finding it produces) alone, and the agent fixes the layout or the copy instead.
 - **No agent watching?** The review shows a **handoff** line with the exact instruction — copy it
   into the chat and the agent runs the batch.
 - Delivered (approved) pieces: `~/Desktop/Campaign Kit/<campaign>/<concept>/` (png/mp4), on

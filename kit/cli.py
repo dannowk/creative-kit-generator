@@ -17,7 +17,7 @@ import os
 import sys
 
 from . import (assets, briefing, campaign, copy, i18n, intake, onboard,
-               providers, render, ui, video)
+               providers, render, rules, ui, video)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -110,6 +110,23 @@ def main(argv=None):
     p = sub.add_parser("wait", help="block until an asset or a piece is marked (or every asset is approved), then print the batch (agent hook)")
     p.add_argument("campaign")
     p.add_argument("--timeout", type=float, default=0, help="seconds to wait, 0 = until something is queued")
+
+    p = sub.add_parser("rules", help="a rule change is the user's call: propose it, answer it, or wait for the alarm")
+    p.add_argument("campaign")
+    p.add_argument("--propose", action="store_true", help="file a proposal (needs --target, --value, --reason)")
+    p.add_argument("--scope", choices=["brand", "campaign"], default="brand",
+                   help="brand = brand.yaml data, campaign = campaign.json data")
+    p.add_argument("--target", help="dotted path: compliance[check=contrast_min].ratio, copy.hero.disclaimer")
+    p.add_argument("--value", help="proposed value — JSON when it parses, otherwise a plain string")
+    p.add_argument("--reason", default="", help="why the rule has to change (shown in the alarm)")
+    p.add_argument("--affected", type=int, default=None, help="how many pieces/assets the change touches")
+    p.add_argument("--total", type=int, default=None, help="total pieces/assets in the campaign")
+    p.add_argument("--decide", metavar="ID", help="answer a proposal without the browser (manual fallback)")
+    p.add_argument("--agree", action="store_true", help="with --decide: accept the change")
+    p.add_argument("--keep", action="store_true", help="with --decide: keep the original rule")
+    p.add_argument("--watch", action="store_true", help="block until a pending proposal is decided")
+    p.add_argument("--timeout", type=float, default=0, help="seconds to wait, 0 = until decided")
+    p.add_argument("--no-notify", action="store_true", help="skip the desktop notification")
 
     p = sub.add_parser("ppc", help="bulk-upload sheets for the PPC team (Meta + Google), CSV + XLSX")
     p.add_argument("campaign")
@@ -528,7 +545,14 @@ def main(argv=None):
                   file=sys.stderr)
             return 0
         marked = [b for b in batch if b.get("stage") == "assets"]
-        pieces = [b for b in batch if b.get("stage") != "assets"]
+        pieces = [b for b in batch if b.get("stage") not in ("assets", "rules")]
+        ruled = [b for b in batch if b.get("stage") == "rules"]
+        if ruled:
+            for b in ruled:
+                print("  " + i18n.t("cli.rules.agreed" if b["reason"] == "agreed"
+                                    else "cli.rules.kept", target=b["target"]), file=sys.stderr)
+            print("  " + i18n.t("cli.wait.rerender", root=root), file=sys.stderr)
+            return 0
         if marked:
             print(i18n.t("cli.wait.assets", n=len(marked), root=root,
                          jobs=" ".join(assets.jobs_for(marked))), file=sys.stderr)
@@ -541,6 +565,66 @@ def main(argv=None):
                 print("  " + i18n.t("cli.wait.asset", root=root, jobs=" ".join(jobs)), file=sys.stderr)
             print("  " + i18n.t("cli.wait.next", root=root,
                                 ids=" ".join(b["id"] for b in pieces)), file=sys.stderr)
+        return 0
+
+    if args.cmd == "rules":
+        root = camp["_root"]
+
+        def _value(text):
+            try:
+                return json.loads(text)
+            except ValueError:
+                return text
+
+        if args.propose:
+            if not args.target or args.value is None:
+                print(i18n.t("cli.rules.err.propose"), file=sys.stderr)
+                return 1
+            try:
+                prop = rules.add(root, args.target, _value(args.value), args.reason, scope=args.scope,
+                                 affected=args.affected, total=args.total, notify=not args.no_notify)
+            except KeyError:
+                print(i18n.t("cli.rules.err.target", target=args.target), file=sys.stderr)
+                return 1
+            print(json.dumps(prop, indent=2, ensure_ascii=False))
+            print("  " + i18n.t("cli.rules.proposed", id=prop["id"], target=prop["target"], root=root),
+                  file=sys.stderr)
+            return 0
+
+        if args.decide:
+            if args.agree == args.keep:
+                print(i18n.t("cli.rules.err.decide"), file=sys.stderr)
+                return 1
+            prop = rules.decide(root, args.decide, args.agree, who="cli")
+            if prop is None:
+                print(i18n.t("cli.rules.err.unknown", id=args.decide), file=sys.stderr)
+                return 1
+            print(json.dumps(prop, indent=2, ensure_ascii=False))
+            print("  " + i18n.t("cli.rules.agreed" if args.agree else "cli.rules.kept",
+                                target=prop["target"]), file=sys.stderr)
+            return 0
+
+        if args.watch:
+            print(i18n.t("cli.rules.watching", n=len(rules.pending(root)), root=root), file=sys.stderr)
+            try:
+                batch = rules.watch(root, args.timeout)
+            except KeyboardInterrupt:
+                return 1
+            if not batch:
+                print(i18n.t("cli.rules.empty"), file=sys.stderr)
+                return 1
+            print(json.dumps(batch, indent=2, ensure_ascii=False))
+            for p in batch:
+                print("  " + i18n.t("cli.rules.agreed" if p["status"] == "agreed" else "cli.rules.kept",
+                                    target=p["target"]), file=sys.stderr)
+            return 0
+
+        state = rules.payload(root)
+        print(json.dumps(state, indent=2, ensure_ascii=False))
+        if state["pending"]:
+            print("  " + i18n.t("cli.rules.pending", n=len(state["pending"]), root=root), file=sys.stderr)
+        else:
+            print("  " + i18n.t("cli.rules.none"), file=sys.stderr)
         return 0
 
     if args.cmd == "ppc":

@@ -129,6 +129,18 @@ python3 -m kit.cli review campaigns/acme-launch
 #     --timeout N gives up after N seconds (0 = wait forever).
 python3 -m kit.cli wait campaigns/acme-launch
 
+# 6c. A rule change is the user's call — propose it, never patch kit/ or the YAMLs yourself.
+#     The review and the asset page pop a blocking alarm (rule now → proposed + why + how many
+#     pieces it touches) and a desktop notification; Continue/Next stay locked until the user
+#     accepts or keeps the original. Accepted patches go to <campaign>/rules/overrides.yaml and
+#     are merged on every load, so brand.yaml/campaign.json stay pristine. `wait` returns the
+#     answer as {"stage":"rules","reason":"agreed"|"kept"} — agreed: re-render what it blocked.
+python3 -m kit.cli rules campaigns/acme-launch --propose --scope brand \
+  --target "compliance[check=contrast_min].ratio" --value 2.5 --reason "overlay grey only hits 2.6:1"
+python3 -m kit.cli rules campaigns/acme-launch          # list pending + decided + patches
+python3 -m kit.cli rules campaigns/acme-launch --watch  # block until the user answers
+python3 -m kit.cli rules campaigns/acme-launch --decide r-20261124T053308-01 --keep  # no browser
+
 # 7. Delivery — headless equivalent of "Continue". Exports the approved pieces to the delivery folder
 #    on the Desktop (~/Desktop/Campaign Kit/<campaign>/<concept>/). Locked while anything is still
 #    rejected/redo: it then prints the batch to fulfill instead of exporting. See "Stages 6–7 —
@@ -147,7 +159,7 @@ python3 -m kit.cli ppc campaigns/acme-launch
 ## Structure
 
 - `kit/` — engine (declarative render, PIL primitives, compliance, intake, onboard,
-  providers, UI). Do not hardcode brand visuals here.
+  providers, rules, UI). Do not hardcode brand visuals here.
 - `templates/` — global library of concept specs (`cinema.yaml`, `editorial.yaml`,
   `poster.yaml`, `typographic.yaml`). Each campaign can override in
   `campaigns/<slug>/templates/<concept>.yaml`.
@@ -157,6 +169,7 @@ python3 -m kit.cli ppc campaigns/acme-launch
   provider, asset_jobs) + `assets/` (generated files + `manifest.json` provenance/spend
   + `state.json` approvals + `requests.json` regeneration batch) + `out/<concept>/` (working render)
   + `review/` + `styles/<concept>.yaml` (concept color/font adjustment, optional)
+  + `rules/` (`proposals.json` alarms + `overrides.yaml` accepted patches, optional)
   + `state.json` (decisions) + `requests.json` (regeneration batch).
 - `~/Desktop/Campaign Kit/<campaign>/` — **final delivery folder**, outside the kit, on the
   user's Desktop: `<concept>/` with the approved pieces exported by Continue + `ppc/` (Meta + Google
@@ -303,6 +316,23 @@ composed frame (overlay + middle frame), same as images.
 10. **`direction.md` binds the whole creation.** When the user filled the technical direction
    field, every template, format, asset prompt and copy row honours it; a conflict with the
    briefing or the brandbook becomes a question, never a silent guess.
+11. **A rule change is the user's call — propose it, never patch it.** Nothing in `kit/`,
+   `brand.yaml` or `campaign.json` gets edited to make a render pass (no hot-patching a check,
+   no loosening a threshold "just this once", no `when_text` typed straight into the brand).
+   File the change and let the user answer:
+   `python3 -m kit.cli rules <campaign> --propose --scope brand|campaign --target <dotted path>
+   --value <json|string> --reason "<why>" [--affected N --total M]` — e.g.
+   `--target "compliance[check=contrast_min].ratio" --value 2.5`, or
+   `--target "compliance[check=disclaimer_required].when_text" --value '"$28"'` (the disclaimer
+   is only required when that text is on the piece). The review **and** the asset page pop a
+   **blocking alarm** (rule now → proposed, the reason, how many pieces it touches) plus a
+   desktop notification, and Continue/Next stay locked until the user picks: **Accept the
+   change** writes the patch to `<campaign>/rules/overrides.yaml`, merged on every load (the
+   brand and briefing files stay pristine, and the decision survives re-renders); **Keep the
+   original rule** leaves the rule and its finding as they are — so fix the layout or the copy
+   instead (rule 9). `wait` hands you the answer (`stage:"rules"`, `reason:"agreed"|"kept"`):
+   agreed → re-render what it blocked; kept → the checklist. Manual fallback
+   `rules <campaign> --decide <id> --agree|--keep`; list with `rules <campaign>`.
 
 ## Providers (contract = folder + manifest, not API)
 
