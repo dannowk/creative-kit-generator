@@ -8,8 +8,11 @@ concept × axis × kind). English-only.
 
 import json
 import os
+import re
 import threading
 from datetime import datetime, timezone
+
+import yaml
 
 # The review table serves concurrently: without this, two fast clicks read-modify-write
 # copy.json in parallel and the second decision clobbers the first.
@@ -264,6 +267,26 @@ def delivery_dir(root):
     from .campaign import desktop_dir, _slug
     name = _slug(os.path.basename(os.path.abspath(root)))
     return os.path.join(desktop_dir(), "Copy Kit", name)
+
+
+# Adjust copy: same format as the visual review's Adjust style — a direction note plus
+# references, applied to the whole concept or only to ticked rows. Storage reuses the
+# visual kit's styles/<concept>.yaml + refs/ helpers (files only, no campaign data).
+ADJUST_REF_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".pdf",
+                  ".md", ".txt", ".rtf", ".docx", ".csv", ".xlsx")
+
+
+def adjust_apply(root, concept, note, ids=()):
+    """Save the direction and queue the concept's rows (or only ids) as redo with it."""
+    from . import campaign
+    campaign.merge_style(root, concept, {}, {}, note, ids)
+    idset = set(ids)
+    data = load(root)
+    targets = [r["id"] for r in data.get("rows") or []
+               if r.get("concept") == concept and (not idset or r.get("id") in idset)]
+    for rid in targets:
+        decide(root, rid, "redo", note, who="user")
+    return len(targets)
 
 
 OVERLAY_COLUMNS = ["Concept", "Program", "Platform", "Variation", "Type", "Text", "Chars"]

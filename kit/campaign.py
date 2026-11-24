@@ -166,6 +166,43 @@ def load_style(root, concept):
         return yaml.safe_load(f) or {}
 
 
+def save_style(root, concept, style):
+    sp = style_path(root, concept)
+    os.makedirs(os.path.dirname(sp), exist_ok=True)
+    with open(sp, "w", encoding="utf-8") as f:
+        yaml.safe_dump(style, f, allow_unicode=True, sort_keys=False)
+
+
+def merge_style(root, concept, pal, typ, note, ids=()):
+    """Write the review's adjustment. With ids: per-piece overrides under `pieces:`
+    (only those pieces change on the next render). Without: concept-wide, and any
+    per-piece overrides are cleared so the whole concept matches again."""
+    style = load_style(root, concept)
+    fields = {k: v for k, v in (("palette", pal), ("type", typ), ("note", note)) if v}
+    if ids:
+        pm = style.setdefault("pieces", {})
+        for pid in ids:
+            if fields:
+                pm[pid] = dict(fields)
+            else:
+                pm.pop(pid, None)
+        if not pm:
+            style.pop("pieces", None)
+    else:
+        style.pop("pieces", None)
+        for k in ("palette", "type", "note"):
+            if k in fields:
+                style[k] = fields[k]
+            else:
+                style.pop(k, None)
+    save_style(root, concept, style)
+    return style
+
+
+def piece_style(style, piece_id):
+    return (style.get("pieces") or {}).get(piece_id) or {}
+
+
 MAX_REF = 15 * 1024 * 1024
 REF_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".pdf")
 
@@ -186,16 +223,15 @@ def _set_refs(root, concept):
         style["refs"] = names
     else:
         style.pop("refs", None)
-    with open(style_path(root, concept), "w", encoding="utf-8") as f:
-        yaml.safe_dump(style, f, allow_unicode=True, sort_keys=False)
+    save_style(root, concept, style)
 
 
-def add_ref(root, concept, name, data):
+def add_ref(root, concept, name, data, exts=REF_EXT):
     """Save a reference attached in the review under styles/<concept>/refs/ and list it."""
     base = re.sub(r"[^A-Za-z0-9._-]+", "-", os.path.basename(name or "").strip()).strip("-.")
     if not base:
         base = "reference"
-    if not base.lower().endswith(REF_EXT) or len(data) > MAX_REF:
+    if not base.lower().endswith(exts) or len(data) > MAX_REF:
         raise ValueError(base)
     d = refs_dir(root, concept)
     os.makedirs(d, exist_ok=True)
@@ -250,7 +286,9 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
         names = [n for n in names if n in only_formats]
     concepts = only_concepts or campaign.get("concepts") or available_concepts()
     specs = {c: render.load_spec(_spec_path(campaign, c)) for c in concepts}
-    cbrands = {c: styled_brand(brand, load_style(root, c)) for c in concepts}
+    cstyles = {c: load_style(root, c) for c in concepts}
+    cbrands = {c: styled_brand(brand, cstyles[c]) for c in concepts}
+    pbrands = []
 
     combos = expand_axes(brand, campaign)
     overrides = load_subject_overrides(campaign)
@@ -286,9 +324,13 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
                 if geo["tight"] and spec.get("needs_photo") and "tight" not in (spec.get("variants") or {}):
                     continue
                 trace = {}
-                img = render.render(spec, cbrands[concept], geo, photo=photo, fx=fx, logo=logo,
+                pstyle = piece_style(cstyles[concept], name)
+                cb = styled_brand(cbrands[concept], pstyle)
+                if pstyle:
+                    pbrands.append(cb)
+                img = render.render(spec, cb, geo, photo=photo, fx=fx, logo=logo,
                                     copy=merged, extra=extra, trace=trace)
-                findings = compliance.run(img, trace, cbrands[concept])
+                findings = compliance.run(img, trace, cb)
                 rel = os.path.join(concept, f"{name}.png")
                 entry = {"id": name, "path": rel, "concept": concept, "format": fmt,
                          "axes": combo, "asset": os.path.basename(asset_path) if asset_path else None,
@@ -313,7 +355,7 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
     if not dry:
         pieces = _merge_prior(root, pieces)
         _sheets(root, out_dir, pieces)
-    for cb in cbrands.values():
+    for cb in list(cbrands.values()) + pbrands:
         for m in cb.fonts.missing:
             if m not in brand.fonts.missing:
                 brand.fonts.missing.append(m)

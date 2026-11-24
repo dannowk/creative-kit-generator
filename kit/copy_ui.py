@@ -34,6 +34,9 @@ table.copy .cnt.over{color:#B42318;font-weight:600}
 .queuelist li{margin:3px 0}
 table.copy .acts{white-space:nowrap}
 table.copy .acts button{min-height:28px;padding:3px 9px;font-size:12.5px}
+table.copy .tickcol{width:34px}
+table.copy .tickcell{text-align:center}
+.rowtick{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
 .fieldlabel{font-size:12.5px;color:var(--mut);font-weight:600}
 .drop{border:2px dashed var(--line);border-radius:10px;padding:11px 14px;color:var(--mut);
  font-size:13px;cursor:pointer;margin:6px 0 10px;text-align:center;background:#fbfcfd;line-height:1.45}
@@ -289,6 +292,28 @@ _REV_T = {
     "openfolder": "Open folder",
     "openfolder.toast": "Folder opened: {dir}",
     "openfolder.empty": "empty delivery folder — export first",
+    "adjust": "Adjust copy",
+    "adj.concept": "Concept:",
+    "adj.desc": "Give the rewrite a direction for the {concept} rows: tone, what to change, what to keep. Tick rows (or Select all) to rewrite only those; with nothing ticked the whole concept is queued. Saved to styles/{concept}.yaml with the attached references — the agent reads them before rewriting.",
+    "adj.note": "Direction for the rewrite (tone, claims, words to use / avoid)",
+    "adj.attach": "Attach reference…",
+    "adj.drophint": "or drop example copy / voice docs on this panel — the agent reads them before rewriting.",
+    "adj.selall": "Select all ({n})",
+    "adj.selclear": "Clear selection",
+    "adj.selcount": "{n} ticked in this concept",
+    "adj.tick": "tick to rewrite only this row",
+    "adj.apply": "Queue rewrite of all rows of the concept",
+    "adj.applysel": "Queue rewrite of {n} ticked row(s)",
+    "adj.confirm": "This queues all {n} {concept} row(s) for rewrite with this direction (approved ones go back to pending). Continue?",
+    "adj.confirmsel": "This queues the {n} ticked {concept} row(s) for rewrite with this direction. Unticked rows keep their text. Continue?",
+    "adj.applied": "{n} {concept} row(s) queued — the agent rewrites them with the direction.",
+    "adj.noconcept": "There is no concept to adjust yet — generate copy first.",
+    "adj.neednote": "Write the direction for the rewrite first — the agent rewrites from it.",
+    "adj.refdel": "remove this reference",
+    "adj.big": "That file is over the 15 MB limit.",
+    "adj.badtype": "References must be text/docs (md/txt/rtf/docx/csv/xlsx), images or a PDF.",
+    "adj.refgone": "That reference is no longer attached.",
+    "adj.failed": "The request failed — try again.",
 }
 
 
@@ -315,11 +340,28 @@ def review_page():
 <div class="filters" id="filters"></div>
 <div class="filters" id="dfilters"></div>
 <div class="filters" id="pfilters"></div>
-<div class="row" style="align-items:center"><span class="meta">{t['concept']}</span><div class="filters" id="cfilters"></div></div>
+<div class="row" style="align-items:center"><span class="meta">{t['concept']}</span><div class="filters" id="cfilters"></div>
+<button class="btn" id="adjbtn" onclick="toggleAdjust()">{t['adjust']}</button></div>
+<div id="adjpanel" class="stylepanel" hidden>
+<div class="row" style="align-items:center"><label class="stylelabel" for="adjconcept">{t['adj.concept']}</label>
+<select id="adjconcept" onchange="openAdjust(this.value)"></select><span class="sp"></span>
+<button class="btn" id="adjselall" onclick="adjSelAll()"></button>
+<button class="btn" onclick="adjSelClear()">{t['adj.selclear']}</button>
+<span class="meta" id="adjselcount"></span></div>
+<p class="desc" id="adjdesc"></p>
+<div><label class="stylelabel" for="adjnote">{t['adj.note']}</label>
+<textarea id="adjnote" class="stylenote" rows="2"></textarea></div>
+<div class="row"><button class="btn" onclick="adjPick()">{t['adj.attach']}</button>
+<input type="file" id="adjfile" multiple hidden accept="{','.join(copy.ADJUST_REF_EXT)}">
+<span class="meta">{t['adj.drophint']}</span></div>
+<div class="stylerefs" id="adjrefs"></div>
+<div class="row"><button class="btn primary" id="adjapply" onclick="applyAdjust()">{t['adj.apply']}</button>
+<span class="meta" id="adjmsg"></span></div>
+</div>
 <div class="row" id="prow" style="align-items:center;display:none"><span class="meta">{t['program']}</span><div class="filters" id="prfilters"></div></div>
 <div class="callout" id="strat" style="display:none"></div>
 <div class="tablewrap"><table class="copy">
-<thead><tr><th>{t['th.status']}</th><th>{t['th.concept']}</th><th>{t['th.program']}</th>
+<thead><tr><th class="tickcol"></th><th>{t['th.status']}</th><th>{t['th.concept']}</th><th>{t['th.program']}</th>
 <th>{t['th.platform']}</th><th>{t['th.type']}</th><th>{t['th.text']}</th><th>{t['th.acts']}</th></tr></thead>
 <tbody id="tbody"></tbody></table></div></div>
 <div class="panel"><h2><span class="n">4</span>{t['p4.title']}</h2>
@@ -333,7 +375,8 @@ def review_page():
 """ + ui._modal() + ui._JS_UTIL + (
         '<script>const T=' + json.dumps(t, ensure_ascii=False) + ';</script>') + """
 <script>
-let state=null,filter="working",dest="all",pf="all",cf="all",prf="all",last="",seenBefore=null;
+let state=null,filter="working",dest="all",pf="all",cf="all",prf="all",last="",seenBefore=null,
+    sel=new Set(),adjOpen=false,adjConcept=null;
 const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"]};
 const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"]};
 const LIM={headline:30,description:90,link_description:40};
@@ -416,9 +459,11 @@ function applyState(s){
 function setFilter(f){filter=f;draw();}
 function setDest(d){dest=d;draw();}
 function setPf(p){pf=p;draw();}
-function setConcept(k){cf=k;draw();}
+function setConcept(k){cf=k;draw();
+  if(adjOpen&&k!=="all") openAdjust(k);}
 function setProgram(p){prf=p;draw();}
 function draw(){
+  adjUpdateUI();
   const items=state.rows.filter(r=>
     (filter==="working"?r.status!=="approved":r.status===filter)&&
     (dest==="all"||r.destination===dest)&&
@@ -426,7 +471,7 @@ function draw(){
     (cf==="all"||r.concept===cf)&&
     (prf==="all"||(r.program||"")===prf));
   const tb=document.getElementById("tbody");
-  if(!items.length){tb.innerHTML=`<tr><td colspan="7"><div class="empty">${T.empty}</div></td></tr>`;return;}
+  if(!items.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty">${T.empty}</div></td></tr>`;return;}
   tb.innerHTML=items.map(r=>{
     const note=(r.status==="redo"&&r.note)?`<div class="hint">↻ ${esc(r.note)}</div>`:"";
     const n=(r.text||"").length,lim=LIM[r.kind];
@@ -436,6 +481,8 @@ function draw(){
     const isnew=(seenBefore&&r.updated_at&&r.updated_at>seenBefore&&r.status==="pending")
       ?` <span class="tag new"><span class="dot"></span>${T.newbadge}</span>`:"";
     return `<tr>
+      <td class="tickcell"><input type="checkbox" class="rowtick" title="${T["adj.tick"]}"
+        ${sel.has(r.id)?"checked":""} onchange="adjToggle('${esc(r.id)}',this.checked)"></td>
       <td><span class="tag ${r.status}"><span class="dot"></span>${SING[r.status]}</span>${isnew}</td>
       <td><b>${esc(r.concept)}</b>${axis}</td>
       <td>${esc(r.program||"—")}</td>
@@ -494,6 +541,76 @@ async function openFolder(){
   if(!r.ok){await tell(j.error||"error");return;}
   notify(fill(T["openfolder.toast"],{dir:esc(j.path)}));
 }
+function concepts(){return (state.concepts&&state.concepts.length?state.concepts:[...new Set(state.rows.map(r=>r.concept))]);}
+function closeAdjust(){adjOpen=false;document.getElementById("adjpanel").hidden=true;}
+async function toggleAdjust(){
+  if(adjOpen){closeAdjust();return;}
+  const k=cf!=="all"?cf:(adjConcept||concepts()[0]||"");
+  if(!k){await tell(T["adj.noconcept"]);return;}
+  await openAdjust(k);}
+async function openAdjust(concept){
+  const {ok,j}=await pj("/adjust?concept="+encodeURIComponent(concept));
+  if(!ok){await tell(j.error||T["adj.failed"]);return;}
+  adjConcept=concept;adjOpen=true;
+  document.getElementById("adjconcept").innerHTML=concepts().map(c=>
+    `<option value="${esc(c)}"${c===concept?" selected":""}>${esc(c)}</option>`).join("");
+  document.getElementById("adjdesc").textContent=fill(T["adj.desc"],{concept});
+  document.getElementById("adjnote").value=j.note||"";
+  adjDrawRefs(j.refs||[]);
+  document.getElementById("adjmsg").textContent="";
+  adjUpdateUI();
+  document.getElementById("adjpanel").hidden=false;}
+function adjInConcept(){return state?state.rows.filter(r=>r.concept===adjConcept&&sel.has(r.id)):[];}
+function adjUpdateUI(){
+  const tot=state?state.rows.filter(r=>r.concept===adjConcept).length:0;
+  document.getElementById("adjselall").textContent=fill(T["adj.selall"],{n:tot});
+  const n=adjInConcept().length;
+  document.getElementById("adjselcount").textContent=n?fill(T["adj.selcount"],{n}):"";
+  document.getElementById("adjapply").textContent=n?fill(T["adj.applysel"],{n}):T["adj.apply"];}
+function adjToggle(id,on){if(on)sel.add(id);else sel.delete(id);adjUpdateUI();}
+function adjSelAll(){if(!state)return;
+  state.rows.filter(r=>r.concept===adjConcept).forEach(r=>sel.add(r.id));
+  draw();adjUpdateUI();}
+function adjSelClear(){sel.clear();draw();adjUpdateUI();}
+function adjDrawRefs(refs){document.getElementById("adjrefs").innerHTML=(refs||[]).map(n=>
+  `<span class="chip">${esc(n)}<button title="${esc(T["adj.refdel"])}" `+
+  `onclick="adjDelRef('${esc(n)}')">×</button></span>`).join("");}
+function adjPick(){document.getElementById("adjfile").click();}
+async function adjUpload(files){
+  if(!adjConcept){await tell(T["adj.noconcept"]);return;}
+  for(const f of files){
+    const {ok,j}=await pj("/adjust-ref?concept="+encodeURIComponent(adjConcept)+
+      "&name="+encodeURIComponent(f.name),{method:"POST",body:f});
+    if(!ok){await tell(j.error||T["adj.failed"]);continue;}
+    adjDrawRefs(j.refs);
+  }}
+async function adjDelRef(name){
+  if(!adjConcept){await tell(T["adj.noconcept"]);return;}
+  const {ok,j}=await pj("/adjust-ref-delete?concept="+encodeURIComponent(adjConcept)+
+    "&name="+encodeURIComponent(name),{method:"POST",body:"{}"});
+  if(!ok){await tell(j.error||T["adj.failed"]);return;}
+  adjDrawRefs(j.refs);}
+async function applyAdjust(){
+  if(!adjConcept){await tell(T["adj.noconcept"]);return;}
+  const note=document.getElementById("adjnote").value.trim();
+  if(!note){await tell(T["adj.neednote"]);return;}
+  const ids=adjInConcept().map(r=>r.id);
+  const n=ids.length||state.rows.filter(r=>r.concept===adjConcept).length;
+  const msg=ids.length?fill(T["adj.confirmsel"],{n,concept:adjConcept})
+    :fill(T["adj.confirm"],{n,concept:adjConcept});
+  if(!await confirmBox(msg))return;
+  const {ok,j}=await pj("/copy-adjust",{method:"POST",body:JSON.stringify({concept:adjConcept,note,ids})});
+  if(!ok){await tell(j.error||T["adj.failed"]);return;}
+  sel.clear();
+  await load();
+  notify(fill(T["adj.applied"],{n:j.count,concept:adjConcept}));
+  closeAdjust();}
+document.getElementById("adjfile").addEventListener("change",e=>{adjUpload([...e.target.files]);e.target.value="";});
+const ap=document.getElementById("adjpanel");
+ap.addEventListener("dragover",e=>{e.preventDefault();ap.classList.add("drag");});
+ap.addEventListener("dragleave",()=>ap.classList.remove("drag"));
+ap.addEventListener("drop",e=>{e.preventDefault();ap.classList.remove("drag");
+  if(e.dataTransfer.files.length)adjUpload([...e.dataTransfer.files]);});
 load();
 setInterval(poll,4000);
 </script></body></html>"""
@@ -534,6 +651,12 @@ class CopyHandler(ui.Handler):
                 payload["meta_cta"] = data.get("meta_cta") or ""
                 payload["batch"] = copy.sync_requests(self.root, data)
                 self._send(200, payload)
+        elif url.path == "/adjust":
+            from . import campaign
+            concept = parse_qs(url.query).get("concept", [""])[0]
+            st = campaign.load_style(self.root, concept)
+            return self._send(200, {"concept": concept, "note": st.get("note", ""),
+                                    "refs": campaign.list_refs(self.root, concept)})
         elif url.path == "/download":
             fname = os.path.basename(parse_qs(url.query).get("file", [""])[0])
             d = copy.delivery_dir(self.root)
@@ -581,7 +704,44 @@ class CopyHandler(ui.Handler):
                     return self._send(200, {"ok": True})
                 return self._send(404, {"error": "not found"})
             return self._send(404, {"error": "not found"})
+        if url.path.startswith("/adjust-ref"):
+            from . import campaign
+            q = parse_qs(url.query)
+            concept = q.get("concept", [""])[0]
+            known = {r.get("concept") for r in (copy.load(self.root).get("rows") or [])}
+            if not re.fullmatch(r"[A-Za-z0-9_-]+", concept) or concept not in known:
+                return self._send(400, {"error": i18n.t("rv.err.concept", concept=concept)})
+            name = q.get("name", [""])[0]
+            if url.path == "/adjust-ref-delete":
+                if not campaign.drop_ref(self.root, concept, name):
+                    return self._send(400, {"error": _REV_T["adj.refgone"]})
+                return self._send(200, {"ok": True, "refs": campaign.list_refs(self.root, concept)})
+            if length > campaign.MAX_REF:
+                return self._send(413, {"error": _REV_T["adj.big"]})
+            try:
+                saved = campaign.add_ref(self.root, concept, name, raw, exts=copy.ADJUST_REF_EXT)
+            except ValueError:
+                return self._send(400, {"error": _REV_T["adj.badtype"]})
+            return self._send(200, {"ok": True, "name": saved,
+                                    "refs": campaign.list_refs(self.root, concept)})
         payload = json.loads(raw or b"{}")
+        if url.path == "/copy-adjust":
+            concept = payload.get("concept", "")
+            rows = copy.load(self.root).get("rows") or []
+            known = {r.get("concept") for r in rows}
+            if not re.fullmatch(r"[A-Za-z0-9_-]+", concept) or concept not in known:
+                return self._send(400, {"error": i18n.t("rv.err.concept", concept=concept)})
+            note = (payload.get("note") or "").strip()
+            if not note:
+                return self._send(400, {"error": _REV_T["adj.neednote"]})
+            ids = payload.get("ids") or []
+            if not isinstance(ids, list) or any(not isinstance(i, str) for i in ids):
+                return self._send(400, {"error": "ids must be a list of row ids"})
+            bad = sorted(set(ids) - {r["id"] for r in rows if r.get("concept") == concept})
+            if bad:
+                return self._send(400, {"error": "Unknown row id(s): " + ", ".join(bad)})
+            count = copy.adjust_apply(self.root, concept, note, ids)
+            return self._send(200, {"ok": True, "concept": concept, "count": count})
         if url.path == "/decide":
             try:
                 found = copy.decide(self.root, payload.get("id"), payload.get("status"),

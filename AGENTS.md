@@ -28,8 +28,11 @@ Run every command from the root as `python3 -m kit.cli ...` (inside the venv, or
 run everything. There is no installer: do the bootstrap above yourself (once), then run
 `python3 -m kit.cli onboard <inbox>` in the background — it **opens the onboarding wizard
 in the browser**. **Create the `<inbox>` folder automatically**
-(default `~/Desktop/my-campaign`, or `~/Desktop/<brand>`), without asking the user for a
-path; `onboard` does the scaffold (`logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ briefing.md`).
+(default `~/Desktop/my-campaign`, or `~/Desktop/<brand>`) as a starting point — the wizard's
+first card, **Campaign folder**, lets the user rename it and choose where it lives (native
+folder picker or a typed path); the files move with it. After a move, the wizard's step-5
+phrase and `<kit>/.last-inbox` carry the current path (`intake` falls back to the pointer when
+the old path is gone). `onboard` does the scaffold (`logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ briefing.md`).
 Announce in the chat that onboarding opened, wait for the "ready" and follow the pipeline.
 
 **ffmpeg / codecs:** do not install system ffmpeg or codecs. `imageio-ffmpeg` embeds
@@ -232,8 +235,9 @@ in the single round if left blank); `plan` prints it. For each requested concept
 The matrix is `concepts × formats × axes`. Each concept delivers into its own folder
 `out/<concept>/` and gets its own contact sheet `review/sheet_<concept>[_<axis>].png`.
 In the review, the **concept** chips (besides the status ones) isolate one direction at a time to
-approve/reject/redo without mixing. With a concept filtered, the **Adjust style** button
-changes colors/fonts of **all** pieces of that concept at once (see "Per-concept style
+approve/reject/redo without mixing. The **Adjust style** button is always available (the panel
+carries its own concept picker): it changes colors/fonts of the whole concept, or only of the
+pieces the user ticked on the cards / **Select all** (see "Per-concept style
 adjustment").
 
 ### File naming (`naming` in `brand.yaml`/`campaign.json`)
@@ -400,10 +404,11 @@ user pressing Continue.
   approved list**, marked to go to the delivery folder (Desktop).
 - **Reject** → `status:"rejected"`. Queued to **recreate** (no note).
 - **Redo** → `status:"redo"` + `note` (what to adjust). Queued to **redo with the note**.
-- **Adjust style** (per concept, when a concept is filtered) → writes `styles/<concept>.yaml`
-  (colors/fonts/note) and queues **all** pieces of that concept as `redo`. References attached
-  in the panel (button or drag&drop) land in `styles/<concept>/refs/`, listed under `refs:` —
-  look at them before re-rendering. See below.
+- **Adjust style** (always available; concept picked in the panel) → writes `styles/<concept>.yaml`
+  (colors/fonts/note) and queues the concept's pieces as `redo` — **only the ticked ones** when
+  the user ticked cards or used Select all (per-piece overrides live under `pieces:` in the yaml).
+  References attached in the panel (button or drag&drop) land in `styles/<concept>/refs/`, listed
+  under `refs:` — look at them before re-rendering. See below.
 
 `requests.json` is a **derived view** of the marked pieces, refreshed on every review poll,
 after every `render` and on `deliver` — so it appears the moment the user marks something and
@@ -489,12 +494,14 @@ the merge and the PPC use `state.json`/`out/`, so the Desktop delivery does not 
 
 ## Per-concept style adjustment (`styles/<concept>.yaml`)
 
-To change **colors, fonts etc. of all pieces of a concept at once**, the user
-filters the concept in the review and clicks **Adjust style**: tweaks the palette roles
+To change **colors, fonts etc. of a concept's pieces**, the user opens **Adjust style** (always
+visible; the panel has a concept picker), tweaks the palette roles
 (`primary/accent/ink/paper/dark`), the type roles (`display/text/accent`) and a
-free note. That writes `campaigns/<slug>/styles/<concept>.yaml` and queues all pieces of the
-concept as `redo` (approved ones go back to `pending`) — they land in `requests.json` right away,
-like any other redo.
+free note. With nothing ticked that writes `campaigns/<slug>/styles/<concept>.yaml` and queues
+all pieces of the concept as `redo` (approved ones go back to `pending`). When the user ticks
+cards (or **Select all**) the adjustment is stored per piece under `pieces:` in the same yaml
+and **only those pieces** are queued — the render merges the piece override over the concept
+one. Either way they land in `requests.json` right away, like any other redo.
 
 The panel also carries **visual references**: the **Attach reference…** button and drag&drop on
 the panel copy images/PDFs (up to 15 MB) to `campaigns/<slug>/styles/<concept>/refs/` and list

@@ -73,7 +73,10 @@ and the user loses nothing by switching. Each kit still has its own folder.
    in the folder). Each row has approve / reject / redo+note and is labeled with **Concept,
    Program, Platform and a readable Type** (Headline ≤30 / Primary text / Hook / CTA button…) —
    the raw `axis` only appears as a small hint. Filters by status, destination (PPC/overlay),
-   platform, concept and program.
+   platform, concept and program. **Adjust copy** (always-available button, same format as the
+   visual Adjust style): a concept picker + direction note + attached references; queues the
+   whole concept as redo, or only the rows the user ticked / **Select all**. The direction and
+   refs live in `<folder>/styles/<concept>.yaml` + `styles/<concept>/refs/` — read them first.
    Marking a row writes it to **`<folder>/requests.json` immediately** (a derived queue refreshed
    on every poll) — the rewrite is yours and does **not** wait for Export. **Stay watching:**
    ```bash

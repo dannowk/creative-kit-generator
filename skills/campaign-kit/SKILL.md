@@ -17,7 +17,9 @@ and the browser.**
    clone it yourself from `https://github.com/dannowk/creative-kit-generator` into
    `~/Documents/creative-kit-generator` — do not ask the user to clone.
 2. **Create the campaign folder automatically**: default `~/Desktop/my-campaign`
-   (or `~/Desktop/<brand>` if they already said the name in the chat). Without asking for a path.
+   (or `~/Desktop/<brand>` if they already said the name in the chat) as a starting point —
+   the wizard's first card lets the user rename it and pick where it lives; after a move use
+   the wizard's step-5 phrase / `<kit>/.last-inbox` as the current path.
 3. **Bootstrap + onboarding**, in the background: install the deps once
    (`python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`, or your
    environment's pip), then run `python3 -m kit.cli onboard <inbox>` — it
@@ -99,9 +101,12 @@ and the browser.**
    (`~/Desktop/Campaign Kit/<campaign>/`); the **Open folder** button opens it on the user's
    computer. **The export is gated:** while anything is still rejected/redo, Continue is disabled
    and `deliver` returns `{"locked": n, "batch": [...]}` instead of exporting.
-   **Per-concept style adjustment**: if the user used **Adjust style** in the review, there is a
+   **Per-concept style adjustment**: if the user used **Adjust style** in the review (always
+   available; concept picked in the panel), there is a
    `styles/<concept>.yaml` (colors/fonts) that the **render itself applies** — for that batch
-   `render --ids` is enough, no template editing. References the user attached (Attach button or
+   `render --ids` is enough, no template editing. When the user ticked pieces / **Select all**,
+   only those are queued and their override lives under `pieces:` in the yaml (the render merges
+   it over the concept one). References the user attached (Attach button or
    drag&drop) live in `styles/<concept>/refs/` and are listed under `refs:` — open them before
    re-rendering. See "Per-concept style adjustment" in AGENTS.md.
 9. **PPC sheets (Meta + Google)**: Continue/`deliver` already generates `ppc/` in the delivery folder

@@ -132,12 +132,14 @@ port). On screen you decide piece by piece — **reject and redo start working r
   frame (font size, one/two/more lines, text box) so the copy never hides the image and no word is
   cut in half.
 - **↻ redo** → you write what to adjust; the agent applies your note and re-renders that piece.
-- **Adjust style (the whole concept)** → filter a concept and click **Adjust style** to
-  change **colors and fonts of all its pieces at once** (palette and type roles, plus a free
-  note). You can also **attach references** (button or drag&drop on the panel — images/PDFs):
+- **Adjust style (whole concept or ticked pieces)** → click **Adjust style** (always available;
+  the panel has a concept picker) to change **colors and fonts** (palette and type roles, plus a
+  free note). Tick pieces on the cards or use **Select all** to adjust only those; with nothing
+  ticked the whole concept is queued. You can also **attach references** (button or drag&drop on
+  the panel — images/PDFs):
   they are saved with the concept and the agent looks at them before re-rendering.
-  The adjustment is saved to `styles/<concept>.yaml` and every piece of the concept
-  enters the redo queue — the agent re-renders with the new look (and it applies to future
+  The adjustment is saved to `styles/<concept>.yaml` and the chosen pieces
+  enter the redo queue — the agent re-renders with the new look (and it applies to future
   renders too).
 
 Marking writes the piece to the campaign's `requests.json`, and the agent watching the campaign
@@ -426,6 +428,8 @@ python3 -m kit.cli copy plan     ~/Desktop/my-campaign-copy   # prints briefing 
 #  the agent authors copy.json (concepts + rows) from that, then:
 python3 -m kit.cli copy validate ~/Desktop/my-campaign-copy   # checks the shape (error → nothing written)
 python3 -m kit.cli copy review   ~/Desktop/my-campaign-copy   # opens the table in the browser
+#  Adjust copy (always-available button): direction note + references, queued as redo for the
+#  whole concept or only the ticked rows — same format as the visual Adjust style.
 python3 -m kit.cli copy wait     ~/Desktop/my-campaign-copy   # the agent's trigger: blocks until a row is marked, prints the batch
 python3 -m kit.cli copy deliver  ~/Desktop/my-campaign-copy   # exports only the approved (CSV + XLSX) to Desktop/Copy Kit
 ```

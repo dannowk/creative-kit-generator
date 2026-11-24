@@ -6,6 +6,7 @@ intake runs. Whatever is optional is stated as optional — never blocks on a wh
 
 import os
 import re
+import shutil
 
 IMG_EXT = (".png", ".jpg", ".jpeg", ".webp")
 FONT_EXT = (".otf", ".ttf", ".ttc")
@@ -91,6 +92,30 @@ def scaffold(inbox):
         with open(brief, "w", encoding="utf-8") as f:
             f.write(BRIEFING_TEMPLATE)
     return brief
+
+
+def relocate(inbox, parent, name):
+    """Move the campaign folder to parent/name (the wizard's folder card).
+
+    Everything already uploaded moves with it. Raises ValueError with a code
+    (name/parent/inside/exists) the server turns into a readable message.
+    """
+    name = (name or "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 ._()-]*", name):
+        raise ValueError("name")
+    parent = os.path.abspath(os.path.expanduser((parent or "").strip()))
+    inbox = os.path.abspath(inbox)
+    if not os.path.isdir(parent):
+        raise ValueError("parent")
+    if parent == inbox or parent.startswith(inbox + os.sep):
+        raise ValueError("inside")
+    target = os.path.join(parent, name)
+    if os.path.normcase(target) == os.path.normcase(inbox):
+        return inbox
+    if os.path.exists(target):
+        raise ValueError("exists")
+    shutil.move(inbox, target)
+    return target
 
 
 def _sections(text):

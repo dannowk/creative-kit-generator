@@ -224,7 +224,16 @@ def main(argv=None):
         return 0
 
     if args.cmd == "intake":
-        summary, gaps = intake.run(os.path.expanduser(args.inbox), args.brand_id,
+        inbox = os.path.expanduser(args.inbox)
+        if not os.path.isdir(inbox):
+            ptr = os.path.join(ROOT, ".last-inbox")
+            if os.path.isfile(ptr):
+                with open(ptr, encoding="utf-8") as f:
+                    alt = f.read().strip()
+                if os.path.isdir(alt):
+                    print(i18n.t("cli.intake.moved", old=inbox, new=alt), file=sys.stderr)
+                    inbox = alt
+        summary, gaps = intake.run(inbox, args.brand_id,
                                    os.path.join(ROOT, "brands"))
         print(json.dumps(summary, indent=2, ensure_ascii=False))
         print("\n" + i18n.t("cli.gaps.one", n=len(gaps)), file=sys.stderr)

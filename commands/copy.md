@@ -40,6 +40,12 @@ chat and use the browser. This command is the **copy kit** (independent of
    Fulfill it by rewriting the text, setting pending back, clearing the note and re-stamping
    updated_at/by; the table updates by itself and the row comes back badged **NEW**. Run `wait`
    again for the next round.
+   **Adjust copy** (same format as the visual review's Adjust style): the button is always
+   available; the panel carries a concept picker, a direction note and attached references
+   (example copy / voice docs — text, images, PDF). With nothing ticked it queues **all rows of
+   the concept** as redo with the note; when the user ticks rows (or **Select all**) only those
+   are queued. The direction + refs are saved to `<folder>/styles/<concept>.yaml` and
+   `styles/<concept>/refs/` — read them before rewriting.
 8. Everything approved → the user clicks **Export approved** (or you run `copy deliver
    <folder>`): CSV+XLSX sheets in `~/Desktop/Copy Kit/<folder>/`, approved only, with download
    + **Open folder**. `copy_manifest` and `overlay` are **vertical approval sheets** (one text

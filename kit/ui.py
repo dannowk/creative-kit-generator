@@ -11,6 +11,7 @@ dynamic JS; data (slots, gaps, compliance findings) is English too.
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -157,6 +158,11 @@ dialog::backdrop{background:rgba(20,26,32,.55)}
 .filters{display:flex;gap:8px;flex-wrap:wrap}
 .filters button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .stylepanel{display:grid;gap:12px;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0;background:#fbfcfd}
+.stylepanel select{min-height:36px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:14px;color:var(--ink)}
+.rcard{position:relative}
+.pick{position:absolute;top:10px;left:10px;z-index:3;background:var(--surface);border:1px solid var(--line);
+ border-radius:7px;padding:3px 6px;display:inline-flex;align-items:center;cursor:pointer;box-shadow:0 1px 4px rgba(16,24,32,.18)}
+.pick input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
 .stylepanel .desc{margin:0}
 .stylegrid{display:flex;gap:16px;flex-wrap:wrap}
 .stylefield{display:grid;gap:4px}
@@ -386,8 +392,13 @@ def review_page():
 <div class="callout" id="handoff" style="display:none"></div>
 <div class="filters" id="filters"></div>
 <div class="row" style="align-items:center"><span class="meta">{i18n.t('rv.concept')}</span><div class="filters" id="cfilters"></div>
-<button class="btn" id="stylebtn" onclick="toggleStyle()" style="display:none">{i18n.t('rv.adjust')}</button></div>
+<button class="btn" id="stylebtn" onclick="toggleStyle()">{i18n.t('rv.adjust')}</button></div>
 <div id="stylepanel" class="stylepanel" hidden>
+<div class="row" style="align-items:center"><label class="stylelabel" for="styleconcept">{i18n.t('rv.js.style.concept')}</label>
+<select id="styleconcept" onchange="openStyle(this.value)"></select><span class="sp"></span>
+<button class="btn" id="selallbtn" onclick="selAll()"></button>
+<button class="btn" onclick="selClear()">{i18n.t('rv.js.style.selclear')}</button>
+<span class="meta" id="selcount"></span></div>
 <p class="desc" id="styledesc"></p>
 <div><div class="stylelabel">{i18n.t('rv.js.style.colors')}</div><div class="stylegrid" id="stylecolors"></div></div>
 <div><div class="stylelabel">{i18n.t('rv.js.style.fonts')}</div><div class="stylegrid" id="stylefonts"></div></div>
@@ -398,7 +409,7 @@ def review_page():
 <input type="file" id="reffile" multiple hidden accept=".png,.jpg,.jpeg,.webp,.gif,.pdf">
 <span class="meta">{i18n.t('rv.js.style.drophint')}</span></div>
 <div class="stylerefs" id="stylerefs"></div>
-<div class="row"><button class="btn primary" onclick="applyStyle()">{i18n.t('rv.applystyle')}</button>
+<div class="row"><button class="btn primary" id="styleapply" onclick="applyStyle()">{i18n.t('rv.applystyle')}</button>
 <span class="meta" id="stylemsg"></span></div>
 </div>
 <div class="rgrid" id="grid"></div></div>
@@ -414,7 +425,7 @@ def review_page():
 <dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
 """ + _modal() + _rule_alarm("rv.js") + _JS_UTIL + _inject("rv.js") + _RULE_JS + """
 <script>
-let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null, seenBefore=null;
+let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null, seenBefore=null, sel=new Set();
 let busyAt={}, timer=null, pollMs=0;
 const isBusy=p=>p.status==="rejected"||p.status==="redo";
 const LBL={all:T["lbl.all"],working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"],blocked:T["lbl.blocked"]};
@@ -440,7 +451,6 @@ function applyState(s){
   document.getElementById("cfilters").innerHTML =
     `<button class="${cfilter==='all'?'on':''}" onclick="setConcept('all')">${fill(T.allconcepts,{n:state.pieces.length})}</button>`+
     concepts.map(k=>`<button class="${cfilter===k?'on':''}" onclick="setConcept('${k}')">${k} (${cc[k]||0})</button>`).join("");
-  document.getElementById("stylebtn").style.display = cfilter==="all" ? "none" : "";
   document.getElementById("deliver-summary").innerHTML = fill(T["deliver.summary"],
     {approved:c("approved"),regen:c("rejected")+c("redo")});
   document.getElementById("opendelivery").style.display = delivered>0 ? "" : "none";
@@ -492,17 +502,22 @@ async function copyHandoff(){
 }
 function setFilter(f){filter=f;applyState(state);}
 function setConcept(k){cfilter=k;applyState(state);
-  if(k==="all") closeStyle();
-  else if(styleOpen) openStyle(k);}
+  if(styleOpen&&k!=="all") openStyle(k);}
 function closeStyle(){styleOpen=false;document.getElementById("stylepanel").hidden=true;}
 async function toggleStyle(){
   if(styleOpen){closeStyle();return;}
-  await openStyle(cfilter);}
+  const cs=(state.concepts&&state.concepts.length?state.concepts:[...new Set(state.pieces.map(p=>p.concept))]);
+  const k=cfilter!=="all"?cfilter:(styleConcept||cs[0]||"");
+  if(!k){await tell(T["style.noconcept"]);return;}
+  await openStyle(k);}
 async function openStyle(concept){
   const r=await fetch("/style?concept="+encodeURIComponent(concept));
   const j=await r.json();
-  if(!r.ok){await tell(j.error||"error");return;}
+  if(!r.ok){await tell(j.error||T.failed);return;}
   styleConcept=concept;styleOpen=true;
+  const cs=(state.concepts&&state.concepts.length?state.concepts:[...new Set(state.pieces.map(p=>p.concept))]);
+  document.getElementById("styleconcept").innerHTML=cs.map(c=>
+    `<option value="${esc(c)}"${c===concept?" selected":""}>${esc(c)}</option>`).join("");
   document.getElementById("styledesc").textContent=fill(T["style.desc"],{concept});
   const ov=j.override||{}, pal=Object.assign({},j.palette,ov.palette||{});
   document.getElementById("stylecolors").innerHTML=Object.keys(j.palette).map(role=>
@@ -515,18 +530,35 @@ async function openStyle(concept){
   document.getElementById("stylenote").value=ov.note||"";
   drawRefs(ov.refs||[]);
   document.getElementById("stylemsg").textContent="";
+  updateSelUI();
   document.getElementById("stylepanel").hidden=false;}
+function selInConcept(){return state?state.pieces.filter(p=>p.concept===styleConcept&&sel.has(p.id)):[];}
+function updateSelUI(){
+  const tot=state?state.pieces.filter(p=>p.concept===styleConcept).length:0;
+  document.getElementById("selallbtn").textContent=fill(T["style.selall"],{n:tot});
+  const n=selInConcept().length;
+  document.getElementById("selcount").textContent=n?fill(T["style.selcount"],{n}):"";
+  document.getElementById("styleapply").textContent=n?fill(T["style.applysel"],{n}):T.applystyle;}
+function toggleSel(id,on){if(on)sel.add(id);else sel.delete(id);updateSelUI();}
+function selAll(){if(!state)return;
+  state.pieces.filter(p=>p.concept===styleConcept).forEach(p=>sel.add(p.id));
+  draw();updateSelUI();}
+function selClear(){sel.clear();draw();updateSelUI();}
 async function applyStyle(){
   if(!styleConcept){await tell(T["style.noconcept"]);return;}
   const palette={};document.querySelectorAll("#stylecolors input[type=color]").forEach(i=>palette[i.dataset.role]=i.value);
   const type={};document.querySelectorAll("#stylefonts input[type=text]").forEach(i=>{if(i.value.trim())type[i.dataset.font]=i.value.trim();});
   const note=document.getElementById("stylenote").value.trim();
-  const n=state.pieces.filter(p=>p.concept===styleConcept).length;
-  if(!await confirmBox(fill(T["style.confirm"],{n,concept:styleConcept})))return;
-  const {ok,j}=await pj("/concept-style",{method:"POST",body:JSON.stringify({concept:styleConcept,palette,type,note})});
+  const ids=selInConcept().map(p=>p.id);
+  const n=ids.length||state.pieces.filter(p=>p.concept===styleConcept).length;
+  const msg=ids.length?fill(T["style.confirmsel"],{n,concept:styleConcept})
+    :fill(T["style.confirm"],{n,concept:styleConcept});
+  if(!await confirmBox(msg))return;
+  const {ok,j}=await pj("/concept-style",{method:"POST",body:JSON.stringify({concept:styleConcept,palette,type,note,ids})});
   if(!ok){await tell(j.error||T.failed);return;}
+  sel.clear();
   await load();
-  notify(fill(T["style.applied"],{n:j.count,concept:styleConcept}));
+  notify(fill(ids.length?T["style.appliedsel"]:T["style.applied"],{n:j.count,concept:styleConcept}));
   closeStyle();}
 function drawRefs(refs){document.getElementById("stylerefs").innerHTML=(refs||[]).map(n=>
   `<span class="chip">${esc(n)}<button title="${esc(T["style.refdel"])}" `+
@@ -550,6 +582,7 @@ function setStep(n){document.querySelectorAll(".stepper .step").forEach(el=>{
   const i=+el.dataset.step;el.classList.toggle("done",i<n);el.classList.toggle("current",i===n);
   const d=el.querySelector(".n");if(d)d.textContent=i<n?"✓":String(i);});}
 function draw(){
+  updateSelUI();
   const items=state.pieces
     .filter(p=>(filter==="all"||(filter==="working"?p.status!=="approved":p.status===filter))&&(cfilter==="all"||p.concept===cfilter))
     .sort((a,b)=>a.concept.localeCompare(b.concept)||a.format.localeCompare(b.format));
@@ -578,6 +611,8 @@ function draw(){
         ?`<span class="tag new"><span class="dot"></span>${T.newbadge}</span>`:"");
     const note=(p.status==="redo"&&p.note)?`<p class="hint">↻ ${esc(p.note)}</p>`:"";
     return `<div class="card rcard${busy?" busy":""}">
+      <label class="pick" title="${T["style.tick"]}" onclick="event.stopPropagation()">
+        <input type="checkbox" ${sel.has(p.id)?"checked":""} onchange="toggleSel('${esc(p.id)}',this.checked)"></label>
       ${wrap}
       <div class="body">
         <div class="row"><span class="tag ${p.status}"><span class="dot"></span>${SING[p.status]}</span>
@@ -870,11 +905,18 @@ def onboard_page():
 <div class="callout warn" id="ready"></div>
 </div>
 <div class="wrap">
-<div class="panel"><h2><span class="n">1</span>{i18n.t('ob.p1.title')}</h2>
+<div class="panel"><h2><span class="n">1</span>{i18n.t('ob.p0.title')}</h2>
+<p class="desc">{i18n.t('ob.p0.desc')}</p>
+<div class="row"><input type="text" id="cfname" style="width:220px" placeholder="{i18n.t('ob.p0.nameph')}">
+<input type="text" id="cfparent" style="flex:1" placeholder="{i18n.t('ob.p0.parentph')}">
+<button class="btn" onclick="pickFolder()">{i18n.t('ob.p0.choose')}</button>
+<button class="btn primary" onclick="saveFolder()">{i18n.t('ob.p0.save')}</button></div>
+<span class="meta" id="cfpath"></span></div>
+<div class="panel"><h2><span class="n">2</span>{i18n.t('ob.p1.title')}</h2>
 <p class="desc">{i18n.t('ob.p1.desc')}</p>
 <span class="meta" id="slotprog"></span>
 <div class="grid" id="slots"></div></div>
-<div class="panel"><h2><span class="n">2</span>{i18n.t('ob.p2.title')}</h2>
+<div class="panel"><h2><span class="n">3</span>{i18n.t('ob.p2.title')}</h2>
 <p class="desc">{i18n.t('ob.p2.desc')}</p>
 <div class="dropzone" id="briefdrop">
 <label class="btn">{i18n.t('ob.p2.upload')}<input type="file"
@@ -897,12 +939,12 @@ def onboard_page():
 <span class="meta" id="docscount"></span></div>
 <ul class="files" id="docslist"></ul>
 </div></div>
-<div class="panel"><h2><span class="n">3</span>{i18n.t('ob.p3.title')}</h2>
+<div class="panel"><h2><span class="n">4</span>{i18n.t('ob.p3.title')}</h2>
 <p class="desc">{i18n.t('ob.p3.desc')}</p>
 <div class="row"><input type="text" id="bid" placeholder="{i18n.t('ob.p3.idph')}">
 <button class="btn primary" onclick="derive()">{i18n.t('ob.p3.run')}</button></div>
 <div id="result"></div></div>
-<div class="panel"><h2><span class="n">4</span>{i18n.t('ob.p4.title')}</h2>
+<div class="panel"><h2><span class="n">5</span>{i18n.t('ob.p4.title')}</h2>
 <p class="desc">{i18n.t('ob.p4.desc')}</p>
 <span class="meta">{i18n.t('ob.p4.pipe')}</span>
 <p class="desc" style="margin-top:10px">{i18n.t('ob.p4.paste')}</p>
@@ -919,6 +961,11 @@ async function load(){
   S = await (await fetch("/state")).json();
   document.getElementById("agentline").value = fill(T.agentline,{inbox:S.inbox});
   document.getElementById("meta").textContent = S.inbox;
+  const ix=S.inbox.replace(/[\\\\/]+$/,""), cut=Math.max(ix.lastIndexOf("/"),ix.lastIndexOf("\\\\"));
+  const fn=document.getElementById("cfname"), fp=document.getElementById("cfparent");
+  if(document.activeElement!==fn) fn.value=ix.slice(cut+1);
+  if(document.activeElement!==fp) fp.value=cut>0?ix.slice(0,cut):"/";
+  document.getElementById("cfpath").textContent=S.inbox;
   const slotsOk=Object.values(S.slots).filter(s=>s.ok).length;
   const secOk=S.briefing.sections.filter(x=>x.filled).length;
   document.getElementById("slotprog").textContent =
@@ -960,6 +1007,20 @@ async function load(){
     ? docs.map(f=>`<li><span>${esc(f.name)}</span><span class="row"><span class="meta">${fmt(f.size)}</span>
         <button class="btn docremove" title="${T["docs.remove"]}" onclick="removeDoc('${esc(f.name)}')">✕</button></span></li>`).join("")
     : `<li><span class="meta">${T["docs.empty"]}</span></li>`;
+}
+async function pickFolder(){
+  const {ok,j}=await pj("/pick-folder",{method:"POST",body:"{}"});
+  if(!ok){await tell(j.error||T.failed);return;}
+  if(j.path) document.getElementById("cfparent").value=j.path;
+}
+async function saveFolder(){
+  const name=document.getElementById("cfname").value.trim();
+  const parent=document.getElementById("cfparent").value.trim();
+  if(!name||!parent){await tell(T["folder.need"]);return;}
+  const {ok,j}=await pj("/campaign-folder",{method:"POST",body:JSON.stringify({name,parent})});
+  if(!ok){await tell(j.error||T.failed);return;}
+  await load();
+  notify(fill(T["folder.saved"],{path:j.inbox}));
 }
 async function upload(slot,files){
   for(const f of files){
@@ -1068,6 +1129,44 @@ def _open_folder(path):
         subprocess.Popen(["xdg-open", path])
 
 
+def _pick_folder():
+    """Native folder picker for the wizard's folder card. '' when cancelled.
+
+    RuntimeError when the platform has no picker — the user types the path instead.
+    """
+    prompt = i18n.t("ob.picker.prompt")
+    try:
+        if sys.platform == "darwin":
+            r = subprocess.run(
+                ["osascript", "-e", 'tell application "System Events" to activate',
+                 "-e", f'POSIX path of (choose folder with prompt "{prompt}")'],
+                capture_output=True, text=True, timeout=600)
+            return r.stdout.strip().rstrip("/") if r.returncode == 0 else ""
+        if sys.platform == "win32":
+            ps = ("Add-Type -AssemblyName System.Windows.Forms;"
+                  "$d=New-Object System.Windows.Forms.FolderBrowserDialog;"
+                  "$d.Description='" + prompt.replace("'", "''") + "';"
+                  "if($d.ShowDialog() -eq 'OK'){$d.SelectedPath}")
+            r = subprocess.run(["powershell", "-NoProfile", "-STA", "-Command", ps],
+                               capture_output=True, text=True, timeout=600)
+            return r.stdout.strip() if r.returncode == 0 else ""
+        for cmd in (["zenity", "--file-selection", "--directory", "--title", prompt],
+                    ["kdialog", "--getexistingdirectory", os.path.expanduser("~"), prompt]):
+            if shutil.which(cmd[0]):
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+                return r.stdout.strip() if r.returncode == 0 else ""
+    except subprocess.TimeoutExpired:
+        return ""
+    raise RuntimeError("no picker")
+
+
+def _write_last_inbox(brands, inbox):
+    """Pointer at the kit root: the agent reads it when the wizard moved the folder."""
+    p = os.path.join(os.path.dirname(os.path.abspath(brands)), ".last-inbox")
+    with open(p, "w", encoding="utf-8") as f:
+        f.write(inbox + "\n")
+
+
 class Handler(BaseHTTPRequestHandler):
     root = None
     mode = "review"
@@ -1171,6 +1270,20 @@ class Handler(BaseHTTPRequestHandler):
                 os.remove(p)
             return self._send(200, {"ok": True})
         payload = json.loads(self.rfile.read(length) or b"{}")
+        if url.path == "/pick-folder":
+            try:
+                picked = _pick_folder()
+            except RuntimeError:
+                return self._send(400, {"error": i18n.t("ob.err.picker")})
+            return self._send(200, {"path": picked})
+        if url.path == "/campaign-folder":
+            try:
+                new = onboard.relocate(self.root, payload.get("parent", ""), payload.get("name", ""))
+            except ValueError as e:
+                return self._send(400, {"error": i18n.t(f"ob.err.folder.{e}")})
+            Handler.root = new
+            _write_last_inbox(self.brands, new)
+            return self._send(200, {"ok": True, "inbox": new})
         if url.path == "/briefing":
             with open(os.path.join(self.root, "briefing.md"), "w", encoding="utf-8") as f:
                 f.write(payload.get("text", ""))
@@ -1366,23 +1479,17 @@ class Handler(BaseHTTPRequestHandler):
                 if r in ("display", "text", "accent") and isinstance(v, str) and v.strip():
                     typ[r] = v.strip()
             note = (payload.get("note") or "").strip()
-            style = campaign.load_style(self.root, concept)
-            if pal:
-                style["palette"] = pal
-            else:
-                style.pop("palette", None)
-            if typ:
-                style["type"] = typ
-            else:
-                style.pop("type", None)
-            if note:
-                style["note"] = note
-            else:
-                style.pop("note", None)
-            sp = campaign.style_path(self.root, concept)
-            os.makedirs(os.path.dirname(sp), exist_ok=True)
-            with open(sp, "w", encoding="utf-8") as f:
-                yaml.safe_dump(style, f, allow_unicode=True, sort_keys=False)
+            ids = payload.get("ids") or []
+            if not isinstance(ids, list) or any(not isinstance(i, str) for i in ids):
+                return self._send(400, {"error": i18n.t("rv.err.ids", ids=", ".join(map(str, ids)))})
+            idset = set(ids)
+            if idset:
+                with open(state_path, encoding="utf-8") as f:
+                    known = {p["id"] for p in json.load(f)["pieces"] if p["concept"] == concept}
+                bad = sorted(idset - known)
+                if bad:
+                    return self._send(400, {"error": i18n.t("rv.err.ids", ids=", ".join(bad))})
+            campaign.merge_style(self.root, concept, pal, typ, note, ids)
             rnote = note or i18n.t("rv.restyle.defaultnote")
             from datetime import datetime, timezone
             now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -1391,7 +1498,7 @@ class Handler(BaseHTTPRequestHandler):
                 with open(state_path, encoding="utf-8") as f:
                     state = json.load(f)
                 for p in state["pieces"]:
-                    if p["concept"] == concept:
+                    if p["concept"] == concept and (not idset or p["id"] in idset):
                         p["status"] = "redo"
                         p["note"] = rnote
                         p["restyle"] = True
@@ -1470,4 +1577,5 @@ def serve_onboard(inbox, brands_dir, port=8766, open_browser=True):
     Handler.mode = "onboard"
     Handler.root = inbox
     Handler.brands = os.path.abspath(brands_dir)
+    _write_last_inbox(Handler.brands, inbox)
     return _serve(inbox, port, open_browser, shortcut_name="OPEN-ONBOARDING.html")

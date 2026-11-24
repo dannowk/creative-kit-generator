@@ -6,9 +6,12 @@ The user **does not open a terminal or type a command**. You (the agent) run eve
 chat with you and use the browser. Drive in this order:
 
 1. Find the kit root (the folder with `AGENTS.md` + `kit/`).
-2. **Create the campaign folder automatically**, without asking for a path: default
+2. **Create the campaign folder automatically** as a starting point: default
    `~/Desktop/my-campaign` (or `~/Desktop/<brand>` if the user already said the brand
-   name in the chat). Do not ask them to create a folder or type a path.
+   name in the chat). Do not ask in chat — the wizard's first card, **Campaign folder**,
+   asks the user for the folder name and where to save it (native picker or typed path);
+   the files move with it. After a move, the current path is in the wizard's step-5 phrase
+   and in `<kit>/.last-inbox`.
 3. Install the dependencies once (`python3 -m venv .venv && .venv/bin/pip install -r
    requirements.txt`, or your environment's pip), then run `python3 -m kit.cli onboard
    <inbox>` in the **background** — it **opens the onboarding wizard in the user's
@@ -17,7 +20,8 @@ chat with you and use the browser. Drive in this order:
    the briefing). Deps already installed → just reopen the wizard. The header has a
    **`Visual | Copy`** switch (it finds the other kit's wizard on its own, saves before switching,
    and says so when the other kit is not running) — you may run both flows in the same session.
-4. Say in the chat: *"I opened the onboarding in the browser. Upload the logo (required), photos
+4. Say in the chat: *"I opened the onboarding in the browser. First, name the campaign folder
+   and choose where to save it (card 1). Then upload the logo (required), photos
    and references, and fill in the briefing; if you have a brandbook, you can attach it too
    (optional). In the briefing area there is 'Supporting documents' to attach several files:
    ad copy, layout rules, safe areas, logo safety — and a 'Technical direction' field for the
@@ -60,7 +64,8 @@ chat with you and use the browser. Drive in this order:
    Desktop delivery folder (`~/Desktop/Campaign Kit/<campaign>/`); the **Open folder** button opens
    it on the user's computer. **The export is gated:** while anything is still rejected/redo,
    Continue is disabled and `deliver` returns `{"locked": n, "batch": [...]}`.
-   If the user used **Adjust style** (colors/fonts of a whole concept), the `styles/<concept>.yaml`
+   If the user used **Adjust style** (colors/fonts of a concept, or only of the pieces they
+   ticked / Select all), the `styles/<concept>.yaml`
    is already applied by the render — for that batch `render --ids` is enough. References attached
    in the panel live in `styles/<concept>/refs/` (listed under `refs:`) — look at them first.
    See AGENTS.md.

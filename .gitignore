@@ -24,3 +24,5 @@ campaigns/*/assets/
 campaigns/*/out/
 campaigns/*/review/
 campaigns/*/delivery/
+# Ponteiro runtime do wizard (pasta da campanha movida pelo usuário)
+.last-inbox
