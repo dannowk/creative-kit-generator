@@ -21,6 +21,16 @@ _CATALOG = {
     "mode.copy": "Copy",
     "mode.title": "this page: {kit} mode",
 
+    # ── flow controls (Back / Restart, every page of both kits) ─────
+    "flow.back": "← Back",
+    "flow.back.title": "Go back to adjust an earlier step",
+    "flow.restart": "Restart",
+    "flow.restart.title": "Stop everything and start again from zero",
+    "flow.restart.confirm": "Restart from zero? This stops every queued action and clears the renders, decisions and style adjustments of this campaign. The briefing, uploads, generated assets and delivered files are kept.",
+    "flow.restart.confirm.copy": "Restart from zero? This stops every queued action and clears the copy table, decisions and adjustments of this creation. The briefing, examples, attachments and exported files are kept.",
+    "flow.restart.failed": "Restart failed — try again.",
+    "flow.back.none": "The wizard is not running for this folder. Ask the agent to open it, or run: {cmd}",
+
     # ── wizard (onboarding) ─────────────────────────────────────────
     "ob.title": "Prepare campaign",
     "ob.meta.steps": "steps 1–4 on this screen · the agent continues with the rest",
@@ -76,6 +86,7 @@ _CATALOG = {
     "ob.js.failed": "The request failed — try again.",
     "ob.js.folder.need": "Give the folder a name and a location.",
     "ob.js.folder.saved": "Folder saved: {path}",
+    "ob.js.folder.already": "Folder already saved — {path}. Rename or move it any time; the files follow.",
     "ob.js.tagok": "ok",
     "ob.js.tagmissing": "missing",
     "ob.js.tagoptional": "optional",

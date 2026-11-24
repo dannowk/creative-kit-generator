@@ -497,6 +497,34 @@ def sync_requests(root, state=None):
     return batch
 
 
+def restart(root):
+    """The Restart button: stop queued work and clear working output, back to zero.
+
+    Goes: renders (out/, review/), piece decisions, style adjustments and refs (styles/),
+    both work queues and the asset decisions (the files and their cost manifest stay).
+    Stays: briefing, uploads, templates, campaign.json, generated asset files and the
+    delivery folder on the Desktop.
+    """
+    from . import assets
+    for d in ("out", "review", STYLES_DIR):
+        p = os.path.join(root, d)
+        if os.path.isdir(p):
+            shutil.rmtree(p)
+    for f in ("requests.json",
+              os.path.join(assets.DIR, "state.json"),
+              os.path.join(assets.DIR, "requests.json")):
+        p = os.path.join(root, f)
+        if os.path.isfile(p):
+            os.remove(p)
+    sp = os.path.join(root, "state.json")
+    if os.path.isfile(sp):
+        with open(sp, encoding="utf-8") as f:
+            state = json.load(f)
+        state["pieces"] = []
+        with open(sp, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2, ensure_ascii=False)
+
+
 def wait_batch(root, timeout=0, interval=2.0):
     """Block until there is work, then return the batch (the agent's hook for BOTH stages).
 

@@ -14,7 +14,7 @@ import webbrowser
 from http.server import ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
-from . import copy, i18n, ui
+from . import copy, i18n, onboard, ui
 
 _STEPS = ["Briefing", "Generate", "Review", "Deliver"]
 
@@ -88,6 +88,15 @@ def _brief_progress(text):
 
 _WIZ_T = {
     "title": "Copy — briefing + examples",
+    "p0.title": "Copy folder",
+    "p0.desc": "Name this copy creation's folder and choose where it lives — briefing, examples and attachments move with it.",
+    "p0.nameph": "folder name",
+    "p0.parentph": "parent folder (e.g. ~/Desktop)",
+    "p0.choose": "Choose…",
+    "p0.save": "save folder",
+    "folder.need": "Give the folder a name and a location.",
+    "folder.saved": "Folder saved: {path}",
+    "folder.already": "Folder already saved — {path}. Rename or move it any time; the files follow.",
     "prog": "{filled}/{total} briefing sections filled",
     "ready": "Briefing filled. Paste examples if you like, save and say “ready” in chat.",
     "missing": "Fill the briefing (at least the objective) and save. Examples are optional.",
@@ -126,7 +135,7 @@ def wizard_page():
     return _head(t["title"]) + f"""
 <header><span class="brand">copy-kit</span><h1>{t['title']}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
-""" + ui._mode_switch("copy") + f"""
+""" + ui._mode_switch("copy") + ui._flow_buttons("wizard") + f"""
 <button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
 """ + _stepper(1, 0) + f"""
@@ -134,7 +143,15 @@ def wizard_page():
 <div class="callout warn" id="ready"></div>
 </div>
 <div class="wrap">
-<div class="panel"><h2><span class="n">1</span>{t['p1.title']}</h2>
+<div class="panel"><h2><span class="n">1</span>{t['p0.title']}</h2>
+<p class="desc">{t['p0.desc']}</p>
+<div class="row"><input type="text" id="cfname" style="width:220px" placeholder="{t['p0.nameph']}">
+<input type="text" id="cfparent" style="flex:1" placeholder="{t['p0.parentph']}">
+<button class="btn" onclick="pickFolder()">{t['p0.choose']}</button>
+<button class="btn primary" onclick="saveFolder()">{t['p0.save']}</button></div>
+<span class="meta" id="cfpath"></span>
+<div class="callout ok" id="cfsaved" style="display:none"></div></div>
+<div class="panel"><h2><span class="n">2</span>{t['p1.title']}</h2>
 <p class="desc">{t['p1.desc']}</p>
 <label class="fieldlabel" for="brief">{t['brief.label']}</label>
 <textarea id="brief"></textarea>
@@ -150,13 +167,13 @@ def wizard_page():
 <div class="chips" id="chips"></div></div>
 <input type="file" id="filepick" multiple style="display:none">
 <div class="row"><button class="btn primary" onclick="save()">{t['save']}</button></div></div>
-<div class="panel"><h2><span class="n">2</span>{t['p2.title']}</h2>
+<div class="panel"><h2><span class="n">3</span>{t['p2.title']}</h2>
 <p class="desc">{t['p2.desc']}</p>
 <div class="row"><input type="text" id="agentline" readonly style="flex:1">
 <button class="btn primary" onclick="copyAgent()">{t['copy']}</button></div>
 <p class="hint" id="copynote"></p></div>
 </div>
-""" + ui._modal() + ui._JS_UTIL + (
+""" + ui._modal() + ui._JS_UTIL + ui._flow_js("copy", "wizard") + (
         '<script>const T=' + json.dumps(t, ensure_ascii=False) + ';</script>') + """
 <script>
 let S=null,pickSlot="examples";
@@ -167,6 +184,14 @@ const fmtSize=n=>n<1024?n+" B":n<1048576?(n/1024).toFixed(0)+" KB":(n/1048576).t
 async function load(){
   S=await (await fetch("/state")).json();
   document.getElementById("meta").textContent=S.folder;
+  const ix=(S.inbox||S.folder).replace(/[\\\\/]+$/,""), cut=Math.max(ix.lastIndexOf("/"),ix.lastIndexOf("\\\\"));
+  const fn=document.getElementById("cfname"), fp=document.getElementById("cfparent");
+  if(document.activeElement!==fn) fn.value=ix.slice(cut+1);
+  if(document.activeElement!==fp) fp.value=cut>0?ix.slice(0,cut):"/";
+  document.getElementById("cfpath").textContent=S.inbox||S.folder;
+  const fs=document.getElementById("cfsaved");
+  if(S.folder_saved){fs.textContent=fill(T["folder.already"],{path:S.inbox||S.folder});fs.style.display="";}
+  else fs.style.display="none";
   const b=document.getElementById("brief"),e=document.getElementById("examples");
   if(document.activeElement!==b) b.value=S.briefing;
   if(document.activeElement!==e) e.value=S.examples;
@@ -232,6 +257,20 @@ async function detach(name){
 async function copyAgent(){
   await navigator.clipboard.writeText(document.getElementById("agentline").value);
   notify(T.copied);
+}
+async function pickFolder(){
+  const {ok,j}=await pj("/pick-folder",{method:"POST",body:"{}"});
+  if(!ok){await tell(j.error||T["attach.err"]);return;}
+  if(j.path) document.getElementById("cfparent").value=j.path;
+}
+async function saveFolder(){
+  const name=document.getElementById("cfname").value.trim();
+  const parent=document.getElementById("cfparent").value.trim();
+  if(!name||!parent){await tell(T["folder.need"]);return;}
+  const {ok,j}=await pj("/campaign-folder",{method:"POST",body:JSON.stringify({name,parent})});
+  if(!ok){await tell(j.error||T["attach.err"]);return;}
+  await load();
+  notify(fill(T["folder.saved"],{path:j.inbox}));
 }
 load();
 """ + ui._mode_js("copy") + """
@@ -322,6 +361,7 @@ def review_page():
     return _head(t["title"]) + f"""
 <header><span class="brand">copy-kit</span><h1 id="title">{t['title']}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
+""" + ui._flow_buttons("review") + f"""
 <button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
 """ + _stepper(3, 2) + f"""
@@ -372,7 +412,7 @@ def review_page():
 <div class="callout warn" id="lockhint" style="display:none"></div>
 <div id="deliver-result"></div></div>
 </div>
-""" + ui._modal() + ui._JS_UTIL + (
+""" + ui._modal() + ui._JS_UTIL + ui._flow_js("copy", "review") + (
         '<script>const T=' + json.dumps(t, ensure_ascii=False) + ';</script>') + """
 <script>
 let state=null,filter="working",dest="all",pf="all",cf="all",prf="all",last="",seenBefore=null,
@@ -632,6 +672,8 @@ class CopyHandler(ui.Handler):
                 filled, total = _brief_progress(brief)
                 self._send(200, {
                     "folder": self.root, "briefing": brief,
+                    "inbox": os.path.abspath(self.root),
+                    "folder_saved": bool(onboard.folder_record(self.root)),
                     "examples": copy.read_text(self.root, "examples.txt"),
                     "direction": copy.read_text(self.root, "direction.md"),
                     "attachments": copy.attachments(self.root),
@@ -678,6 +720,9 @@ class CopyHandler(ui.Handler):
         length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(length) if length else b""
         url = urlparse(self.path)
+        if url.path == "/restart":
+            copy.restart(self.root)
+            return self._send(200, {"ok": True})
         if self.mode == "onboard":
             if url.path == "/attach":
                 q = parse_qs(url.query)
@@ -690,6 +735,20 @@ class CopyHandler(ui.Handler):
                 stored = copy.save_attachment(self.root, name, raw)
                 return self._send(200, {"ok": True, "name": stored})
             payload = json.loads(raw or b"{}")
+            if url.path == "/pick-folder":
+                try:
+                    picked = ui._pick_folder()
+                except RuntimeError:
+                    return self._send(400, {"error": i18n.t("ob.err.picker")})
+                return self._send(200, {"path": picked})
+            if url.path == "/campaign-folder":
+                try:
+                    new = onboard.relocate(self.root, payload.get("parent", ""), payload.get("name", ""))
+                except ValueError as e:
+                    return self._send(400, {"error": i18n.t(f"ob.err.folder.{e}")})
+                CopyHandler.root = new
+                onboard.save_folder_record(new)
+                return self._send(200, {"ok": True, "inbox": new})
             if url.path == "/save":
                 with open(os.path.join(self.root, "briefing.md"), "w", encoding="utf-8") as f:
                     f.write(payload.get("briefing", ""))

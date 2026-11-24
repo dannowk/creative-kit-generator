@@ -419,6 +419,12 @@ typed before switching**, and shows a hint instead of a dead button when the oth
 running. Ports: visual 8766 (wizard) / 8769 (asset approval) / 8765 (review); copy 8767 (wizard) /
 8768 (table). Each kit keeps its own folder — switching never mixes them and never loses your text.
 
+**Back / Restart:** every page (both wizards, asset approval, both reviews) has **← Back** —
+a review jumps to this folder's wizard, a wizard steps to the previous panel — and **Restart**,
+which asks for confirmation, stops the queues and clears the working output (renders, decisions,
+adjustments; copy: the table) while keeping the briefing, uploads, generated assets and delivered
+files, then lands back on the wizard.
+
 <details>
 <summary>Manual (terminal)</summary>
 

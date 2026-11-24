@@ -16,7 +16,11 @@ logo/brandbook/refs. Ports — visual wizard 8766/asset approval 8769/review 876
 8768 (table). **Both wizards carry a `Visual | Copy` switch in the header**: each one discovers the
 other by probing `/ping` on 8760–8790, saves what the user typed before navigating, and stays
 disabled (with a hint) when the other kit is not running — so you may run both in the same session
-and the user loses nothing by switching. Each kit still has its own folder.
+and the user loses nothing by switching. Each kit still has its own folder. The copy wizard's
+first card, **Copy folder**, names/moves the folder like the visual one; once saved, `folder.json`
+makes both wizards show an "already saved" notice instead of asking again. Every page also has
+**← Back** (review → this folder's wizard; wizard → previous panel) and **Restart** (confirms,
+then clears copy.json, adjustments and the queue — briefing, examples and attachments stay).
 
 ## Steps
 

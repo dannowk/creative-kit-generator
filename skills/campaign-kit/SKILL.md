@@ -27,7 +27,10 @@ and the browser.**
    videos/ briefing/ briefing.md`. Each slot accepts a button + drag-and-drop (so does the briefing).
    The header carries a **`Visual | Copy`** switch: it discovers the copy wizard via `/ping`
    (8760–8790), saves before navigating, and stays disabled with a hint when the other kit is not
-   running — both may run in the same session, each in its own folder.
+   running — both may run in the same session, each in its own folder. Every page also has
+   **← Back** (review → this folder's wizard; wizard → previous panel) and **Restart**
+   (confirms, then clears renders, decisions, adjustments and queues — briefing, uploads
+   and generated assets stay).
    Deps already installed → just reopen the wizard.
 4. **Announce in the chat** that onboarding opened; ask for the logo (required) + photos/refs +
    briefing (brandbook is optional) and wait for the user's "ready". In the briefing area there is

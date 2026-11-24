@@ -545,6 +545,24 @@ def sync_requests(root, data=None):
     return batch
 
 
+def restart(root):
+    """The Restart button: stop queued rewrites and clear the table, back to zero.
+
+    Goes: copy.json (the agent writes it again from the briefing), the work queue and
+    the adjustments/refs (styles/). Stays: briefing, examples, direction, attachments
+    and the exported files.
+    """
+    import shutil
+    from . import campaign
+    for f in ("copy.json", "requests.json"):
+        p = os.path.join(root, f)
+        if os.path.isfile(p):
+            os.remove(p)
+    d = os.path.join(root, campaign.STYLES_DIR)
+    if os.path.isdir(d):
+        shutil.rmtree(d)
+
+
 def wait_batch(root, timeout=0, interval=2.0):
     """Block until the review table produces work, then return the batch (the agent's hook).
 

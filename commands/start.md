@@ -20,6 +20,8 @@ chat with you and use the browser. Drive in this order:
    the briefing). Deps already installed → just reopen the wizard. The header has a
    **`Visual | Copy`** switch (it finds the other kit's wizard on its own, saves before switching,
    and says so when the other kit is not running) — you may run both flows in the same session.
+   Every page also has **← Back** and **Restart** (Restart confirms, clears working output and
+   queues, keeps briefing/uploads/generated assets, and returns to the wizard).
 4. Say in the chat: *"I opened the onboarding in the browser. First, name the campaign folder
    and choose where to save it (card 1). Then upload the logo (required), photos
    and references, and fill in the briefing; if you have a brandbook, you can attach it too

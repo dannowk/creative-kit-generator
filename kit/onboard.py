@@ -4,6 +4,8 @@ Scaffold with named subfolders + guided briefing; status says what is missing be
 intake runs. Whatever is optional is stated as optional — never blocks on a whim.
 """
 
+import datetime
+import json
 import os
 import re
 import shutil
@@ -115,7 +117,37 @@ def relocate(inbox, parent, name):
     if os.path.exists(target):
         raise ValueError("exists")
     shutil.move(inbox, target)
+    rec = folder_record(target)
+    if rec:
+        rec["name"], rec["parent"] = name, parent
+        with open(os.path.join(target, FOLDER_RECORD), "w", encoding="utf-8") as f:
+            json.dump(rec, f, indent=2)
     return target
+
+
+FOLDER_RECORD = "folder.json"
+
+
+def folder_record(root):
+    """Saved state of the wizard's folder card, kept inside the folder so the
+    visual and copy wizards (and the agent) see the same answer."""
+    p = os.path.join(root, FOLDER_RECORD)
+    if not os.path.isfile(p):
+        return {}
+    try:
+        with open(p, encoding="utf-8") as f:
+            return json.load(f) or {}
+    except ValueError:
+        return {}
+
+
+def save_folder_record(root):
+    rec = {"name": os.path.basename(os.path.abspath(root)),
+           "parent": os.path.dirname(os.path.abspath(root)),
+           "saved_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+    with open(os.path.join(root, FOLDER_RECORD), "w", encoding="utf-8") as f:
+        json.dump(rec, f, indent=2)
+    return rec
 
 
 def _sections(text):
@@ -207,4 +239,5 @@ def status(inbox):
                          "concepts": requested_concepts(text)},
             "direction": read_direction(inbox),
             "briefing_docs": docs,
+            "folder_saved": bool(folder_record(inbox)),
             "ready": slots["logo"]["ok"] and not missing}

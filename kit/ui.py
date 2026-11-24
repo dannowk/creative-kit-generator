@@ -368,12 +368,65 @@ initModeSwitch();
 """ % kit
 
 
+def _flow_buttons(page):
+    """Back + Restart in the header of every page. On the wizard Back steps through the
+    panels; on review/assets it returns to this folder's wizard."""
+    back = "goBackPanel()" if page == "wizard" else "goBackWizard()"
+    return (f'<button class="btn" onclick="{back}" title="{i18n.t("flow.back.title")}">{i18n.t("flow.back")}</button>'
+            f'<button class="btn no" onclick="restartFlow()" title="{i18n.t("flow.restart.title")}">{i18n.t("flow.restart")}</button>')
+
+
+def _flow_js(kit, page):
+    """Back: review/assets probe the port range for this folder's wizard (same contract as
+    the mode switch) and jump to it; without one, show the command that opens it. Restart:
+    confirm spelling out what is cleared, POST /restart, then land back on the wizard."""
+    confirm = "restart.confirm.copy" if kit == "copy" else "restart.confirm"
+    cmd = "python3 -m kit.cli copy onboard " if kit == "copy" else "python3 -m kit.cli onboard "
+    return "<script>" + """
+const FT=%s;
+const FLOW_PAGE="%s";
+const ffill=(s,o)=>s.replace(/\\{(\\w+)\\}/g,(m,k)=>(k in o?o[k]:m));
+async function flowRoot(){try{const j=await (await fetch("/ping")).json();return j.root||"";}catch(e){return "";}}
+async function findWizard(){
+  const probes=[];
+  for(let p=8760;p<=8790;p++) probes.push(fetch("http://127.0.0.1:"+p+"/ping")
+    .then(r=>r.json())
+    .then(j=>(j&&j.kit==="%s"&&j.mode==="onboard"?{url:"http://127.0.0.1:"+p,root:j.root}:null))
+    .catch(()=>null));
+  const root=await flowRoot();
+  return (await Promise.all(probes)).find(w=>w&&w.root===root)||null;
+}
+async function goBackWizard(){
+  const w=await findWizard();
+  if(w){location.href=w.url;return;}
+  tell(ffill(FT["back.none"],{cmd:"%s"+(await flowRoot()||"<folder>")}));
+}
+function goBackPanel(){
+  const ps=[...document.querySelectorAll(".wrap .panel")];
+  if(!ps.length) return;
+  const h=document.querySelector("header").offsetHeight+14;
+  let idx=0;
+  ps.forEach((p,i)=>{if(p.getBoundingClientRect().top<=h+40) idx=i;});
+  const t=ps[Math.max(0,idx-1)];
+  window.scrollTo({top:t.getBoundingClientRect().top+window.scrollY-h});
+}
+async function restartFlow(){
+  if(!await confirmBox(FT["%s"])) return;
+  const r=await pj("/restart",{method:"POST"});
+  if(!r.ok){tell(FT["restart.failed"]);return;}
+  if(FLOW_PAGE!=="wizard"){const w=await findWizard();if(w){location.href=w.url;return;}}
+  location.reload();
+}
+""" % (json.dumps(i18n.js_dict("flow"), ensure_ascii=False), page, kit, cmd, confirm) + "</script>"
+
+
 def review_page():
     return _head(i18n.t("rv.title")) + f"""
 <header><span class="brand">campaign-kit</span><h1 id="title">{i18n.t('rv.title')}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
 <button class="btn rulebadge" id="rulebadge" hidden onclick="ruleOpen=null;syncRules()"></button>
 <button class="btn primary contbtn" onclick="continueBatch()">{i18n.t('rv.js.continue')}</button>
+""" + _flow_buttons("review") + f"""
 <button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
 """ + _stepper(6, 5) + f"""
@@ -423,7 +476,7 @@ def review_page():
 <div id="deliver-result"></div></div>
 </div>
 <dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
-""" + _modal() + _rule_alarm("rv.js") + _JS_UTIL + _inject("rv.js") + _RULE_JS + """
+""" + _modal() + _rule_alarm("rv.js") + _JS_UTIL + _flow_js("visual", "review") + _inject("rv.js") + _RULE_JS + """
 <script>
 let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null, seenBefore=null, sel=new Set();
 let busyAt={}, timer=null, pollMs=0;
@@ -703,6 +756,7 @@ def assets_page():
 <span class="meta" id="meta"></span><span class="sp"></span>
 <button class="btn rulebadge" id="rulebadge" hidden onclick="ruleOpen=null;syncRules()"></button>
 <button class="btn primary nextbtn" onclick="nextStep()" disabled>{i18n.t('as.js.next')}</button>
+""" + _flow_buttons("assets") + f"""
 <button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
 """ + _stepper(5, 4) + f"""
@@ -729,7 +783,7 @@ def assets_page():
 <div id="next-result"></div></div>
 </div>
 <dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
-""" + _modal() + _rule_alarm("as.js") + _JS_UTIL + _inject("as.js") + _RULE_JS + """
+""" + _modal() + _rule_alarm("as.js") + _JS_UTIL + _flow_js("visual", "assets") + _inject("as.js") + _RULE_JS + """
 <script>
 let state=null, filter="working", lastState="", seenBefore=null;
 let busyAt={}, timer=null, pollMs=0;
@@ -897,7 +951,7 @@ def onboard_page():
     return _head(i18n.t("ob.title")) + f"""
 <header><span class="brand">campaign-kit</span><h1>{i18n.t('ob.title')}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
-""" + _mode_switch("visual") + f"""
+""" + _mode_switch("visual") + _flow_buttons("wizard") + f"""
 <button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
 """ + _stepper(1, 0) + f"""
@@ -911,7 +965,8 @@ def onboard_page():
 <input type="text" id="cfparent" style="flex:1" placeholder="{i18n.t('ob.p0.parentph')}">
 <button class="btn" onclick="pickFolder()">{i18n.t('ob.p0.choose')}</button>
 <button class="btn primary" onclick="saveFolder()">{i18n.t('ob.p0.save')}</button></div>
-<span class="meta" id="cfpath"></span></div>
+<span class="meta" id="cfpath"></span>
+<div class="callout ok" id="cfsaved" style="display:none"></div></div>
 <div class="panel"><h2><span class="n">2</span>{i18n.t('ob.p1.title')}</h2>
 <p class="desc">{i18n.t('ob.p1.desc')}</p>
 <span class="meta" id="slotprog"></span>
@@ -951,7 +1006,7 @@ def onboard_page():
 <div class="row"><input type="text" id="agentline" readonly>
 <button class="btn primary" onclick="copyAgent()">{i18n.t('ob.p4.copy')}</button></div></div>
 </div>
-""" + _modal() + _JS_UTIL + _inject("ob.js") + """
+""" + _modal() + _JS_UTIL + _flow_js("visual", "wizard") + _inject("ob.js") + """
 <script>
 let S=null, INT=null;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -966,6 +1021,9 @@ async function load(){
   if(document.activeElement!==fn) fn.value=ix.slice(cut+1);
   if(document.activeElement!==fp) fp.value=cut>0?ix.slice(0,cut):"/";
   document.getElementById("cfpath").textContent=S.inbox;
+  const fs=document.getElementById("cfsaved");
+  if(S.folder_saved){fs.textContent=fill(T["folder.already"],{path:S.inbox});fs.style.display="";}
+  else fs.style.display="none";
   const slotsOk=Object.values(S.slots).filter(s=>s.ok).length;
   const secOk=S.briefing.sections.filter(x=>x.filled).length;
   document.getElementById("slotprog").textContent =
@@ -1282,6 +1340,7 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError as e:
                 return self._send(400, {"error": i18n.t(f"ob.err.folder.{e}")})
             Handler.root = new
+            onboard.save_folder_record(new)
             _write_last_inbox(self.brands, new)
             return self._send(200, {"ok": True, "inbox": new})
         if url.path == "/briefing":
@@ -1424,6 +1483,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
+        if urlparse(self.path).path == "/restart":
+            self.rfile.read(length)
+            with _STATE_LOCK:
+                campaign.restart(self.root)
+            return self._send(200, {"ok": True})
         if self.mode == "onboard":
             return self._onboard_post(length)
         if self.path.startswith("/style-ref"):

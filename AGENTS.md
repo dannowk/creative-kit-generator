@@ -32,7 +32,9 @@ in the browser**. **Create the `<inbox>` folder automatically**
 first card, **Campaign folder**, lets the user rename it and choose where it lives (native
 folder picker or a typed path); the files move with it. After a move, the wizard's step-5
 phrase and `<kit>/.last-inbox` carry the current path (`intake` falls back to the pointer when
-the old path is gone). `onboard` does the scaffold (`logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ briefing.md`).
+the old path is gone). Saving the card writes `folder.json` inside the folder — the shared
+"already saved" record both wizards read, so the card stays visible with a notice instead of
+asking again. `onboard` does the scaffold (`logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ briefing.md`).
 Announce in the chat that onboarding opened, wait for the "ready" and follow the pipeline.
 
 **ffmpeg / codecs:** do not install system ffmpeg or codecs. `imageio-ffmpeg` embeds
@@ -63,6 +65,14 @@ python3 -m kit.cli onboard ~/inbox/acme
 #    The wizard also has a **Technical direction** field (saved as direction.md) and a
 #    Visual | Copy switch in the header (it discovers the other kit's wizard via /ping and
 #    saves before navigating) — both wizards may run at the same time.
+#    Every page (both wizards, asset approval, both reviews) also has **← Back** and
+#    **Restart**. Back: on a wizard it steps to the previous panel; on a review it jumps to
+#    this folder's wizard (probed via /ping; without one it shows the command to open it).
+#    Restart asks for confirmation, then stops the queues and clears working output —
+#    visual: out/, review/, styles/, piece decisions, asset decisions and both queues;
+#    copy: copy.json, styles/ and the queue. Briefing, uploads, generated asset files
+#    (assets/manifest.json included) and delivered files are kept. After clearing, the
+#    review lands back on the wizard; the agent re-runs the pipeline from the briefing.
 #    --no-ui = scaffold + checklist only, no server.
 
 # 2. Derive the brand from the dropped folder (palette, logo, refs analysis, gaps)
