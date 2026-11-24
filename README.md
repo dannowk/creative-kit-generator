@@ -226,7 +226,9 @@ videos, before any logo, overlay or copy**. You look at them and, per asset:
 While the agent works, the marked card shows a **processing overlay** ("regenerating this
 image…" + when you marked it) and the page polls faster; the new image then comes back to the
 same page as pending, badged **NEW**, replacing the old one in place (no reload, no cached
-copy); the ones you already approved keep their approval. The next phase (logo, overlays, copy,
+copy); the ones you already approved keep their approval. The **All** filter shows every file
+at once — approved, pending and the ones still regenerating — so a regenerated image never
+leaves the overview. The next phase (logo, overlays, copy,
 compliance) only starts when **every** asset is approved — the page says so and the
 **Next: render** button unlocks.
 Fixing a weak photo here is cheap; fixing it after the logo and the copy are on top is not.

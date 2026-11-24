@@ -273,9 +273,9 @@ composed frame (overlay + middle frame), same as images.
 4. **Per-piece review, mark → agent runs it:** approve / reject / redo write the intent to
    `state.json` and queue rejected/redo in `requests.json` **immediately** — you pick the batch
    up with `wait` and re-render; **Continue** only exports the approved ones (and is locked while
-   anything is still marked). Status filters and compliance findings on the card. The **approved
-   pieces stay only in the approved list** (they leave the working grid); rejected/redo update
-   **on the same page** after regeneration.
+   anything is still marked). Status filters (**All** + one per status) and compliance findings
+   on the card. The **approved pieces leave the working grid** (they stay in the approved list
+   and in **All**); rejected/redo update **on the same page** after regeneration.
    Marked pieces appear in a **Working queue** panel (what the agent is redoing, with the
    note and when it was marked), and their cards show a **processing overlay** ("regenerating
    this image…" + queued/waiting + when it was marked) until the new render lands; pieces the
@@ -419,7 +419,8 @@ change is done (all marked pieces re-rendered via `render --ids`).
    immediate poll when the tab becomes visible again): while the piece is queued its card shows a
    processing overlay, and after `render --ids` the rejected/redo pieces reappear as pending with
    the new image (cache-busted by `updated_at`, so the browser never shows the old one), on the
-   same page, badged **NEW**; the approved ones stay only in the approved list. The user reviews
+   same page, badged **NEW**; the approved ones leave the working grid (the **All** filter still
+   shows them next to the cards being regenerated). The user reviews
    again until done.
 
 ### A reject is a layout brief (checklist, every time)

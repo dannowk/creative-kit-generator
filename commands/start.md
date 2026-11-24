@@ -41,7 +41,8 @@ chat with you and use the browser. Drive in this order:
    recreate/redo, changing template/asset/copy — a note asking for a different image means
    `assets <campaign> --jobs <asset_job>` first), run `render --ids <ids>`, and the review updates
    by itself — the marked card shows a **processing overlay** while it is queued, then the piece
-   comes back as pending badged **NEW** with the new image in place (cache-busted). Run `wait`
+   comes back as pending badged **NEW** with the new image in place (cache-busted) — the **All**
+   filter shows it next to the approved ones instead of hiding it in a status tab. Run `wait`
    again for the next round.
    **A reject is a layout brief, not a re-roll**: framing for that format (persona + action
    realigned to the middle of the scene) → safe zones → text contrast → nothing over a face →

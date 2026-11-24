@@ -49,7 +49,8 @@ and the browser.**
    away; fulfill them with `assets campaigns/<slug> --jobs <job>` (only the marked ones) and they
    come back as pending badged **NEW** — untouched files keep their approval. The marked card
    shows a **processing overlay** until the new file lands, and its `sha` in the image URL makes
-   the regenerated file replace the old one in place (no reload, no cached copy).
+   the regenerated file replace the old one in place (no reload, no cached copy). The **All**
+   filter shows every file at once — approved, pending and still regenerating.
    **`render` is gated**: it refuses to run while any asset is unapproved (`--force` skips it).
    `wait` covers this queue too and, when everything is approved and there is no `state.json` yet,
    returns `{"stage":"assets","reason":"all_approved"}` — your signal to render.
@@ -73,6 +74,8 @@ and the browser.**
    cards show a **processing overlay** while they are queued, then the re-rendered pieces come
    back as pending badged **NEW** — the media URL carries the piece's `updated_at` (assets: its
    `sha`), so the new image replaces the old one in place instead of showing a cached copy.
+   The **All** filter keeps everything in one grid — approved, pending and the cards still
+   regenerating — so a re-rendered piece never disappears from the overview.
    **A reject is a layout brief** (permanent rule — no note comes with it, so the checklist *is*
    the note): framing for that format with the persona and the action realigned to the middle of
    the scene → safe zones clear → text contrast readable → nothing over a face → then refit the

@@ -314,7 +314,7 @@ def review_page():
 let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null, seenBefore=null;
 let busyAt={}, timer=null, pollMs=0;
 const isBusy=p=>p.status==="rejected"||p.status==="redo";
-const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"],blocked:T["lbl.blocked"]};
+const LBL={all:T["lbl.all"],working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"],blocked:T["lbl.blocked"]};
 const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"],blocked:T["sing.blocked"]};
 const fmsg=f=>f.message;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -329,7 +329,7 @@ function applyState(s){
   const delivered=state.pieces.filter(p=>p.delivered).length;
   document.getElementById("stats").innerHTML = fill(T.stats,
     {total:state.pieces.length,approved:c("approved"),pending:c("pending"),blocked:state.blocked_count,delivered});
-  const counts={working,approved:c("approved"),pending:c("pending"),rejected:c("rejected"),redo:c("redo"),blocked:c("blocked")};
+  const counts={all:state.pieces.length,working,approved:c("approved"),pending:c("pending"),rejected:c("rejected"),redo:c("redo"),blocked:c("blocked")};
   document.getElementById("filters").innerHTML = Object.entries(counts)
     .map(([k,v])=>`<button class="${k===filter?'on':''}" onclick="setFilter('${k}')">${LBL[k]} (${v})</button>`).join("");
   const cc={}; for(const p of state.pieces) cc[p.concept]=(cc[p.concept]||0)+1;
@@ -344,8 +344,8 @@ function applyState(s){
   if(delivered>0) setStep(7);
   if(seenBefore===null&&state.campaign){
     const k="ck.lastseen."+state.campaign;
-    seenBefore=localStorage.getItem(k)||"";
-    localStorage.setItem(k,new Date().toISOString());
+    seenBefore=localStorage.getItem(k)||new Date().toISOString();
+    localStorage.setItem(k,seenBefore);
   }
   const q=state.pieces.filter(isBusy);
   const now={}; for(const p of q) now[p.id]=p.updated_at||"";
@@ -386,9 +386,8 @@ async function copyHandoff(){
   await navigator.clipboard.writeText(document.getElementById("handoffline").value);
   notify(T["handoff.copied"]);
 }
-function setFilter(f){filter=f;draw();}
-function setConcept(k){cfilter=k;draw();
-  document.getElementById("stylebtn").style.display = k==="all" ? "none" : "";
+function setFilter(f){filter=f;applyState(state);}
+function setConcept(k){cfilter=k;applyState(state);
   if(k==="all") closeStyle();
   else if(styleOpen) openStyle(k);}
 function closeStyle(){styleOpen=false;document.getElementById("stylepanel").hidden=true;}
@@ -429,7 +428,7 @@ function setStep(n){document.querySelectorAll(".stepper .step").forEach(el=>{
   const d=el.querySelector(".n");if(d)d.textContent=i<n?"✓":String(i);});}
 function draw(){
   const items=state.pieces
-    .filter(p=>(filter==="working"?p.status!=="approved":p.status===filter)&&(cfilter==="all"||p.concept===cfilter))
+    .filter(p=>(filter==="all"||(filter==="working"?p.status!=="approved":p.status===filter))&&(cfilter==="all"||p.concept===cfilter))
     .sort((a,b)=>a.concept.localeCompare(b.concept)||a.format.localeCompare(b.format));
   const g=document.getElementById("grid");
   if(!items.length){g.innerHTML=`<div class="empty">${T.empty}</div>`;return;}
@@ -568,7 +567,7 @@ def assets_page():
 let state=null, filter="working", lastState="", seenBefore=null;
 let busyAt={}, timer=null, pollMs=0;
 const isBusy=a=>a.status==="rejected"||a.status==="redo";
-const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"]};
+const LBL={all:T["lbl.all"],working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"]};
 const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"]};
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fill=(s,o)=>s.replace(/\\{(\\w+)\\}/g,(m,k)=>(k in o?o[k]:m));
@@ -583,13 +582,13 @@ function applyState(s){
   document.getElementById("stats").innerHTML = fill(T.stats,
     {total:A.length,approved:c("approved"),pending:c("pending"),
      marks:c("rejected")+c("redo"),credits:Math.round(credits*100)/100});
-  const counts={working,approved:c("approved"),pending:c("pending"),rejected:c("rejected"),redo:c("redo")};
+  const counts={all:A.length,working,approved:c("approved"),pending:c("pending"),rejected:c("rejected"),redo:c("redo")};
   document.getElementById("filters").innerHTML = Object.entries(counts)
     .map(([k,v])=>`<button class="${k===filter?'on':''}" onclick="setFilter('${k}')">${LBL[k]} (${v})</button>`).join("");
   if(seenBefore===null&&s.campaign){
     const k="ck.lastseen.assets."+s.campaign;
-    seenBefore=localStorage.getItem(k)||"";
-    localStorage.setItem(k,new Date().toISOString());
+    seenBefore=localStorage.getItem(k)||new Date().toISOString();
+    localStorage.setItem(k,seenBefore);
   }
   const q=(s.batch||[]);
   const qel=document.getElementById("queue");
@@ -630,12 +629,12 @@ async function copyHandoff(){
   await navigator.clipboard.writeText(document.getElementById("handoffline").value);
   notify(T["handoff.copied"]);
 }
-function setFilter(f){filter=f;draw();}
+function setFilter(f){filter=f;applyState(state);}
 function setStep(n){document.querySelectorAll(".stepper .step").forEach(el=>{
   const i=+el.dataset.step;el.classList.toggle("done",i<n);el.classList.toggle("current",i===n);
   const d=el.querySelector(".n");if(d)d.textContent=i<n?"✓":String(i);});}
 function draw(){
-  const A=(state.assets||[]).filter(a=>filter==="working"?a.status!=="approved":a.status===filter);
+  const A=(state.assets||[]).filter(a=>filter==="all"||(filter==="working"?a.status!=="approved":a.status===filter));
   const g=document.getElementById("grid");
   if(!(state.assets||[]).length){g.innerHTML=`<div class="empty">${T.none}</div>`;return;}
   if(!A.length){g.innerHTML=`<div class="empty">${T.empty}</div>`;return;}
