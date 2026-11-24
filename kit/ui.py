@@ -35,6 +35,9 @@ _STYLE = """<style>
  --bad:#b3261e;--bad-bg:#fdecea;--bad-line:#f3c1bd;
  --pend:#5a6673;--pend-bg:#eef1f4;--pend-line:#dfe3e8}
 *{box-sizing:border-box}
+/* display rules below (grid/flex/inline-flex) outrank the UA's [hidden] style —
+   without this, hidden panels/buttons stay visible (style panel, modal cancel). */
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);
  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 header{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line);
