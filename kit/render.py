@@ -324,7 +324,8 @@ def render(spec, brand, geo, photo=None, fx=0.5, logo=None, copy=None, extra=Non
             od = ImageDraw.Draw(ov)
             od.ellipse([0, 0, d - 1, d - 1], fill=brand.color(layer.get("color", "accent")) + (255,))
             text = _ref(layer.get("ref"), ctx) or layer.get("text", "")
-            lines = [l for l in str(text).split("\n") if l] or [""]
+            sep = layer.get("separator", "\n")
+            lines = [l.strip() for l in str(text).split(sep) if l.strip()] or [""]
             tc = brand.color(layer.get("text_color", "white"))
             fspec = brand.fonts.spec(layer.get("font", "text"))
             fs = round(evaluate(layer.get("font_size", "round(scale*0.03)"), v))
