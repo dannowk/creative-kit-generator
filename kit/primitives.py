@@ -4,6 +4,8 @@ Ported from the CDI engine (gerar_templates_v3.py / processar_campanha.py / gera
 Colors, fonts and texts come in as parameters — the visual result is the same as the original.
 """
 
+import math
+
 import numpy as np
 from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageStat
 
@@ -349,3 +351,66 @@ def contact_sheet(paths, out_path, thumb_h=420, cols=None, bg=(225, 228, 232), p
             x += t.width + pad
     sheet.save(out_path, "PNG", optimize=True)
     return out_path
+
+
+# ---------------------------------------------------------------- shape ops
+def gradient(w, h, c0, c1, angle=90):
+    """Linear gradient RGB canvas. angle 0 = left->right, 90 = top->bottom."""
+    a = math.radians(angle)
+    dx, dy = math.cos(a), math.sin(a)
+    ys, xs = np.mgrid[0:h, 0:w]
+    proj = xs * dx + ys * dy
+    proj = (proj - proj.min()) / max(1e-6, proj.max() - proj.min())
+    c0 = np.asarray(c0, float)
+    c1 = np.asarray(c1, float)
+    arr = c0[None, None, :] + (c1 - c0)[None, None, :] * proj[:, :, None]
+    return Image.fromarray(arr.astype("uint8"))
+
+
+def grid_overlay(w, h, spacing, color, opacity=0.08, diagonal=False, thickness=1):
+    """Fine line grid (square, or 45° parallel lines) as an RGBA overlay."""
+    ov = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(ov)
+    fill = tuple(color) + (max(0, min(255, round(255 * opacity))),)
+    sp = max(2, round(spacing))
+    t = max(1, round(thickness))
+    if diagonal:
+        step = max(2, round(sp * math.sqrt(2)))
+        for c in range(-h, w + h, step):
+            d.line([(c, 0), (c + h, h)], fill=fill, width=t)
+    else:
+        for x in range(0, w, sp):
+            d.line([(x, 0), (x, h)], fill=fill, width=t)
+        for y in range(0, h, sp):
+            d.line([(0, y), (w, y)], fill=fill, width=t)
+    return ov
+
+
+def wave_band(w, h, height, amplitude, color, opacity=1.0, edge="bottom", phase=0.0, cycles=1.5):
+    """A filled band whose inner edge is a sine curve — the curved light wave."""
+    ov = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(ov)
+    fill = tuple(color) + (max(0, min(255, round(255 * opacity))),)
+    n = 96
+    pts = []
+    for i in range(n + 1):
+        x = w * i / n
+        off = amplitude * math.sin(i / n * cycles * 2 * math.pi + phase * 2 * math.pi)
+        pts.append((x, (h - height + off) if edge == "bottom" else (height + off)))
+    poly = pts + ([(w, h), (0, h)] if edge == "bottom" else [(w, 0), (0, 0)])
+    d.polygon(poly, fill=fill)
+    return ov
+
+
+def chip_icon(d, cx, cy, r, color, glyph="check"):
+    """A filled circle icon with a white mark (check / dot / ring)."""
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=tuple(color) + (255,))
+    if glyph == "dot":
+        d.ellipse([cx - r * 0.32, cy - r * 0.32, cx + r * 0.32, cy + r * 0.32], fill=(255, 255, 255, 255))
+    elif glyph == "ring":
+        d.ellipse([cx - r * 0.5, cy - r * 0.5, cx + r * 0.5, cy + r * 0.5],
+                  outline=(255, 255, 255, 255), width=max(1, round(r * 0.18)))
+    else:  # check
+        w = max(1, round(r * 0.22))
+        d.line([(cx - r * 0.42, cy), (cx - r * 0.1, cy + r * 0.34), (cx + r * 0.46, cy - r * 0.36)],
+               fill=(255, 255, 255, 255), width=w, joint="curve")

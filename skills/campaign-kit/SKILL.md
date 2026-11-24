@@ -46,9 +46,13 @@ and the browser.**
    **binds** the templates, the formats, the asset prompts and the copy — a conflict with the
    briefing becomes a question.
 5. **Follow `AGENTS.md`**: `intake (or brief --apply) → plan → assets → approve → render →
-   video`. The art direction comes from the briefing + refs + brandbook (if any), not from
-   another client. Free-form
-   briefing (prose/PDF/docx)? `brief --normalize <source>` → fill the skeleton (vision
+   video`. The art direction comes from THIS briefing + refs + brandbook (if any), not from
+   another client or a previous campaign. Author each `templates/<concept>.yaml` by looking at
+   the reference with vision and translating its key visual — the shape ops are native
+   (`gradient`, `grid`, `wave`, `card` chips, `badge` disc, `pill` CTA). **Never silently drop a
+   direction element or degrade to an older layout**; if the ops can't express it, say so and
+   propose a provider image or new ops. Every copy field lands where the direction places it.
+   Free-form briefing (prose/PDF/docx)? `brief --normalize <source>` → fill the skeleton (vision
    for PDF; whatever is missing stays empty, becomes a gap) → `brief <out> --apply`.
 6. **Cost is a notice**: show ≈ credits before provider jobs and proceed.
 7. **Asset approval (stage 5)**: after `assets`, start `approve` — the user looks at the **raw

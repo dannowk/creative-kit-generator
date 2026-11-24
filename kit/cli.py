@@ -542,13 +542,18 @@ def main(argv=None):
         else:
             print("  concepts: not specified in the briefing — ask or propose directions from the refs.")
         print("\n  The global library (templates/) is a STARTING POINT, not the destination.")
-        print("  Author/adjust campaigns/<slug>/templates/<concept>.yaml from the briefing")
-        print("  and the refs; the local spec wins over the global one. Available ops:")
+        print("  Author/adjust campaigns/<slug>/templates/<concept>.yaml from THIS briefing")
+        print("  and the refs; the local spec wins over the global one. Never reuse a previous")
+        print("  campaign's layout just because it is nearby — translate the direction you read.")
+        print("  Available ops:")
         print("   ", ", ".join(render.OPS))
-        print("  Type treatment per layer: underline, accent_upper, accent_scale.")
-        print("\n  Honest limit: these ops cover photographic/typographic directions.")
-        print("  A radically different look (flat illustration, 3D, collage) needs a")
-        print("  provider-generated image or new ops — it won't come out of these specs by magic.")
+        print("  Key-visual shapes are native: gradient (from/to/angle), grid (spacing/diagonal/opacity),")
+        print("  wave (height/amplitude/edge), card (rounded panel + items chips), badge (disc + text),")
+        print("  pill (CTA button). Type treatment per layer: underline, accent_upper, accent_scale.")
+        print("\n  Do not silently drop a direction element. If the briefing asks for something these")
+        print("  ops cannot express (flat illustration, 3D, collage, a photographic key visual), SAY so")
+        print("  and propose a provider-generated image or new ops — never ship the old campaign's look")
+        print("  as if it were the new direction. Every copy field lands where the direction places it.")
         return 0
 
     if args.cmd == "deliver":

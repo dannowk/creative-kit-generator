@@ -325,8 +325,17 @@ composed frame (overlay + middle frame), same as images.
    `visibilitychange`/`focus`. Keep this format.
 5. **Local files and control.** Do not create a public URL, remote or deploy without
    explicitly asking the user.
-6. **Design follows the briefing/refs.** `plan` gives you the raw material; the art direction is
-   yours, not a fixed template.
+6. **Design follows the briefing/refs — never a previous campaign.** `plan` gives you the raw
+   material; the art direction is yours, not a fixed template. Author each
+   `campaigns/<slug>/templates/<concept>.yaml` from THIS briefing + refs (look at the reference
+   with vision and translate its key visual), never by copying a nearby campaign's layout.
+   The shape ops are native: `gradient`, `grid`, `wave`, `card` (rounded panel + chips),
+   `badge` (disc + text), `pill` (CTA button) — use them to build the briefed key visual.
+   **Do not silently drop a direction element or degrade to an older look.** If the direction
+   asks for something the ops cannot express (flat illustration, 3D, collage, a photographic
+   key visual), SAY so and propose a provider-generated image or new ops; do not ship the old
+   campaign's design as if it were the new one. Every copy field (hook, kicker, badge, chips,
+   CTA) lands where the direction places it — not demoted to a stray text line.
 7. **An empty field is not a crash.** Briefing/brand YAML left blank arrives as `None`
    (`credits_per_video:`, `tolerancia_rosto:`…): read those through the null-safe helpers
    (`providers.base.num`, `compliance._num`) or `or <default>` so the pipeline keeps running with

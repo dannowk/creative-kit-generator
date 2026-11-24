@@ -18,11 +18,12 @@ _BIN = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul,
         ast.Div: operator.truediv, ast.FloorDiv: operator.floordiv, ast.Mod: operator.mod,
         ast.Pow: operator.pow}
 
-OPS = ("canvas", "paper", "photo", "paste", "grade", "fade_to", "light_leak", "film_texture",
-       "multiply", "halftone", "rule", "logo", "text", "kicker", "cta", "tracked")
+OPS = ("canvas", "paper", "gradient", "grid", "wave", "photo", "paste", "grade", "fade_to",
+       "light_leak", "film_texture", "multiply", "halftone", "rule", "card", "badge", "pill",
+       "logo", "text", "kicker", "cta", "tracked")
 # Ops that paint background/image: skipped in overlay mode (only brand/text over transparency).
-BG_OPS = {"canvas", "paper", "photo", "paste", "grade", "fade_to", "light_leak",
-          "film_texture", "multiply", "halftone"}
+BG_OPS = {"canvas", "paper", "gradient", "grid", "wave", "photo", "paste", "grade", "fade_to",
+          "light_leak", "film_texture", "multiply", "halftone"}
 _UNARY = {ast.UAdd: operator.pos, ast.USub: operator.neg}
 _FUNCS = {"round": round, "min": min, "max": max, "abs": abs, "int": int, "float": float}
 _CMP = {ast.Lt: operator.lt, ast.Gt: operator.gt, ast.LtE: operator.le,
@@ -159,6 +160,27 @@ def render(spec, brand, geo, photo=None, fx=0.5, logo=None, copy=None, extra=Non
         elif op == "paper":
             canvas = P.paper(w, h, base=brand.color(layer.get("color", "paper"))).convert("RGBA")
 
+        elif op == "gradient":
+            canvas = P.gradient(w, h, brand.color(layer.get("from", "dark")),
+                                brand.color(layer.get("to", "primary")), layer.get("angle", 90))
+
+        elif op == "grid":
+            ov = P.grid_overlay(w, h, evaluate(layer.get("spacing", "round(scale*0.06)"), v),
+                                brand.color(layer.get("color", "white")), layer.get("opacity", 0.08),
+                                diagonal=layer.get("diagonal", False),
+                                thickness=evaluate(layer.get("thickness", 1), v))
+            canvas = canvas.convert("RGBA")
+            canvas.alpha_composite(ov)
+
+        elif op == "wave":
+            ov = P.wave_band(w, h, evaluate(layer.get("height", "round(h*0.12)"), v),
+                             evaluate(layer.get("amplitude", "round(h*0.03)"), v),
+                             brand.color(layer.get("color", "white")), layer.get("opacity", 1.0),
+                             edge=layer.get("edge", "bottom"), phase=layer.get("phase", 0.0),
+                             cycles=layer.get("cycles", 1.5))
+            canvas = canvas.convert("RGBA")
+            canvas.alpha_composite(ov)
+
         elif op == "photo":
             if photo is None:
                 continue
@@ -253,6 +275,95 @@ def render(spec, brand, geo, photo=None, fx=0.5, logo=None, copy=None, extra=Non
             y = round(evaluate(layer.get("y", 0), v))
             t = max(1, round(evaluate(layer.get("thickness", "max(4, round(h*0.006))"), v)))
             ImageDraw.Draw(canvas).rectangle([0, y, w, y + t], fill=brand.color(layer.get("color", "accent")))
+
+        elif op == "card":
+            canvas = canvas.convert("RGBA")
+            from PIL import ImageDraw
+            at = pos(layer.get("at", ["m", "m"]))
+            size = layer.get("size") or ["round(w*0.42)", "round(h*0.12)"]
+            cw, ch = round(evaluate(size[0], v)), round(evaluate(size[1], v))
+            radius = round(evaluate(layer.get("radius", "round(scale*0.02)"), v))
+            panel = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
+            pd = ImageDraw.Draw(panel)
+            pd.rounded_rectangle([0, 0, cw - 1, ch - 1], radius=radius,
+                                 fill=brand.color(layer.get("color", "white")) + (255,))
+            items = layer.get("items") or []
+            labels = [_ref(it.get("label") if isinstance(it, dict) else it, ctx) for it in items]
+            glyphs = [(it.get("icon", "check") if isinstance(it, dict) else "check") for it in items]
+            fs = round(evaluate(layer.get("font_size", "round(scale*0.024)"), v))
+            font = P.ft(brand.fonts.spec(layer.get("font", "text")), fs)
+            ic = brand.color(layer.get("icon_color", "primary"))
+            tc = brand.color(layer.get("text_color", "ink"))
+            pad = round(evaluate(layer.get("padding", "round(scale*0.02)"), v))
+            r = fs * 0.62
+            column = layer.get("layout", "row") == "column"
+            n = max(1, len(labels))
+            if column:
+                cell_h = (ch - 2 * pad) / n
+                for i, lab in enumerate(labels):
+                    cy = pad + cell_h * (i + 0.5)
+                    P.chip_icon(pd, pad + r, cy, r, ic, glyphs[i])
+                    pd.text((pad + 2 * r + fs * 0.5, cy), lab, font=font, fill=tc, anchor="lm")
+            else:
+                cell_w = (cw - 2 * pad) / n
+                for i, lab in enumerate(labels):
+                    cx = pad + cell_w * i
+                    cy = ch / 2
+                    P.chip_icon(pd, cx + r, cy, r, ic, glyphs[i])
+                    pd.text((cx + 2 * r + fs * 0.4, cy), lab, font=font, fill=tc, anchor="lm")
+            canvas.alpha_composite(panel, (round(at[0]), round(at[1])))
+            trace["elements"].append({"op": "card",
+                                      "box": (at[0], at[1], at[0] + cw, at[1] + ch)})
+
+        elif op == "badge":
+            canvas = canvas.convert("RGBA")
+            from PIL import ImageDraw
+            at = pos(layer.get("at", ["m", "m"]))
+            d = round(evaluate(layer.get("size", "round(scale*0.16)"), v))
+            ov = Image.new("RGBA", (d, d), (0, 0, 0, 0))
+            od = ImageDraw.Draw(ov)
+            od.ellipse([0, 0, d - 1, d - 1], fill=brand.color(layer.get("color", "accent")) + (255,))
+            text = _ref(layer.get("ref"), ctx) or layer.get("text", "")
+            lines = [l for l in str(text).split("\n") if l] or [""]
+            tc = brand.color(layer.get("text_color", "white"))
+            fspec = brand.fonts.spec(layer.get("font", "text"))
+            fs = round(evaluate(layer.get("font_size", "round(scale*0.03)"), v))
+            while fs > 8:
+                f = P.ft(fspec, fs)
+                if max(f.getlength(l) for l in lines) <= d * 0.78 and len(lines) * fs * 1.1 <= d * 0.72:
+                    break
+                fs -= 1
+            f = P.ft(fspec, fs)
+            lead = fs * 1.1
+            y = (d - lead * len(lines)) / 2 + fs * 0.82
+            for l in lines:
+                od.text((d / 2, y), l, font=f, fill=tc, anchor="ms")
+                y += lead
+            canvas.alpha_composite(ov, (round(at[0]), round(at[1])))
+            trace["elements"].append({"op": "badge",
+                                      "box": (at[0], at[1], at[0] + d, at[1] + d)})
+
+        elif op == "pill":
+            canvas = canvas.convert("RGBA")
+            from PIL import ImageDraw
+            at = pos(layer.get("at", ["m", "bottom"]))
+            text = _ref(layer.get("ref", "cta"), ctx)
+            arrow = layer.get("arrow", "→")
+            label = f"{text}  {arrow}" if arrow else text
+            fs = round(evaluate(layer.get("size", "round(scale*0.03)"), v))
+            font = P.ft(brand.fonts.spec(layer.get("font", "text")), fs)
+            pad_x, pad_y = round(fs * 0.95), round(fs * 0.6)
+            pw = round(font.getlength(label) + 2 * pad_x)
+            ph = round(fs + 2 * pad_y)
+            ov = Image.new("RGBA", (pw, ph), (0, 0, 0, 0))
+            od = ImageDraw.Draw(ov)
+            od.rounded_rectangle([0, 0, pw - 1, ph - 1], radius=ph / 2,
+                                 fill=brand.color(layer.get("color", "accent")) + (255,))
+            od.text((pw / 2, ph / 2), label, font=font,
+                    fill=brand.color(layer.get("text_color", "white")), anchor="mm")
+            canvas.alpha_composite(ov, (round(at[0]), round(at[1])))
+            trace["elements"].append({"op": "pill",
+                                      "box": (at[0], at[1], at[0] + pw, at[1] + ph)})
 
         elif op == "logo":
             if logo is None:
