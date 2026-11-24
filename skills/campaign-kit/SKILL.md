@@ -72,7 +72,7 @@ and the browser.**
    (Desktop) with each platform's bulk upload in CSV + XLSX (Meta Ads Manager, Google Search RSA, Google
    Display) + manifest. Or run `ppc <campaign>` (`--all` for non-approved). Names/copy/CTA/
    placements/size come pre-filled; **URL, budget, targeting and IDs stay blank for
-   the traffic team** — do not invent. Everything ships paused. See "Stage 6b" in AGENTS.md.
+   the traffic team** — do not invent. Everything ships paused. See "Step 7b — PPC sheets" in AGENTS.md.
 
 The asset provider (the user's MCP, e.g. Magnific) lives in the agent, not in the kit:
 briefing `provider` section + `assets/jobs.json` → MCP → `drop_dir` → collection.

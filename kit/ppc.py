@@ -62,11 +62,16 @@ def _clean(text):
     return re.sub(r"\s+", " ", re.sub(r"\[([^\]]*)\]", r"\1", str(text or ""))).strip()
 
 
-def _trunc(text, n):
+def _trunc(text, n, warnings=None, who="", field=""):
     t = _clean(text)
     if len(t) <= n:
         return t
     cut = t[:n]
+    if warnings is not None:
+        # The same copy is cut for every piece in the ad group — report it once.
+        w = {"id": who, "field": field, "chars": len(t), "limit": n}
+        if w not in warnings:
+            warnings.append(w)
     return (cut.rsplit(" ", 1)[0] if " " in cut else cut).rstrip()
 
 
@@ -124,33 +129,40 @@ def _dedup(seq):
     return out
 
 
-def _meta_rows(pieces, camp, brand):
+def _meta_rows(pieces, camp, brand, warnings=None):
     cname, url = _campaign_name(camp, brand), camp.get("landing_url", "")
     rows = []
     for p in pieces:
         copy = _copy_for(camp, p.get("axes", {}), p["concept"])
+        # The limits bind the copy, which is per concept×axis — report it there, not per piece.
+        who = _adgroup(p["concept"], p.get("axes", {}))
         row = {c: "" for c in META_COLUMNS}
         row.update({"Campaign Name": cname, "Campaign Status": "PAUSED", "Buying Type": "AUCTION",
-                    "Ad Set Name": _adgroup(p["concept"], p.get("axes", {})), "Ad Set Run Status": "PAUSED",
+                    "Ad Set Name": who, "Ad Set Run Status": "PAUSED",
                     "Placements": _meta_placement(p["format"]), "Ad Name": p["id"], "Ad Status": "PAUSED",
-                    "Creative Type": "Link Page Post Ad", "Title": _trunc(copy["program"] or copy["hook"], 40),
-                    "Body": copy["hook"], "Link Description": _trunc(copy["kicker"], 30),
+                    "Creative Type": "Link Page Post Ad",
+                    "Title": _trunc(copy["program"] or copy["hook"], 40, warnings, who, "Title"),
+                    "Body": copy["hook"],
+                    "Link Description": _trunc(copy["kicker"], 30, warnings, who, "Link Description"),
                     "Call to Action": _cta_enum(copy["cta"]), "Link": url})
         row["Video File Name" if p.get("kind") == "video" else "Image File Name"] = _creative_basename(p)
         rows.append(row)
     return rows
 
 
-def _display_rows(pieces, camp, brand):
+def _display_rows(pieces, camp, brand, warnings=None):
     cname, url = _campaign_name(camp, brand), camp.get("landing_url", "")
     logo = os.path.basename(brand.logo_path) if brand.logo_path else ""
     rows = []
     for p in pieces:
         copy = _copy_for(camp, p.get("axes", {}), p["concept"])
+        who = _adgroup(p["concept"], p.get("axes", {}))
         row = {c: "" for c in DISPLAY_COLUMNS}
-        row.update({"Campaign": cname, "Ad group": _adgroup(p["concept"], p.get("axes", {})),
-                    "Ad type": "Responsive display ad", "Headline": _trunc(copy["program"] or copy["hook"], 30),
-                    "Long headline": _trunc(copy["hook"], 90), "Description": _trunc(copy["kicker"] or copy["hook"], 90),
+        row.update({"Campaign": cname, "Ad group": who,
+                    "Ad type": "Responsive display ad",
+                    "Headline": _trunc(copy["program"] or copy["hook"], 30, warnings, who, "Headline"),
+                    "Long headline": _trunc(copy["hook"], 90, warnings, who, "Long headline"),
+                    "Description": _trunc(copy["kicker"] or copy["hook"], 90, warnings, who, "Description"),
                     "Business name": brand.name, "Final URL": url, "Status": "Paused",
                     "Image file": _creative_basename(p), "Logo file": logo, "Size": _size(p["format"]),
                     "Concept": p["concept"], "Placement": "Google Display Network"})
@@ -158,7 +170,7 @@ def _display_rows(pieces, camp, brand):
     return rows
 
 
-def _rsa_rows(pieces, camp, brand):
+def _rsa_rows(pieces, camp, brand, warnings=None):
     cname, url = _campaign_name(camp, brand), camp.get("landing_url", "")
     seen, combos = set(), []
     for p in pieces:
@@ -170,15 +182,17 @@ def _rsa_rows(pieces, camp, brand):
     rows = []
     for concept, combo in combos:
         copy = _copy_for(camp, combo, concept)
-        headlines = [_trunc(x, 30) for x in _dedup(
+        who = _adgroup(concept, combo)
+        headlines = [_trunc(x, 30, warnings, who, "Headline") for x in _dedup(
             [copy["program"], copy["kicker"], copy["hook"], copy["cta"], brand.name])]
-        descriptions = [_trunc(x, 90) for x in _dedup(
+        descriptions = [_trunc(x, 90, warnings, who, "Description") for x in _dedup(
             [copy["hook"], " ".join(x for x in [copy["kicker"], copy["program"]] if x),
              " — ".join(x for x in [copy["cta"], copy["program"]] if x)])]
         row = {c: "" for c in RSA_COLUMNS}
-        row.update({"Campaign": cname, "Ad group": _adgroup(concept, combo),
+        row.update({"Campaign": cname, "Ad group": who,
                     "Ad type": "Responsive search ad", "Status": "Paused",
-                    "Path 1": _trunc(camp.get("slug", ""), 15), "Path 2": _trunc(concept, 15),
+                    "Path 1": _trunc(camp.get("slug", ""), 15, warnings, who, "Path 1"),
+                    "Path 2": _trunc(concept, 15, warnings, who, "Path 2"),
                     "Final URL": url})
         for i, h in enumerate(headlines[:15], 1):
             row[f"Headline {i}"] = h
@@ -265,7 +279,8 @@ def export(root, all_pieces=False):
     state_path = os.path.join(root, "state.json")
     if not os.path.isfile(state_path):
         return {"dir": os.path.join(C.delivery_dir(root), "ppc"), "files": [], "meta": 0,
-                "google_display": 0, "google_rsa": 0, "manifest": 0, "xlsx": _HAS_XLSX}
+                "google_display": 0, "google_rsa": 0, "manifest": 0, "warnings": [],
+                "xlsx": _HAS_XLSX}
     import json
     with open(state_path, encoding="utf-8") as f:
         state = json.load(f)
@@ -282,6 +297,7 @@ def export(root, all_pieces=False):
     outdir = os.path.join(C.delivery_dir(root), "ppc")
     os.makedirs(outdir, exist_ok=True)
     files, counts = [], {"meta": 0, "google_display": 0, "google_rsa": 0, "manifest": 0}
+    warnings = []
 
     def emit(stem, columns, rows, title, key):
         if not rows:
@@ -293,14 +309,17 @@ def export(root, all_pieces=False):
         counts[key] = len(rows)
 
     if want_meta:
-        emit("meta_bulk_import", META_COLUMNS, _meta_rows(meta, camp, brand), "Meta bulk import", "meta")
+        emit("meta_bulk_import", META_COLUMNS,
+             _meta_rows(meta, camp, brand, warnings), "Meta bulk import", "meta")
     if want_google:
-        emit("google_display", DISPLAY_COLUMNS, _display_rows(google, camp, brand), "Google Display", "google_display")
-        emit("google_search_rsa", RSA_COLUMNS, _rsa_rows(pieces, camp, brand), "Google Search RSA", "google_rsa")
+        emit("google_display", DISPLAY_COLUMNS,
+             _display_rows(google, camp, brand, warnings), "Google Display", "google_display")
+        emit("google_search_rsa", RSA_COLUMNS,
+             _rsa_rows(pieces, camp, brand, warnings), "Google Search RSA", "google_rsa")
     emit("creative_manifest", MANIFEST_COLUMNS, _manifest_rows(pieces, camp, brand), "Creative manifest", "manifest")
 
     notes = os.path.join(outdir, "README.txt")
     with open(notes, "w", encoding="utf-8") as f:
         f.write(_NOTES)
     files.append("README.txt")
-    return {"dir": outdir, "files": files, "xlsx": _HAS_XLSX, **counts}
+    return {"dir": outdir, "files": files, "xlsx": _HAS_XLSX, "warnings": warnings, **counts}

@@ -422,7 +422,7 @@ def wait_batch(root, timeout=0, interval=2.0):
 
 
 def deliver(root):
-    """Step 6 — the Continue button: exports approved pieces and queues recreation/redo.
+    """Step 7 — the Continue button: exports approved pieces and queues recreation/redo.
 
     Local and immediate: copies approved pieces from `out/` to the delivery folder on the
     Desktop (`~/Desktop/Campaign Kit/<campaign>/<concept>/`) and marks `delivered`. Rejected

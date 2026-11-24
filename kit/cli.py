@@ -22,6 +22,23 @@ from . import (assets, briefing, campaign, copy, i18n, intake, onboard,
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def _platforms(ppc):
+    """Non-zero sheet counts, so the summary doesn't list platforms the campaign doesn't run."""
+    return " · ".join(f"{s['count']} {s['label']}" for s in
+                      [{"count": ppc.get("meta"), "label": "Meta"},
+                       {"count": ppc.get("google_display"), "label": "Google Display"},
+                       {"count": ppc.get("google_rsa"), "label": "Google Search"}] if s["count"])
+
+
+def _print_truncated(warnings):
+    """Copy the platform limits cut — surfaced, never a blocker (the sheet ships paused)."""
+    if not warnings:
+        return
+    listed = ", ".join(f"{w['id']} {w['field']} {w['chars']}>{w['limit']}" for w in warnings[:6])
+    more = f" (+{len(warnings) - 6})" if len(warnings) > 6 else ""
+    print("  " + i18n.t("cli.ppc.truncated", n=len(warnings), list=listed + more), file=sys.stderr)
+
+
 def main(argv=None):
     # Windows console (cp1252) can't encode the kit's Unicode symbols (➜, ✓, ≈): force UTF-8.
     for stream in (sys.stdout, sys.stderr):
@@ -455,12 +472,17 @@ def main(argv=None):
         if result["exported"] == 0 and result["regen"] == 0:
             print(i18n.t("cli.deliver.empty"))
             return 0
+        queued = (i18n.t("cli.deliver.queued", regen=result["regen"], req=result["requests_path"])
+                  if result["regen"] else "")
         print(i18n.t("cli.deliver.summary", exported=result["exported"],
-                     dir=result["delivery_dir"], regen=result["regen"], req=result["requests_path"]))
-        print("  " + i18n.t("cli.deliver.next", req=result["requests_path"]))
+                     dir=result["delivery_dir"], queued=queued))
+        if result["regen"]:
+            print("  " + i18n.t("cli.deliver.next", req=result["requests_path"]))
         if result.get("ppc"):
             print("  " + i18n.t("cli.deliver.ppc", dir=result["ppc"]["dir"],
-                                n=len(result["ppc"]["files"])))
+                                n=len(result["ppc"]["files"]),
+                                platforms=_platforms(result["ppc"])))
+            _print_truncated(result["ppc"].get("warnings"))
         return 0
 
     if args.cmd == "wait":
@@ -507,6 +529,7 @@ def main(argv=None):
                      rsa=s["google_rsa"], manifest=s["manifest"], dir=s["dir"], n=len(s["files"])))
         if not s["xlsx"]:
             print("  " + i18n.t("cli.ppc.xlsxoff"))
+        _print_truncated(s.get("warnings"))
         return 0
 
     if args.cmd == "review":

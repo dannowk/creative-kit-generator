@@ -44,6 +44,6 @@ chat with you and use the browser. Drive in this order:
    is already applied by the render — for that batch `render --ids` is enough. See AGENTS.md.
 9. Continue/`deliver` also generates the **PPC sheets** (Meta + Google) in `ppc/` in the
    delivery folder (Desktop), CSV + XLSX, for the traffic team to bulk-import. Or run `ppc <campaign>`. URL/budget/
-   targeting/IDs stay blank for PPC — do not invent. See "Stage 6b" in AGENTS.md.
+   targeting/IDs stay blank for PPC — do not invent. See "Step 7b — PPC sheets" in AGENTS.md.
 
 Do not skip compliance (never cover faces) and do not hardcode brand visuals.

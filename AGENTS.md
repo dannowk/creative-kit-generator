@@ -127,14 +127,14 @@ python3 -m kit.cli wait campaigns/acme-launch
 
 # 7. Delivery — headless equivalent of "Continue". Exports the approved pieces to the delivery folder
 #    on the Desktop (~/Desktop/Campaign Kit/<campaign>/<concept>/). Locked while anything is still
-#    rejected/redo: it then prints the batch to fulfill instead of exporting. See "Stage 6 —
-#    Delivery and regeneration". With the approved pieces exported, it also generates the PPC sheets
+#    rejected/redo: it then prints the batch to fulfill instead of exporting. See "Stages 6–7 —
+#    Review, regeneration and delivery". With the approved pieces exported, it also generates the PPC sheets
 #    in ppc/ in the same delivery folder (Meta + Google).
 python3 -m kit.cli deliver campaigns/acme-launch
 
 # 8. Bulk-upload sheets for the PPC team (Meta + Google), CSV + XLSX, in ppc/ in the delivery folder (Desktop).
 #    Deterministic: each approved piece becomes a row in each platform's import columns.
-#    --all exports every piece (not just the approved). See "Stage 6b — PPC sheets".
+#    --all exports every piece (not just the approved). See "Step 7b — PPC sheets".
 python3 -m kit.cli ppc campaigns/acme-launch
 ```
 
@@ -327,7 +327,7 @@ python3 -m kit.cli wait    campaigns/<slug>    # you: blocks until an asset is m
 - **`render` is gated** on unapproved assets (first render only). `--force` skips the gate, `--dry`
   and `--ids` are not gated (a targeted re-render is the user iterating on pieces they already saw).
 
-## Stage 6 — Delivery (Continue) and regeneration
+## Stages 6–7 — Review, regeneration and delivery (Continue)
 
 Same logic as providers/normalize: Python prepares and exports, the agent regenerates,
 Python re-renders and the UI updates. The review is **batched** — a click marks the piece and
@@ -363,7 +363,7 @@ callout with a paste-ready line — that is the manual fallback, not the normal 
 1. **Exports** the approved pieces from `out/` to `~/Desktop/Campaign Kit/<campaign>/<concept>/`
    (local copy, immediate) and marks `delivered:true` + `delivery_path` (absolute path).
 2. The UI reports what was exported, shows the **Open folder** button (opens the delivery folder
-   on the Desktop) and advances the stepper to stage 6 (Deliver).
+   on the Desktop) and advances the stepper to step 7 (Deliver).
 3. If anything is still marked, `deliver` does **not** export: it returns `{"locked": n, "batch": [...]}`
    (exit 1) with the same fulfillment instructions as `wait`.
 
@@ -420,7 +420,7 @@ type: {display: DINPro-Bold.otf}
 note: more contrast
 ```
 
-## Stage 6b — PPC sheets (Meta + Google bulk upload)
+## Step 7b — PPC sheets (Meta + Google bulk upload)
 
 When demand is high, Meta and Google accept importing ads in bulk via spreadsheet.
 `kit.cli ppc` (and **Continue**, which already calls the export) generates those sheets in
@@ -440,6 +440,13 @@ platform's import columns, according to format/size/channel.
 - `creative_manifest` → human reference: each piece with platform, format, size,
   concept, axes, file, delivery path and copy (hook/kicker/program/CTA).
 - `README.txt` → what comes pre-filled vs. what the PPC team completes, and the limits.
+
+**Limits are enforced, never silent:** copy longer than a platform limit (Meta title 40 / link
+description 30, Google RSA headline 30 / description 90 / path 15, Display headline 30 / long
+headline 90) is **cut at the limit and reported** per ad group — `N copy field(s) cut to the
+platform limit: clean | Agenda Headline 74>30 …` on stderr from `ppc`/`deliver`, and a warn
+callout under **Continue**. Nothing blocks (the ads ship paused); shorten the copy in the
+briefing/`campaign.json.copy` and export again.
 
 **Pre-filled by the kit:** campaign/ad set/ad names, creative (file name), copy
 (hook/primary text, headline, description), CTA (Meta enum), placements and size.

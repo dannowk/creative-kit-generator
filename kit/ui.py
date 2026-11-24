@@ -426,6 +426,12 @@ async function continueBatch(){
     const platforms=[[j.ppc.meta,T["ppc.meta"]],[j.ppc.google_display,T["ppc.display"]],
                      [j.ppc.google_rsa,T["ppc.rsa"]]].filter(p=>p[0]>0).map(p=>`${p[0]} ${p[1]}`).join(" · ");
     box.innerHTML+=`<div class="callout">${fill(T["continue.ppc"],{dir:j.ppc.dir,n:j.ppc.files.length,platforms})}</div>`;
+    const w=j.ppc.warnings||[];
+    if(w.length){
+      const list=w.slice(0,6).map(x=>`${esc(x.id)} ${esc(x.field)} ${x.chars}&gt;${x.limit}`).join(", ")
+        +(w.length>6?` (+${w.length-6})`:"");
+      box.innerHTML+=`<div class="callout warn">${fill(T["continue.trunc"],{n:w.length,list})}</div>`;
+    }
   }
   notify(fill(T["continue.toast"],{n:j.exported,
     queued:j.regen>0?fill(T["continue.toastqueued"],{m:j.regen}):""}));

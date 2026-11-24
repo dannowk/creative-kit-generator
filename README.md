@@ -130,7 +130,7 @@ picks it up immediately: it recreates/redoes, re-renders only those pieces and t
 **update on this same page** by themselves, back as pending with a **NEW** badge. You keep
 reviewing; nothing to paste, no button to press.
 
-The **Continue** button (stage 6) is the delivery step: the approved pieces are **exported to the
+The **Continue** button (step 7) is the delivery step: the approved pieces are **exported to the
 delivery folder on your Desktop** (`~/Desktop/Campaign Kit/<campaign>/`), together with the PPC
 sheets. An **Open folder** button appears next to Continue and opens that folder on your
 computer (Finder on Mac, Explorer on Windows). Continue stays **locked while the agent is still
@@ -313,8 +313,9 @@ invented by the kit. Every ad ships **paused** for review before going live.
 - The export is **deterministic**: approved piece → row. Re-render/re-approve and run `ppc`
   again to refresh. `--all` includes pieces not yet approved (handy for drafts).
 - Google RSA copy comes from the campaign `copy` (program/kicker/hook/CTA), truncated to
-  Google's limits and stripped of the `[bracket]` highlights. Improve the briefing `copy`
-  for better headlines/descriptions — don't hand-edit the sheet.
+  Google's limits and stripped of the `[bracket]` highlights — and every cut is **reported**
+  (a warn callout under Continue, a line in `ppc`/`deliver`), never silent. Improve the
+  briefing `copy` for better headlines/descriptions — don't hand-edit the sheet.
 - If the briefing has a landing page, set `landing_url` in `campaign.json` so the kit
   pre-fills `Link`/`Final URL`; otherwise they stay blank for PPC.
 - XLSX needs `openpyxl` (already in `requirements.txt`). Without it the kit exports CSV only
