@@ -14,12 +14,17 @@ chat with you and use the browser. Drive in this order:
    <inbox>` in the **background** — it **opens the onboarding wizard in the user's
    browser**, creating `logo/ refs/ brandbook/ fonts/
    photos/ videos/ briefing/ briefing.md`. Each slot accepts a button + drag-and-drop (so does
-   the briefing). Deps already installed → just reopen the wizard.
+   the briefing). Deps already installed → just reopen the wizard. The header has a
+   **`Visual | Copy`** switch (it finds the other kit's wizard on its own, saves before switching,
+   and says so when the other kit is not running) — you may run both flows in the same session.
 4. Say in the chat: *"I opened the onboarding in the browser. Upload the logo (required), photos
    and references, and fill in the briefing; if you have a brandbook, you can attach it too
    (optional). In the briefing area there is 'Supporting documents' to attach several files:
-   ad copy, layout rules, safe areas, logo safety. Let me know when you're done."*
-   Wait for the OK.
+   ad copy, layout rules, safe areas, logo safety — and a 'Technical direction' field for the
+   constraints of this whole creation (formats, margins, minimum font size and line count, what
+   must never be covered). Let me know when you're done."*
+   Wait for the OK. `plan` prints the technical direction (`direction.md`) in full: it binds the
+   templates, formats, asset prompts and copy.
 5. Read `AGENTS.md` and follow the pipeline: `intake (or brief --apply) → plan → assets →
    approve → render → video`. Free-form briefing (prose/PDF/docx)? `brief --normalize <source>` →
    fill the skeleton (vision for PDF; whatever is missing stays empty, becomes a gap) → `brief --apply`.

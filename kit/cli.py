@@ -39,6 +39,20 @@ def _print_truncated(warnings):
     print("  " + i18n.t("cli.ppc.truncated", n=len(warnings), list=listed + more), file=sys.stderr)
 
 
+def _print_direction(path):
+    """direction.md — the technical direction the user gave for the whole creation."""
+    if not path or not os.path.isfile(path):
+        return
+    with open(path, encoding="utf-8") as f:
+        text = f.read().strip()
+    if not text:
+        return
+    print("  technical direction (direction.md — the user's constraints for this whole creation:")
+    print("  they bind the formats, the layout and the copy; a conflict becomes a question):")
+    for line in text.splitlines():
+        print("   |", line.rstrip())
+
+
 def _print_reject_check(batch):
     """A reject carries no note — print the layout checklist so it is fulfilled, not re-rolled."""
     if any(b.get("reason") == "rejected" for b in batch):
@@ -178,6 +192,9 @@ def main(argv=None):
                                 n=len(s["files"]), hint=s["hint"]))
         print("  " + i18n.t("cli.briefline", path=brief,
                             n=len(st["briefing"]["missing"])))
+        if st["direction"].strip():
+            print("  " + i18n.t("cli.dirline",
+                                path=os.path.join(st["inbox"], onboard.DIRECTION_FILE)))
         if args.no_ui:
             return 0
         server, url = ui.serve_onboard(inbox, os.path.join(ROOT, "brands"), args.port,
@@ -205,6 +222,7 @@ def main(argv=None):
             print("Copy Kit — folder ready: " + folder)
             print("  briefing.md  ← fill in the copy briefing")
             print("  examples.txt ← paste example texts")
+            print("  direction.md ← optional: technical direction for the whole creation")
             print("  (no logo/brandbook/refs — copy is text only)")
             if args.no_ui:
                 print("Next: fill briefing + examples, then `copy plan <folder>`.")
@@ -224,6 +242,7 @@ def main(argv=None):
             print("COPY — content direction (read before generating):")
             print("  briefing:\n" + (brief or "(empty)"))
             print("  examples:\n" + (examples or "(empty)"))
+            _print_direction(os.path.join(folder, "direction.md"))
             atts = copy.attachments(folder)
             if atts:
                 print("  attached files (READ — plain text: use directly; PDF/docx/image: extract with your tools):")
@@ -419,6 +438,7 @@ def main(argv=None):
                 info = json.load(f)
         print("ART DIRECTION — read before choosing layout:")
         print("  briefing:", ", ".join(info.get("briefs") or []) or "(none in the folder)")
+        _print_direction(info.get("direction"))
         answers_path = os.path.join(brand.root, "answers.json")
         if os.path.isfile(answers_path):
             with open(answers_path, encoding="utf-8") as f:

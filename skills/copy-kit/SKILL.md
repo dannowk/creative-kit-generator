@@ -12,8 +12,11 @@ browser **table** (approve/reject/redo+note per row). **The user does not open a
 terminal or type a command — you run everything; they use the chat and the browser.**
 
 Independent of `campaign-kit` (visual): does not touch the visual campaign/render/ppc, does not ask for
-logo/brandbook/refs. **One flow at a time in the UI** — visual wizard 8766/asset approval 8769/
-review 8765; copy uses 8767 (wizard) / 8768 (table). Do not start both in the same session.
+logo/brandbook/refs. Ports — visual wizard 8766/asset approval 8769/review 8765; copy 8767 (wizard) /
+8768 (table). **Both wizards carry a `Visual | Copy` switch in the header**: each one discovers the
+other by probing `/ping` on 8760–8790, saves what the user typed before navigating, and stays
+disabled (with a hint) when the other kit is not running — so you may run both in the same session
+and the user loses nothing by switching. Each kit still has its own folder.
 
 ## Steps
 
@@ -26,17 +29,22 @@ review 8765; copy uses 8767 (wizard) / 8768 (table). Do not start both in the sa
    (`python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`, or your
    environment's pip), then run `python3 -m kit.cli copy onboard <folder>` — it
    **opens the copy wizard in the browser**,
-   creating only `briefing.md` + `examples.txt` (no logo/brandbook/refs/photos/videos).
+   creating only `briefing.md` + `examples.txt` (no logo/brandbook/refs/photos/videos);
+   `direction.md` is written by the wizard when the user fills the technical direction field.
    Deps already installed → just reopen the wizard.
 4. **Announce in the chat** that the copy wizard opened; ask for the **briefing** (goal, audience,
    tone of voice, offer/product, concepts, axes, constraints, languages) and the **example
    texts** (a text field where they paste copy they like / want to use as a model). Mention
    that **each field has a drop zone**: they can drag a file with copy they already have —
    `.md`/`.txt` content goes into the field, any file lands in `attachments/` for you to read.
+   Point out the third field, **Technical direction** (optional): limits per platform, how many
+   variants they need, terms that must appear or never be cut, languages, delivery formats.
    Wait for the user's "ready".
-5. **`copy plan <folder>`** prints the briefing + examples + **attached files** (if any) + the
-   destinations/kinds vocabulary. **Read the attachments** (plain text directly; PDF/docx/image:
-   extract with your tools) — they are part of the source material.
+5. **`copy plan <folder>`** prints the briefing + examples + **the technical direction** +
+   **attached files** (if any) + the destinations/kinds vocabulary. **Read the attachments**
+   (plain text directly; PDF/docx/image: extract with your tools) — they are part of the source
+   material. **`direction.md` binds the rows you author**: honour every limit and constraint in it,
+   and turn a conflict with the briefing into a question instead of a guess.
    **YOUR JOB:** author `<folder>/copy.json` = `{"concepts":[...], "rows":[...]}`.
    Each row: `id` (`k01`…, next free), `destination` (`ppc`/`overlay`), `platform`
    (`google`/`meta`/`both`, ppc rows only), `concept`,

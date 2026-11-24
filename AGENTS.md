@@ -54,6 +54,9 @@ python3 -m kit.cli onboard ~/inbox/acme
 #    brandbook/ is optional (brand manual as PDF/images/docx).
 #    briefing/ = supporting documents (several, they add up): ad copy, layout rules,
 #    safe areas, logo safety — text/PDF/Word/image/spreadsheet (.csv/.xlsx). plan lists them all.
+#    The wizard also has a **Technical direction** field (saved as direction.md) and a
+#    Visual | Copy switch in the header (it discovers the other kit's wizard via /ping and
+#    saves before navigating) — both wizards may run at the same time.
 #    --no-ui = scaffold + checklist only, no server.
 
 # 2. Derive the brand from the dropped folder (palette, logo, refs analysis, gaps)
@@ -80,7 +83,8 @@ python3 -m kit.cli brief --normalize ~/inbox/briefing.pdf   # [--out ~/inbox/bri
 
 # 3. Art direction from the briefing + references  ← YOUR CREATIVE JOB
 python3 -m kit.cli plan campaigns/acme-launch
-#    prints the briefing, onboarding answers, refs, brandbook (if any),
+#    prints the briefing, the technical direction (direction.md, if the user filled it),
+#    onboarding answers, refs, brandbook (if any),
 #    reference_analysis, the requested concepts and the OPS vocabulary. Author the
 #    templates/<concept>.yaml from THAT — one per requested concept. READ the brandbook
 #    with vision (PDF/image): its rules (colors, typography, logo usage, voice)
@@ -176,6 +180,21 @@ CTA per concept×axis, and the RSA copy in the PPC export); layout rules, safe a
 logo safety become `geometry`/`safe_zones` and `compliance` in `brand.yaml` and in the
 templates. The brandbook and these documents' rules prevail over the proposed palette;
 a conflict with the briefing becomes a question — never a silent guess.
+
+## Technical direction (`direction.md`)
+
+An optional field in **both wizards**, right next to the briefing: the technical guidance for the
+whole creation — formats and sizes needed, grid and margins, minimum font size and how many lines a
+block may take, what must never be covered, treatments to avoid, character limits and how many copy
+variants, languages, delivery constraints. The wizard saves it as `direction.md` (visual:
+`<inbox>/direction.md`, copy kit: `<folder>/direction.md`), `intake` records the path in
+`intake.json.direction` — it is **not** a briefing and never lands in `briefs` — and both `plan`
+and `copy plan` print it in full.
+
+**It binds everything you author after it:** the templates (`size`/`min_size`/`max_lines`/
+`width`/`max_h`, safe zones), the formats in `campaign.json`, the asset prompts and the copy rows.
+A conflict with the briefing or the brandbook becomes a **question**, never a silent guess. When a
+reject sends a piece back, the layout checklist in Stages 6–7 is applied *inside* these constraints.
 
 ## Template specs (declarative)
 
@@ -277,6 +296,9 @@ composed frame (overlay + middle frame), same as images.
    framing/safe-zone/contrast/face checklist and then has its elements refit to the frame (font size,
    one/two/more lines, box) — see **"A reject is a layout brief"** in Stages 6–7. Regenerating the
    same spec with the same numbers is not fulfilling it.
+10. **`direction.md` binds the whole creation.** When the user filled the technical direction
+   field, every template, format, asset prompt and copy row honours it; a conflict with the
+   briefing or the brandbook becomes a question, never a silent guess.
 
 ## Providers (contract = folder + manifest, not API)
 

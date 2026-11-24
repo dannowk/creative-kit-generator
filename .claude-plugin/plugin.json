@@ -1,6 +1,6 @@
 {
   "name": "campaign-kit",
-  "description": "Generates complete campaigns (image + video) from logo, references and briefing — and, with /campaign-kit:copy, copy only (PPC + overlay) from briefing + examples. Runs locally, with asset approval and piece review in the browser.",
-  "version": "2.4.0",
+  "description": "Generates complete campaigns (image + video) from logo, references and briefing — and, with /campaign-kit:copy, copy only (PPC + overlay) from briefing + examples. Runs locally, with a technical-direction field, asset approval and piece review in the browser, and a Visual | Copy switch between the two wizards.",
+  "version": "2.5.0",
   "author": {"name": "Dann Owczarzak"}
 }

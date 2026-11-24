@@ -14,7 +14,7 @@ import yaml
 from PIL import Image
 
 from . import i18n, primitives as P
-from .onboard import VID_EXT, requested_concepts
+from .onboard import DIRECTION_FILE, VID_EXT, requested_concepts
 
 IMG_EXT = (".png", ".jpg", ".jpeg", ".webp")
 FONT_EXT = (".otf", ".ttf", ".ttc")
@@ -22,7 +22,7 @@ BRIEF_EXT = (".md", ".txt", ".docx", ".pdf", ".rtf")
 
 
 def inventory(inbox):
-    found = {"logo": None, "refs": [], "fonts": [], "briefs": [],
+    found = {"logo": None, "refs": [], "fonts": [], "briefs": [], "direction": None,
              "photos": [], "videos": [], "brandbook": [], "brief_docs": [], "other": []}
     for root, _, files in os.walk(inbox):
         for f in sorted(files):
@@ -32,6 +32,10 @@ def inventory(inbox):
             low = f.lower()
             rel = os.path.relpath(p, inbox)
             top = rel.split(os.sep)[0].lower() if os.sep in rel else ""
+            if low == DIRECTION_FILE:
+                # Not a briefing: the technical direction for the whole creation, read on its own.
+                found["direction"] = p
+                continue
             if top == "brandbook":
                 found["brandbook"].append(p)
                 continue
@@ -217,7 +221,7 @@ def run(inbox, brand_id, brands_dir):
                "photos": inv["photos"], "videos": inv["videos"],
                "fonts": len(inv["fonts"]),
                "briefs": inv["briefs"], "brandbook": inv["brandbook"],
-               "brief_docs": inv["brief_docs"],
+               "brief_docs": inv["brief_docs"], "direction": inv["direction"],
                "subjects": subjects, "gaps": gaps,
                "concepts_requested": concepts_req,
                "reference_analysis": {"composition": "", "mood": "", "type": "",

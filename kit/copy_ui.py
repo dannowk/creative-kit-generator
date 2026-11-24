@@ -94,12 +94,20 @@ _WIZ_T = {
     "brief.attach": "Have the briefing in a file? Drop it here or click to browse — .md/.txt content goes straight into the field.",
     "examples.label": "Example texts (paste copy you like / want to use as a model)",
     "examples.attach": "Already have copy written in a file? Drop it here or click to browse — .md/.txt content goes straight into the field.",
+    "dir.label": "Technical direction — for this whole creation (optional)",
+    "dir.hint": "Saved as direction.md next to the briefing and read first by the agent: character "
+                "limits per platform, how many headline/description variants you need, terms that "
+                "must appear or never be cut, tone constraints, languages, delivery formats.",
+    "dir.ph": "e.g. 5 headlines ≤30 chars + 3 descriptions ≤90 per concept · never split “CDI” from "
+              "the program name · no price claims · pt-BR and en",
     "attach.list": "Attached files (the agent reads them — PDF/docx are extracted with its tools):",
     "attach.toast": "File attached — saved in the folder for the agent.",
     "attach.text": "File attached and its content inserted into the field.",
     "attach.err": "Could not attach the file.",
     "save": "Save",
-    "saved": "Briefing and examples saved.",
+    "saved": "Briefing, examples and direction saved.",
+    "mode.hint": "Visual mode is live — switching keeps everything you typed here",
+    "mode.off": "Visual mode is not running — ask the agent: onboard <folder>",
     "p2.title": "Generate with the agent",
     "p2.desc": "Copy the line below and paste it in chat. The agent generates copy and opens the table review.",
     "agentline": "Ready! Briefing and examples in {folder} — generate the copy (PPC + overlay) and open the review.",
@@ -115,6 +123,7 @@ def wizard_page():
     return _head(t["title"]) + f"""
 <header><span class="brand">copy-kit</span><h1>{t['title']}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
+""" + ui._mode_switch("copy") + f"""
 <button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
 """ + _stepper(1, 0) + f"""
@@ -130,6 +139,9 @@ def wizard_page():
 <label class="fieldlabel" for="examples">{t['examples.label']}</label>
 <textarea id="examples" style="min-height:180px"></textarea>
 <div class="drop" id="drop-examples" onclick="pick('examples')" title="{t['examples.attach']}">⬇ {t['examples.attach']}</div>
+<label class="fieldlabel" for="direction" style="margin-top:14px">{t['dir.label']}</label>
+<textarea id="direction" style="min-height:130px" placeholder="{t['dir.ph']}"></textarea>
+<p class="hint">{t['dir.hint']}</p>
 <div id="attachwrap" style="display:none">
 <label class="fieldlabel">{t['attach.list']}</label>
 <div class="chips" id="chips"></div></div>
@@ -155,6 +167,8 @@ async function load(){
   const b=document.getElementById("brief"),e=document.getElementById("examples");
   if(document.activeElement!==b) b.value=S.briefing;
   if(document.activeElement!==e) e.value=S.examples;
+  const d=document.getElementById("direction");
+  if(document.activeElement!==d) d.value=S.direction||"";
   document.getElementById("prog").textContent=fill(T.prog,{filled:S.filled,total:S.total});
   const r=document.getElementById("ready");
   if(S.ready){r.className="callout ok";r.textContent=T.ready;}
@@ -167,12 +181,15 @@ async function load(){
   document.getElementById("agentline").value=fill(T.agentline,{folder:S.folder});
   document.getElementById("copynote").textContent=S.has_copy?T.hascopy:T.nocopy;
 }
-async function save(msg){
+async function persist(){
   await fetch("/save",{method:"POST",body:JSON.stringify({
     briefing:document.getElementById("brief").value,
-    examples:document.getElementById("examples").value})});
-  await load();notify(msg||T.saved);
+    examples:document.getElementById("examples").value,
+    direction:document.getElementById("direction").value})});
+  await load();
 }
+async function save(msg){await persist();notify(msg||T.saved);}
+const saveAll=persist;
 function pick(slot){pickSlot=slot;document.getElementById("filepick").click();}
 document.getElementById("filepick").addEventListener("change",e=>{
   handleFiles(e.target.files);e.target.value="";});
@@ -214,6 +231,7 @@ async function copyAgent(){
   notify(T.copied);
 }
 load();
+""" + ui._mode_js("copy") + """
 </script></body></html>"""
 
 
@@ -486,6 +504,8 @@ class CopyHandler(ui.Handler):
 
     def do_GET(self):
         url = urlparse(self.path)
+        if url.path == "/ping":
+            return self._send(200, {"kit": "copy", "mode": self.mode, "root": self.root}, cors=True)
         if url.path == "/":
             page = wizard_page() if self.mode == "onboard" else review_page()
             self._send(200, page.encode(), "text/html; charset=utf-8")
@@ -496,6 +516,7 @@ class CopyHandler(ui.Handler):
                 self._send(200, {
                     "folder": self.root, "briefing": brief,
                     "examples": copy.read_text(self.root, "examples.txt"),
+                    "direction": copy.read_text(self.root, "direction.md"),
                     "attachments": copy.attachments(self.root),
                     "filled": filled, "total": total, "ready": filled > 0,
                     "has_copy": os.path.isfile(os.path.join(self.root, "copy.json"))})
@@ -551,6 +572,9 @@ class CopyHandler(ui.Handler):
                     f.write(payload.get("briefing", ""))
                 with open(os.path.join(self.root, "examples.txt"), "w", encoding="utf-8") as f:
                     f.write(payload.get("examples", ""))
+                if "direction" in payload:
+                    with open(os.path.join(self.root, "direction.md"), "w", encoding="utf-8") as f:
+                        f.write(payload["direction"])
                 return self._send(200, {"ok": True})
             if url.path == "/detach":
                 if copy.remove_attachment(self.root, payload.get("name", "")):

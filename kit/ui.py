@@ -43,6 +43,12 @@ header .brand{font-weight:700;font-size:12px;letter-spacing:.04em;color:var(--ac
 header h1{font-size:17px;margin:0;font-weight:650}
 .meta{color:var(--mut);font-size:13px}
 .sp{flex:1}
+.modeswitch{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.modeswitch button{border:0;border-radius:0;min-height:32px;padding:4px 12px;font-size:13px;background:var(--surface)}
+.modeswitch button:hover:not(:disabled):not(.on){background:#f2f4f7}
+.modeswitch button+button{border-left:1px solid var(--line)}
+.modeswitch button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.modeswitch button:disabled{color:var(--mut);cursor:not-allowed}
 button,.btn{min-height:36px;padding:8px 14px;border-radius:9px;border:1px solid var(--line);
  background:var(--surface);color:var(--ink);font-size:14px;cursor:pointer;
  display:inline-flex;align-items:center;gap:6px}
@@ -206,6 +212,47 @@ def _inject(group):
     """`T` dictionary with the group's JS strings (prefix in the catalog)."""
     d = i18n.js_dict(group)
     return '<script>const T=' + json.dumps(d, ensure_ascii=False) + ';</script>'
+
+
+def _mode_switch(kit):
+    """Visual | Copy control in the header. The other side is discovered at runtime (/ping),
+    so the button is only live when that server is actually running."""
+    other = "copy" if kit == "visual" else "visual"
+    return (f'<span class="modeswitch" title="{i18n.t("mode.title", kit=i18n.t("mode." + kit))}">'
+            f'<button type="button" class="on">{i18n.t("mode." + kit)}</button>'
+            f'<button type="button" id="mode-other" disabled onclick="switchMode()">'
+            f'{i18n.t("mode." + other)}</button></span>'
+            f'<span class="meta" id="modehint"></span>')
+
+
+# The kits are separate servers on separate folders: probe the local port range for the other
+# wizard instead of guessing a port, and save the form before navigating so nothing typed is lost.
+def _mode_js(kit):
+    return """
+const KIT="%s";
+let OTHER=null;
+async function findOther(){
+  const want=KIT==="visual"?"copy":"visual", probes=[];
+  for(let p=8760;p<=8790;p++) probes.push(fetch("http://127.0.0.1:"+p+"/ping")
+    .then(r=>r.json())
+    .then(j=>(j&&j.kit===want&&j.mode==="onboard"?{url:"http://127.0.0.1:"+p,root:j.root}:null))
+    .catch(()=>null));
+  return (await Promise.all(probes)).find(Boolean)||null;
+}
+async function initModeSwitch(){
+  const b=document.getElementById("mode-other"), h=document.getElementById("modehint");
+  if(!b) return;
+  OTHER=await findOther();
+  if(OTHER){b.disabled=false;b.title=OTHER.root;h.textContent=T["mode.hint"];}
+  else h.textContent=T["mode.off"];
+}
+async function switchMode(){
+  if(!OTHER) return;
+  if(typeof saveAll==="function") await saveAll();
+  location.href=OTHER.url;
+}
+initModeSwitch();
+""" % kit
 
 
 def review_page():
@@ -627,6 +674,7 @@ def onboard_page():
     return _head(i18n.t("ob.title")) + f"""
 <header><span class="brand">campaign-kit</span><h1>{i18n.t('ob.title')}</h1>
 <span class="meta" id="meta"></span><span class="sp"></span>
+""" + _mode_switch("visual") + f"""
 <button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
 """ + _stepper(1, 0) + f"""
@@ -648,6 +696,8 @@ def onboard_page():
 <div class="chips" id="sections"></div>
 <div class="chips" id="concepts"></div>
 <textarea id="brief"></textarea>
+<p class="desc" style="margin:16px 0 6px"><b>{i18n.t('ob.p2.dir.title')}</b> — {i18n.t('ob.p2.dir.desc')}</p>
+<textarea id="direction" style="min-height:130px" placeholder="{i18n.t('ob.p2.dir.ph')}"></textarea>
 <div class="row"><button class="btn primary" onclick="saveBrief()">{i18n.t('ob.p2.save')}</button>
 <span class="meta">{i18n.t('ob.p2.legend')}</span></div>
 <div class="docsblock">
@@ -707,8 +757,9 @@ async function load(){
     c.addEventListener("dragleave",()=>c.classList.remove("drag"));
     c.addEventListener("drop",e=>{e.preventDefault();c.classList.remove("drag");upload(c.dataset.slot,e.dataTransfer.files);});
   });
-  const ta=document.getElementById("brief");
+  const ta=document.getElementById("brief"), dir=document.getElementById("direction");
   if(document.activeElement!==ta) ta.value=S.briefing.text;
+  if(document.activeElement!==dir) dir.value=S.direction||"";
   document.getElementById("sections").innerHTML = S.briefing.sections
     .map(x=>`<span class="tag ${x.filled?"approved":""}">${x.filled?"✓":"•"} ${esc(x.title)}</span>`).join("");
   const cs=S.briefing.concepts||[];
@@ -729,10 +780,14 @@ async function upload(slot,files){
   }
   await load();
 }
-async function saveBrief(){
-  await fetch("/briefing",{method:"POST",body:JSON.stringify({text:document.getElementById("brief").value})});
+async function saveBrief(quiet){
+  await fetch("/briefing",{method:"POST",body:JSON.stringify({
+    text:document.getElementById("brief").value,
+    direction:document.getElementById("direction").value})});
   await load();
+  if(!quiet) notify(T.dirsaved);
 }
+const saveAll=()=>saveBrief(true);
 async function uploadBrief(files){
   for(const f of files){
     const r=await fetch(`/briefing-file?name=${encodeURIComponent(f.name)}`,{method:"POST",body:f});
@@ -811,6 +866,7 @@ dd.addEventListener("dragover",e=>{e.preventDefault();dd.classList.add("drag");}
 dd.addEventListener("dragleave",()=>dd.classList.remove("drag"));
 dd.addEventListener("drop",e=>{e.preventDefault();dd.classList.remove("drag");uploadDocs(e.dataTransfer.files);});
 load();
+""" + _mode_js("visual") + """
 </script></body></html>"""
 
 
@@ -832,11 +888,15 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
-    def _send(self, code, body, ctype="application/json"):
+    def _send(self, code, body, ctype="application/json", cors=False):
         data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode()
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
+        if cors:
+            # Only /ping uses it: the mode switch probes the other kit's server, which is another
+            # port on this same machine. Read-only, localhost, no credentials.
+            self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(data)
 
@@ -926,6 +986,8 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/briefing":
             with open(os.path.join(self.root, "briefing.md"), "w", encoding="utf-8") as f:
                 f.write(payload.get("text", ""))
+            if "direction" in payload:
+                onboard.save_direction(self.root, payload["direction"])
             return self._send(200, {"ok": True})
         if url.path == "/intake":
             bid = payload.get("brand_id", "").strip()
@@ -945,6 +1007,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         url = urlparse(self.path)
+        if url.path == "/ping":
+            return self._send(200, {"kit": "visual", "mode": self.mode, "root": self.root}, cors=True)
         if url.path == "/":
             page = (onboard_page() if self.mode == "onboard"
                     else assets_page() if self.mode == "assets" else review_page())

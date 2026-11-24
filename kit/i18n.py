@@ -16,6 +16,11 @@ _CATALOG = {
     "modal.cancel": "cancel",
     "modal.ok": "ok",
 
+    # ── mode switch (visual kit ⇄ copy kit, top of the wizards) ─────
+    "mode.visual": "Visual",
+    "mode.copy": "Copy",
+    "mode.title": "this page: {kit} mode",
+
     # ── wizard (onboarding) ─────────────────────────────────────────
     "ob.title": "Prepare campaign",
     "ob.meta.steps": "steps 1–3 on this screen · the agent continues with 4 and 5",
@@ -26,7 +31,15 @@ _CATALOG = {
     "ob.p2.upload": "+ upload briefing file",
     "ob.p2.drop": "or drag a file here (.md, .txt, .rtf, .pdf, .docx)",
     "ob.p2.filenote": "PDF/Word: the agent normalizes the file into the template.",
-    "ob.p2.save": "save briefing",
+    "ob.p2.save": "save briefing + direction",
+    "ob.p2.dir.title": "Technical direction — for this whole creation",
+    "ob.p2.dir.desc": "Optional. Saved as <code>direction.md</code> next to the briefing and read "
+                      "first in <code>plan</code>: the technical guidance that applies to everything "
+                      "the kit generates — formats and sizes you need, grid and margins, minimum font "
+                      "size and how many lines a block may take, what must never be covered, treatments "
+                      "to avoid, delivery constraints.",
+    "ob.p2.dir.ph": "e.g. feed 1080x1080 + story 1080x1920 · headline max 2 lines, never under 48 px · "
+                    "keep the top 12% clear · no drop shadow on the logo · export PNG + JPG",
     "ob.p2.legend": "✓ = section filled · • = still blank",
     "ob.p2.docs.title": "Supporting documents",
     "ob.p2.docs.desc": "attach as many files as you like: ad content/copy (in separate files), layout rules, safe areas, logo safety from the brandbook. Text, PDF/Word, images or spreadsheet (.csv/.xlsx). The agent reads them all in plan.",
@@ -46,6 +59,9 @@ _CATALOG = {
     "ob.p4.copy": "copy phrase",
     # dynamic wizard JS
     "ob.js.agentline": "read AGENTS.md and run the campaign for {inbox}",
+    "ob.js.mode.hint": "Copy mode is live — switch keeps everything you typed here",
+    "ob.js.mode.off": "Copy mode is not running — ask the agent: copy onboard <folder>",
+    "ob.js.dirsaved": "Briefing and technical direction saved.",
     "ob.js.slotprog": "{n}/{total} slots with files · briefing {sec}/{sectotal} sections",
     "ob.js.missing": "Missing: {items}",
     "ob.js.missingbrief": "briefing: {title}",
@@ -252,6 +268,7 @@ _CATALOG = {
     "cli.mark.optional": "optional",
     "cli.slotline": "[{mark}] {label}: {n} file(s) — {hint}",
     "cli.briefline": "briefing: {path} · {n} required section(s) blank",
+    "cli.dirline": "technical direction: {path} (read first in plan — it binds formats, layout and copy)",
     "cli.ctrlc": "Ctrl+C to stop the server",
     "cli.gaps.one": "{n} questions for a single round:",
     "cli.appliable": "APPLIABLE",

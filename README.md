@@ -60,6 +60,7 @@ my-brand/
   fonts/       ← brand .ttf / .otf (optional; there are substitutes)
   briefing/    ← supporting documents: ad copy, layout rules, safe areas, logo safety (optional, several)
   briefing.md  ← the briefing you filled on screen (or edited by hand)
+  direction.md ← optional: technical direction for the whole creation (filled on screen)
 ```
 
 Every slot accepts a **button or drag-and-drop** — and so does the briefing: drag a
@@ -75,6 +76,14 @@ text, PDF/Word, images (diagrams) and spreadsheets (`.csv/.xlsx`, e.g. a copy ta
 **add up** (they don't replace the briefing) and show in a list with a remove button. The
 agent reads them all in `plan`: copy becomes the piece text (and the search-ad text in the
 PPC sheets), and layout/safe-area/logo rules become geometry and compliance.
+
+**Technical direction (optional, next to the briefing):** a third field for the guidance that
+applies to **the whole creation** — the formats and sizes you need, grid and margins, the minimum
+font size and how many lines a headline may take, what must never be covered, treatments to avoid,
+delivery constraints. It is saved as `direction.md`, printed in full by `plan`, and **binds**
+everything the agent authors after it: templates, formats, image prompts and copy. The copy kit has
+the same field (limits per platform, how many variants, terms that must not be cut, languages).
+If it conflicts with the briefing, the agent asks instead of guessing.
 
 **Already have a briefing in any format** (Word, PDF, text, email)? No need to rewrite
 anything: the agent **normalizes** it into the kit template and asks you only about what
@@ -383,8 +392,11 @@ The step-by-step is the same as the visual one, but lighter:
    RSA limits (headline ≤30 / description ≤90) become a warning + truncation, not a
    gatekeeper. URL/budget/targeting/IDs stay blank for the PPC team.
 
-**One flow at a time in the UI:** the visual uses ports 8766 (wizard) / 8769 (asset approval) /
-8765 (review); copy uses 8767 (wizard) / 8768 (table). Don't run both in the same session.
+**Switching between the two kits:** both wizards carry a **`Visual | Copy`** control in the header.
+Each one finds the other by itself (a local `/ping` probe on ports 8760–8790), **saves what you
+typed before switching**, and shows a hint instead of a dead button when the other kit is not
+running. Ports: visual 8766 (wizard) / 8769 (asset approval) / 8765 (review); copy 8767 (wizard) /
+8768 (table). Each kit keeps its own folder — switching never mixes them and never loses your text.
 
 <details>
 <summary>Manual (terminal)</summary>

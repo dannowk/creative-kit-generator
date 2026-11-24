@@ -15,6 +15,8 @@ DOC_EXT = (".pdf", ".docx", ".md", ".txt", ".rtf")
 # as text, PDF/Word, image (diagrams) or spreadsheet (copy table).
 BRIEF_DOC_EXT = DOC_EXT + IMG_EXT + (".csv", ".xlsx")
 BRIEF_DOCS_DIR = "briefing"
+# Free technical direction for the whole creation, filled in the wizard next to the briefing.
+DIRECTION_FILE = "direction.md"
 
 SLOTS = [
     {"key": "logo", "dir": "logo", "label": "Logo", "ext": IMG_EXT, "multiple": False,
@@ -130,6 +132,20 @@ def requested_concepts(text):
     return out
 
 
+def read_direction(inbox):
+    """The technical direction for the whole creation ('' when the user left it empty)."""
+    p = os.path.join(inbox, DIRECTION_FILE)
+    if not os.path.isfile(p):
+        return ""
+    with open(p, encoding="utf-8") as f:
+        return f.read()
+
+
+def save_direction(inbox, text):
+    with open(os.path.join(inbox, DIRECTION_FILE), "w", encoding="utf-8") as f:
+        f.write(text or "")
+
+
 def status(inbox):
     slots = {}
     for s in SLOTS:
@@ -164,5 +180,6 @@ def status(inbox):
     return {"inbox": os.path.abspath(inbox), "slots": slots,
             "briefing": {"text": text, "sections": sections, "missing": missing,
                          "concepts": requested_concepts(text)},
+            "direction": read_direction(inbox),
             "briefing_docs": docs,
             "ready": slots["logo"]["ok"] and not missing}
