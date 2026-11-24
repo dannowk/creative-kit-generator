@@ -277,9 +277,13 @@ composed frame (overlay + middle frame), same as images.
    pieces stay only in the approved list** (they leave the working grid); rejected/redo update
    **on the same page** after regeneration.
    Marked pieces appear in a **Working queue** panel (what the agent is redoing, with the
-   note and when it was marked); pieces the agent regenerated come back pending with a
-   **NEW** badge (updated since the user's last visit — the browser remembers it).
-   Keep this format.
+   note and when it was marked), and their cards show a **processing overlay** ("regenerating
+   this image…" + queued/waiting + when it was marked) until the new render lands; pieces the
+   agent regenerated come back pending with a **NEW** badge (updated since the user's last
+   visit — the browser remembers it). Media URLs carry `&v=<updated_at>` (assets: `&v=<sha>`),
+   so the regenerated image replaces the old one instead of showing the cached copy, and the
+   page polls faster (1.5 s) while anything is marked, 6 s when idle, plus an immediate poll on
+   `visibilitychange`/`focus`. Keep this format.
 5. **Local files and control.** Do not create a public URL, remote or deploy without
    explicitly asking the user.
 6. **Design follows the briefing/refs.** `plan` gives you the raw material; the art direction is
@@ -411,9 +415,12 @@ change is done (all marked pieces re-rendered via `render --ids`).
    `run` **merges** with the previous `state.json`: approved/delivered are preserved,
    the re-rendered pieces go back to `pending` (no `note`/`queued`) for a new review, and the
    rest stay intact. **Never** re-render the whole matrix after approving — use `--ids`.
-3. The review **updates by itself** (4 s poll of `state.json`): the rejected/redo pieces
-   reappear as pending with the new image, on the same page, badged **NEW**; the approved ones stay
-   only in the approved list. The user reviews again until done.
+3. The review **updates by itself** (1.5 s poll while anything is marked, 6 s when idle, plus an
+   immediate poll when the tab becomes visible again): while the piece is queued its card shows a
+   processing overlay, and after `render --ids` the rejected/redo pieces reappear as pending with
+   the new image (cache-busted by `updated_at`, so the browser never shows the old one), on the
+   same page, badged **NEW**; the approved ones stay only in the approved list. The user reviews
+   again until done.
 
 ### A reject is a layout brief (checklist, every time)
 

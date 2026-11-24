@@ -121,6 +121,15 @@ code{background:var(--pend-bg);border:1px solid var(--pend-line);border-radius:6
 .rcard img{width:100%;display:block;cursor:zoom-in;background:#eceff2;aspect-ratio:1/1;object-fit:contain}
 .rcard video{width:100%;display:block;background:#eceff2;aspect-ratio:1/1;object-fit:contain}
 .rcard .name{font-size:13px;color:var(--mut)}
+.media{position:relative}
+.card.busy{border-color:var(--accent);box-shadow:0 0 0 3px rgba(11,107,203,.12)}
+.media .processing{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:8px;padding:12px;text-align:center;color:#fff;background:rgba(20,25,31,.66)}
+.media .processing b{font-size:13px}
+.media .processing small{font-size:11.5px;opacity:.85}
+.spin{width:26px;height:26px;border-radius:50%;border:3px solid rgba(255,255,255,.35);
+  border-top-color:#fff;animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .findings{margin:0;padding:0;list-style:none;font-size:12.5px;display:grid;gap:4px}
 .findings li.fail{color:var(--bad)}
 .findings li.warn{color:var(--warn)}
@@ -303,6 +312,8 @@ def review_page():
 """ + _modal() + _JS_UTIL + _inject("rv.js") + """
 <script>
 let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null, seenBefore=null;
+let busyAt={}, timer=null, pollMs=0;
+const isBusy=p=>p.status==="rejected"||p.status==="redo";
 const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"],blocked:T["lbl.blocked"]};
 const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"],blocked:T["sing.blocked"]};
 const fmsg=f=>f.message;
@@ -336,7 +347,12 @@ function applyState(s){
     seenBefore=localStorage.getItem(k)||"";
     localStorage.setItem(k,new Date().toISOString());
   }
-  const q=state.pieces.filter(p=>p.status==="rejected"||p.status==="redo");
+  const q=state.pieces.filter(isBusy);
+  const now={}; for(const p of q) now[p.id]=p.updated_at||"";
+  const arrived=Object.keys(busyAt).filter(id=>!(id in now)&&
+    state.pieces.some(p=>p.id===id&&(p.updated_at||"")!==busyAt[id]));
+  busyAt=now;
+  if(arrived.length) notify(fill(T["proc.arrived"],{n:arrived.length}));
   const qel=document.getElementById("queue");
   if(q.length){
     qel.style.display="";
@@ -363,6 +379,7 @@ function applyState(s){
       `<input type="text" id="handoffline" readonly style="flex:1" value="${esc(line)}">`+
       `<button class="btn" onclick="copyHandoff()">${T["handoff.copy"]}</button></div>`;
   } else ho.style.display="none";
+  schedule();
   draw();
 }
 async function copyHandoff(){
@@ -420,18 +437,26 @@ function draw(){
     const finds=(p.findings||[]).filter(f=>f.level!=="info")
       .map(f=>`<li class="${f.level==="fail"?"fail":"warn"}">${f.level==="fail"?T.block:T.warn}${fmsg(f)}</li>`).join("");
     const isVid=p.kind==="video";
+    const v=encodeURIComponent(p.updated_at||"");
+    const src=rel=>"/img?path="+encodeURIComponent(rel)+(v?"&v="+v:"");
     const media=isVid
-      ? `<video controls preload="metadata" poster="/img?path=${encodeURIComponent("review/thumbs/"+p.path.replace(/\\.\\w+$/,".video.png"))}"
-           src="/img?path=${encodeURIComponent("out/"+p.path)}"></video>`
-      : `<img loading="lazy" src="/img?path=${encodeURIComponent("review/thumbs/"+p.path)}"
-           onclick="zoom('${encodeURIComponent(p.path)}')" alt="${p.id}">`;
+      ? `<video controls preload="metadata" poster="${src("review/thumbs/"+p.path.replace(/\\.\\w+$/,".video.png"))}"
+           src="${src("out/"+p.path)}"></video>`
+      : `<img loading="lazy" src="${src("review/thumbs/"+p.path)}"
+           onclick="zoom('${encodeURIComponent(p.path)}','${v}')" alt="${p.id}">`;
+    const busy=isBusy(p);
+    const since=p.decided_at?` · ${new Date(p.decided_at).toLocaleString()}`:"";
+    const wrap=`<div class="media">${media}`+(busy
+      ? `<div class="processing"><span class="spin"></span><b>${T["proc.label"]}</b>`+
+        `<small>${p.queued?T.queued:T["queue.waiting"]}${since}</small></div>`
+      : "")+`</div>`;
     const badges=(p.delivered?`<span class="tag approved"><span class="dot"></span>${T.delivered}</span>`:"")
       +(p.queued?`<span class="tag"><span class="dot"></span>${T.queued}</span>`:"")
       +(seenBefore&&p.updated_at&&p.updated_at>seenBefore&&p.status==="pending"
         ?`<span class="tag new"><span class="dot"></span>${T.newbadge}</span>`:"");
     const note=(p.status==="redo"&&p.note)?`<p class="hint">↻ ${esc(p.note)}</p>`:"";
-    return `<div class="card rcard">
-      ${media}
+    return `<div class="card rcard${busy?" busy":""}">
+      ${wrap}
       <div class="body">
         <div class="row"><span class="tag ${p.status}"><span class="dot"></span>${SING[p.status]}</span>
           ${isVid?`<span class="tag">${T.video}</span>`:""}${badges}</div>
@@ -445,7 +470,7 @@ function draw(){
       </div></div>`;
   }).join("");
 }
-function zoom(path){document.getElementById("zoomimg").src="/img?path="+path;
+function zoom(path,v){document.getElementById("zoomimg").src="/img?path="+path+(v?"&v="+v:"");
   document.getElementById("zoom").showModal();}
 async function decide(id,status){
   await fetch("/decision",{method:"POST",body:JSON.stringify({id,status})});
@@ -495,8 +520,15 @@ async function poll(){
   const s=await (await fetch("/state")).json();
   if(JSON.stringify(s)!==lastState) applyState(s);
 }
+function schedule(){
+  const ms=(state&&state.pieces.filter(isBusy).length)?1500:6000;
+  if(ms===pollMs) return;
+  pollMs=ms; if(timer) clearInterval(timer); timer=setInterval(poll,ms);
+}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)poll();});
+window.addEventListener("focus",poll);
 load();
-setInterval(poll,4000);
+schedule();
 </script></body></html>"""
 
 
@@ -534,6 +566,8 @@ def assets_page():
 """ + _modal() + _JS_UTIL + _inject("as.js") + """
 <script>
 let state=null, filter="working", lastState="", seenBefore=null;
+let busyAt={}, timer=null, pollMs=0;
+const isBusy=a=>a.status==="rejected"||a.status==="redo";
 const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"]};
 const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"]};
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -584,6 +618,12 @@ function applyState(s){
   if(A.length&&!ready){g.style.display="";g.textContent=fill(T["next.locked"],{n:working});}
   else g.style.display="none";
   if(ready) setStep(6);
+  const now={}; for(const a of A) if(isBusy(a)) now[a.path]=a.sha||a.updated_at||"";
+  const arrived=Object.keys(busyAt).filter(p=>!(p in now)&&
+    A.some(a=>a.path===p&&(a.sha||a.updated_at||"")!==busyAt[p]));
+  busyAt=now;
+  if(arrived.length) notify(fill(T["proc.arrived"],{n:arrived.length}));
+  schedule();
   draw();
 }
 async function copyHandoff(){
@@ -601,16 +641,23 @@ function draw(){
   if(!A.length){g.innerHTML=`<div class="empty">${T.empty}</div>`;return;}
   g.innerHTML=A.map(a=>{
     const isVid=a.kind==="video";
-    const src="/img?path="+encodeURIComponent(a.path);
+    const v=encodeURIComponent(a.sha||a.updated_at||"");
+    const src="/img?path="+encodeURIComponent(a.path)+(v?"&v="+v:"");
     const media=isVid
       ? `<video controls preload="metadata" src="${src}"></video>`
-      : `<img loading="lazy" src="${src}" onclick="zoom('${encodeURIComponent(a.path)}')" alt="${esc(a.file)}">`;
+      : `<img loading="lazy" src="${src}" onclick="zoom('${encodeURIComponent(a.path)}','${v}')" alt="${esc(a.file)}">`;
+    const busy=isBusy(a);
+    const since=a.decided_at?` · ${new Date(a.decided_at).toLocaleString()}`:"";
+    const wrap=`<div class="media">${media}`+(busy
+      ? `<div class="processing"><span class="spin"></span><b>${T["proc.label"]}</b>`+
+        `<small>${T["queue.waiting"]}${since}</small></div>`
+      : "")+`</div>`;
     const isNew=seenBefore&&a.updated_at&&a.updated_at>seenBefore&&a.status==="pending";
     const badges=(a.queued?`<span class="tag"><span class="dot"></span>${T["queue.queued"]}</span>`:"")
       +(isNew?`<span class="tag new"><span class="dot"></span>${T.newbadge}</span>`:"");
     const note=(a.status==="redo"&&a.note)?`<p class="hint">↻ ${esc(a.note)}</p>`:"";
-    return `<div class="card rcard">
-      ${media}
+    return `<div class="card rcard${busy?" busy":""}">
+      ${wrap}
       <div class="body">
         <div class="row"><span class="tag ${a.status}"><span class="dot"></span>${SING[a.status]||a.status}</span>
           ${isVid?`<span class="tag">${T.video}</span>`:""}${badges}</div>
@@ -624,7 +671,7 @@ function draw(){
       </div></div>`;
   }).join("");
 }
-function zoom(path){document.getElementById("zoomimg").src="/img?path="+path;
+function zoom(path,v){document.getElementById("zoomimg").src="/img?path="+path+(v?"&v="+v:"");
   document.getElementById("zoom").showModal();}
 async function decide(path,status){
   const r=await fetch("/decision",{method:"POST",body:JSON.stringify({path,status})});
@@ -665,8 +712,15 @@ async function poll(){
   const s=await (await fetch("/state")).json();
   if(JSON.stringify(s)!==lastState) applyState(s);
 }
+function schedule(){
+  const ms=(state&&(state.assets||[]).filter(isBusy).length)?1500:6000;
+  if(ms===pollMs) return;
+  pollMs=ms; if(timer) clearInterval(timer); timer=setInterval(poll,ms);
+}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)poll();});
+window.addEventListener("focus",poll);
 load();
-setInterval(poll,4000);
+schedule();
 </script></body></html>"""
 
 

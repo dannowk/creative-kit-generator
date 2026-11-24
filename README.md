@@ -152,7 +152,11 @@ working** on marked pieces — it unlocks when every change is done.
 - Lost the link? Clickable shortcut **`OPEN-REVIEW.html`** inside the campaign folder;
   the address is also at the top of the screen and at the end of `render` / `video` in the terminal.
 - **Working queue:** everything you marked as reject/redo appears in a panel at the top of
-  the review — what the agent is working on, with your note and the time you marked it.
+  the review — what the agent is working on, with your note and the time you marked it. The card
+  itself shows a **processing overlay** ("regenerating this image…" + when you marked it) and the
+  page refreshes faster while anything is marked, so you don't have to reload: when the agent
+  finishes, the new image replaces the old one in place (the URL carries the piece's version, so
+  the browser never serves a cached copy) and a toast tells you it arrived.
   You can close the browser and check later: regenerated pieces come back as pending with
   a **NEW** badge (updated since your last visit).
 - **No agent watching?** The review shows a **handoff** line with the exact instruction — copy it
@@ -219,9 +223,12 @@ videos, before any logo, overlay or copy**. You look at them and, per asset:
 - **↻ redo** — write what should change ("more contrast, no people in frame") and the agent
   regenerates **only that asset**, applying your note to the prompt.
 
-The new image comes back to the same page as pending, badged **NEW**; the ones you already
-approved keep their approval. The next phase (logo, overlays, copy, compliance) only starts
-when **every** asset is approved — the page says so and the **Next: render** button unlocks.
+While the agent works, the marked card shows a **processing overlay** ("regenerating this
+image…" + when you marked it) and the page polls faster; the new image then comes back to the
+same page as pending, badged **NEW**, replacing the old one in place (no reload, no cached
+copy); the ones you already approved keep their approval. The next phase (logo, overlays, copy,
+compliance) only starts when **every** asset is approved — the page says so and the
+**Next: render** button unlocks.
 Fixing a weak photo here is cheap; fixing it after the logo and the copy are on top is not.
 
 <details>

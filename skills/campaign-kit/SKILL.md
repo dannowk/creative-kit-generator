@@ -47,7 +47,9 @@ and the browser.**
    generated images/videos** in the browser (shortcut `OPEN-ASSETS.html`) before any logo, overlay
    or copy is composited. Approve/reject/redo (with a note) queue in `assets/requests.json` right
    away; fulfill them with `assets campaigns/<slug> --jobs <job>` (only the marked ones) and they
-   come back as pending badged **NEW** — untouched files keep their approval.
+   come back as pending badged **NEW** — untouched files keep their approval. The marked card
+   shows a **processing overlay** until the new file lands, and its `sha` in the image URL makes
+   the regenerated file replace the old one in place (no reload, no cached copy).
    **`render` is gated**: it refuses to run while any asset is unapproved (`--force` skips it).
    `wait` covers this queue too and, when everything is approved and there is no `state.json` yet,
    returns `{"stage":"assets","reason":"all_approved"}` — your signal to render.
@@ -67,8 +69,10 @@ and the browser.**
    deterministic). A note asking for **a different image** = regenerate that asset: rewrite the
    prompt of the job whose id is `asset_job` in `campaign.json.asset_jobs` and run
    `assets campaigns/<slug> --jobs <asset_job>` (only that asset, not the whole set). Then
-   `render --ids <ids>` (preserves the approved) and the review updates by itself, with the
-   re-rendered pieces back as pending badged **NEW**.
+   `render --ids <ids>` (preserves the approved) and the review updates by itself: the marked
+   cards show a **processing overlay** while they are queued, then the re-rendered pieces come
+   back as pending badged **NEW** — the media URL carries the piece's `updated_at` (assets: its
+   `sha`), so the new image replaces the old one in place instead of showing a cached copy.
    **A reject is a layout brief** (permanent rule — no note comes with it, so the checklist *is*
    the note): framing for that format with the persona and the action realigned to the middle of
    the scene → safe zones clear → text contrast readable → nothing over a face → then refit the

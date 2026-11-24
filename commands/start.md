@@ -40,7 +40,9 @@ chat with you and use the browser. Drive in this order:
    `wait` hands you the batch the moment it appears (no Continue needed). Fulfill it (actually
    recreate/redo, changing template/asset/copy — a note asking for a different image means
    `assets <campaign> --jobs <asset_job>` first), run `render --ids <ids>`, and the review updates
-   by itself with the piece back as pending badged **NEW**. Run `wait` again for the next round.
+   by itself — the marked card shows a **processing overlay** while it is queued, then the piece
+   comes back as pending badged **NEW** with the new image in place (cache-busted). Run `wait`
+   again for the next round.
    **A reject is a layout brief, not a re-roll**: framing for that format (persona + action
    realigned to the middle of the scene) → safe zones → text contrast → nothing over a face →
    refit the elements to the frame (font size, one/two/more lines, box) so nothing hides the image
