@@ -147,6 +147,7 @@ _CATALOG = {
                    '<span class="stat"><b>{blocked}</b> blocked</span>',
     "rv.js.allconcepts": "All ({n})",
     "rv.js.empty": "No piece matches this filter.",
+    "rv.js.zoomfail": "The full-size file is missing — ask the agent to re-render this piece.",
     "rv.js.block": "Block: ",
     "rv.js.warn": "Warning: ",
     "rv.js.video": "video",
@@ -255,6 +256,7 @@ _CATALOG = {
                    '<span class="stat"><b>{marks}</b> marked for the agent</span>'
                    '<span class="stat"><b>{credits}</b> credits</span>',
     "as.js.empty": "No asset matches this filter.",
+    "as.js.zoomfail": "The file is missing — ask the agent to regenerate this asset.",
     "as.js.none": "No generated assets yet — the agent runs `assets` first.",
     "as.js.video": "video",
     "as.js.prompt": "Prompt:",

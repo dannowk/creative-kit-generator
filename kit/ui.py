@@ -531,7 +531,7 @@ function draw(){
       ? `<video controls preload="metadata" poster="${src("review/thumbs/"+p.path.replace(/\\.\\w+$/,".video.png"))}"
            src="${src("out/"+p.path)}"></video>`
       : `<img loading="lazy" src="${src("review/thumbs/"+p.path)}"
-           onclick="zoom('${encodeURIComponent(p.path)}','${v}')" alt="${p.id}">`;
+           onclick="zoom('${src("out/"+p.path)}')" alt="${p.id}">`;
     const busy=isBusy(p);
     const since=p.decided_at?` · ${new Date(p.decided_at).toLocaleString()}`:"";
     const wrap=`<div class="media">${media}`+(busy
@@ -558,8 +558,9 @@ function draw(){
       </div></div>`;
   }).join("");
 }
-function zoom(path,v){document.getElementById("zoomimg").src="/img?path="+path+(v?"&v="+v:"");
-  document.getElementById("zoom").showModal();}
+function zoom(u){const i=document.getElementById("zoomimg");
+  i.onerror=()=>{document.getElementById("zoom").close();notify(T.zoomfail);};
+  i.src=u;document.getElementById("zoom").showModal();}
 async function decide(id,status){
   await fetch("/decision",{method:"POST",body:JSON.stringify({id,status})});
   await load();
@@ -736,7 +737,7 @@ function draw(){
     const src="/img?path="+encodeURIComponent(a.path)+(v?"&v="+v:"");
     const media=isVid
       ? `<video controls preload="metadata" src="${src}"></video>`
-      : `<img loading="lazy" src="${src}" onclick="zoom('${encodeURIComponent(a.path)}','${v}')" alt="${esc(a.file)}">`;
+      : `<img loading="lazy" src="${src}" onclick="zoom('${src}')" alt="${esc(a.file)}">`;
     const busy=isBusy(a);
     const since=a.decided_at?` · ${new Date(a.decided_at).toLocaleString()}`:"";
     const wrap=`<div class="media">${media}`+(busy
@@ -762,8 +763,9 @@ function draw(){
       </div></div>`;
   }).join("");
 }
-function zoom(path,v){document.getElementById("zoomimg").src="/img?path="+path+(v?"&v="+v:"");
-  document.getElementById("zoom").showModal();}
+function zoom(u){const i=document.getElementById("zoomimg");
+  i.onerror=()=>{document.getElementById("zoom").close();notify(T.zoomfail);};
+  i.src=u;document.getElementById("zoom").showModal();}
 async function decide(path,status){
   const r=await fetch("/decision",{method:"POST",body:JSON.stringify({path,status})});
   if(!r.ok){await tell((await r.json()).error||"error");return;}
