@@ -308,7 +308,11 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
                  "brand_name": brand.name}
         for concept in concepts:
             spec = specs[concept]
-            if spec.get("needs_photo") and photo is None:
+            c_photo, c_fx, c_path = photo, fx, asset_path
+            by_concept = (campaign.get("assets_by_concept") or {}).get(concept)
+            if by_concept:  # foto própria deste conceito (vence a foto do eixo)
+                c_photo, c_fx, c_path = resolve_asset({**campaign, "assets": by_concept}, combo, overrides)
+            if spec.get("needs_photo") and c_photo is None:
                 continue
             voice = copy.get(concept)
             merged = {**copy, **voice} if isinstance(voice, dict) else copy
@@ -328,13 +332,13 @@ def run(campaign, brand=None, only_concepts=None, only_formats=None, limit=None,
                 cb = styled_brand(cbrands[concept], pstyle)
                 if pstyle:
                     pbrands.append(cb)
-                img = render.render(spec, cb, geo, photo=photo, fx=fx, logo=logo,
+                img = render.render(spec, cb, geo, photo=c_photo, fx=c_fx, logo=logo,
                                     copy=merged, extra=extra, trace=trace)
                 findings = compliance.run(img, trace, cb)
                 rel = os.path.join(concept, f"{name}.png")
                 entry = {"id": name, "path": rel, "concept": concept, "format": fmt,
-                         "axes": combo, "asset": os.path.basename(asset_path) if asset_path else None,
-                         "subject_fx": round(fx, 4), "findings": findings,
+                         "axes": combo, "asset": os.path.basename(c_path) if c_path else None,
+                         "subject_fx": round(c_fx, 4), "findings": findings,
                          "status": "blocked" if compliance.blocked(findings) else "pending"}
                 if not dry:
                     dest = os.path.join(out_dir, rel)
