@@ -259,9 +259,8 @@ async function decideRule(agree){
   const id=ruleOpen; if(!id) return;
   const d=document.getElementById("rulealarm");
   d.close(); ruleOpen=null; ruleSeen=Math.max(0,ruleSeen-1);
-  const r=await fetch("/rule-decision",{method:"POST",body:JSON.stringify({id:id,agree:agree})});
-  const j=await r.json();
-  if(!r.ok){await tell(j.error||"error");await load();return;}
+  const {ok,j}=await pj("/rule-decision",{method:"POST",body:JSON.stringify({id:id,agree:agree})});
+  if(!ok){await tell(j.error||T.failed);await load();return;}
   notify(fill(T[agree?"rule.agreed":"rule.kept"],{target:j.target||id}));
   await load();
 }
@@ -300,6 +299,9 @@ function confirmBox(msg){return new Promise(res=>{const d=document.getElementByI
   const done=v=>{d.close();ok.onclick=cancel.onclick=null;cancel.hidden=true;res(v);};
   ok.onclick=()=>done(true);cancel.onclick=()=>done(false);
   d.showModal();});}
+async function pj(url,opts){try{const r=await fetch(url,opts);let j={};
+  try{j=await r.json();}catch(e){}
+  return {ok:r.ok,j:j};}catch(e){return {ok:false,j:{}};}}
 </script>
 """
 
@@ -506,9 +508,8 @@ async function applyStyle(){
   const note=document.getElementById("stylenote").value.trim();
   const n=state.pieces.filter(p=>p.concept===styleConcept).length;
   if(!await confirmBox(fill(T["style.confirm"],{n,concept:styleConcept})))return;
-  const r=await fetch("/concept-style",{method:"POST",body:JSON.stringify({concept:styleConcept,palette,type,note})});
-  const j=await r.json();
-  if(!r.ok){await tell(j.error||"error");return;}
+  const {ok,j}=await pj("/concept-style",{method:"POST",body:JSON.stringify({concept:styleConcept,palette,type,note})});
+  if(!ok){await tell(j.error||T.failed);return;}
   await load();
   notify(fill(T["style.applied"],{n:j.count,concept:styleConcept}));
   closeStyle();}
@@ -562,21 +563,22 @@ function zoom(u){const i=document.getElementById("zoomimg");
   i.onerror=()=>{document.getElementById("zoom").close();notify(T.zoomfail);};
   i.src=u;document.getElementById("zoom").showModal();}
 async function decide(id,status){
-  await fetch("/decision",{method:"POST",body:JSON.stringify({id,status})});
+  const {ok}=await pj("/decision",{method:"POST",body:JSON.stringify({id,status})});
+  if(!ok){await tell(T.failed);return;}
   await load();
   notify(status==="approved"?T.approvetoast:T.rejecttoast);
 }
 async function regen(id){
   const note=await ask(T.regenask);
   if(note===null||note.trim()==="") return;
-  await fetch("/regen",{method:"POST",body:JSON.stringify({id,note})});
+  const {ok}=await pj("/regen",{method:"POST",body:JSON.stringify({id,note})});
+  if(!ok){await tell(T.failed);return;}
   await load();
   notify(T.regentoast);
 }
 async function continueBatch(){
-  const r=await fetch("/continue",{method:"POST",body:"{}"});
-  const j=await r.json();
-  if(!r.ok){await tell(j.error||"error");return;}
+  const {ok,j}=await pj("/continue",{method:"POST",body:"{}"});
+  if(!ok){await tell(j.error||T.failed);return;}
   await load();
   const box=document.getElementById("deliver-result");
   if(j.locked>0){box.innerHTML="";notify(fill(T["continue.locked"],{n:j.locked}));return;}
@@ -599,14 +601,14 @@ async function continueBatch(){
   setStep(7);
 }
 async function openDelivery(){
-  const r=await fetch("/open-delivery",{method:"POST",body:"{}"});
-  const j=await r.json();
-  if(!r.ok){await tell(j.error||"error");return;}
+  const {ok,j}=await pj("/open-delivery",{method:"POST",body:"{}"});
+  if(!ok){await tell(j.error||T.failed);return;}
   notify(fill(T["openfolder.toast"],{dir:j.path}));
 }
 async function poll(){
   if(document.querySelector("dialog[open]")) return;
-  const s=await (await fetch("/state")).json();
+  let s;
+  try{s=await (await fetch("/state")).json();}catch(e){return;}
   if(JSON.stringify(s)!==lastState) applyState(s);
 }
 function schedule(){
@@ -767,24 +769,24 @@ function zoom(u){const i=document.getElementById("zoomimg");
   i.onerror=()=>{document.getElementById("zoom").close();notify(T.zoomfail);};
   i.src=u;document.getElementById("zoom").showModal();}
 async function decide(path,status){
-  const r=await fetch("/decision",{method:"POST",body:JSON.stringify({path,status})});
-  if(!r.ok){await tell((await r.json()).error||"error");return;}
+  const {ok,j}=await pj("/decision",{method:"POST",body:JSON.stringify({path,status})});
+  if(!ok){await tell(j.error||T.failed);return;}
   await load();
   notify(status==="approved"?T.approvetoast:T.rejecttoast);
 }
 async function regen(path){
   const note=await ask(T.regenask);
   if(note===null||note.trim()==="") return;
-  const r=await fetch("/regen",{method:"POST",body:JSON.stringify({path,note})});
-  if(!r.ok){await tell((await r.json()).error||"error");return;}
+  const {ok,j}=await pj("/regen",{method:"POST",body:JSON.stringify({path,note})});
+  if(!ok){await tell(j.error||T.failed);return;}
   await load();
   notify(T.regentoast);
 }
 async function nextStep(){
-  const r=await fetch("/next",{method:"POST",body:"{}"});
-  const j=await r.json();
+  const {ok,j}=await pj("/next",{method:"POST",body:"{}"});
   const box=document.getElementById("next-result");
-  if(!r.ok||j.waiting>0){
+  if(!ok){box.innerHTML="";await tell(j.error||T.failed);return;}
+  if(j.waiting>0){
     box.innerHTML="";
     notify(fill(T["next.busy"],{n:j.waiting||0}));
     return;
@@ -795,14 +797,14 @@ async function nextStep(){
   setStep(6);
 }
 async function openAssets(){
-  const r=await fetch("/open-assets",{method:"POST",body:"{}"});
-  const j=await r.json();
-  if(!r.ok){await tell(j.error||"error");return;}
+  const {ok,j}=await pj("/open-assets",{method:"POST",body:"{}"});
+  if(!ok){await tell(j.error||T.failed);return;}
   notify(fill(T["openfolder.toast"],{dir:j.path}));
 }
 async function poll(){
   if(document.querySelector("dialog[open]")) return;
-  const s=await (await fetch("/state")).json();
+  let s;
+  try{s=await (await fetch("/state")).json();}catch(e){return;}
   if(JSON.stringify(s)!==lastState) applyState(s);
 }
 function schedule(){
