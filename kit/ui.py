@@ -225,8 +225,8 @@ def review_page():
 <span class="tag blocked"><span class="dot"></span>{i18n.t('rv.legend.blocked')}</span></div>
 </div>
 <div class="wrap">
-<div class="panel"><h2><span class="n">6</span>{i18n.t('rv.p5.title')}</h2>
-<p class="desc">{i18n.t('rv.p5.desc')}</p>
+<div class="panel"><h2><span class="n">6</span>{i18n.t('rv.p6.title')}</h2>
+<p class="desc">{i18n.t('rv.p6.desc')}</p>
 <div class="callout warn" id="queue" style="display:none"></div>
 <div class="callout" id="handoff" style="display:none"></div>
 <div class="filters" id="filters"></div>
@@ -243,12 +243,12 @@ def review_page():
 <span class="meta" id="stylemsg"></span></div>
 </div>
 <div class="rgrid" id="grid"></div></div>
-<div class="panel"><h2><span class="n">7</span>{i18n.t('rv.p6.title')}</h2>
-<p class="desc">{i18n.t('rv.p6.desc')}</p>
+<div class="panel"><h2><span class="n">7</span>{i18n.t('rv.p7.title')}</h2>
+<p class="desc">{i18n.t('rv.p7.desc')}</p>
 <div class="stats" id="deliver-summary"></div>
 <div class="row" style="align-items:center"><button class="btn primary contbtn" onclick="continueBatch()">{i18n.t('rv.js.continue')}</button>
 <button class="btn" id="opendelivery" onclick="openDelivery()" style="display:none">{i18n.t('rv.js.openfolder')}</button>
-<span class="meta">{i18n.t('rv.p6.hint')}</span></div>
+<span class="meta">{i18n.t('rv.p7.hint')}</span></div>
 <div class="callout warn" id="lockhint" style="display:none"></div>
 <div id="deliver-result"></div></div>
 </div>
@@ -420,11 +420,15 @@ async function continueBatch(){
   const box=document.getElementById("deliver-result");
   if(j.locked>0){box.innerHTML="";notify(fill(T["continue.locked"],{n:j.locked}));return;}
   if(j.exported===0&&j.regen===0){box.innerHTML="";notify(T["continue.empty"]);return;}
-  box.innerHTML=`<div class="callout ok">${fill(T["continue.done"],{n:j.exported,dir:j.delivery_dir,m:j.regen,req:j.requests_path})}</div>`;
+  const queued=j.regen>0?fill(T["continue.queued"],{m:j.regen,req:j.requests_path}):"";
+  box.innerHTML=`<div class="callout ok">${fill(T["continue.done"],{n:j.exported,dir:j.delivery_dir,queued})}</div>`;
   if(j.ppc&&j.ppc.files&&j.ppc.files.length){
-    box.innerHTML+=`<div class="callout">${fill(T["continue.ppc"],{dir:j.ppc.dir,n:j.ppc.files.length,meta:j.ppc.meta,display:j.ppc.google_display,rsa:j.ppc.google_rsa})}</div>`;
+    const platforms=[[j.ppc.meta,T["ppc.meta"]],[j.ppc.google_display,T["ppc.display"]],
+                     [j.ppc.google_rsa,T["ppc.rsa"]]].filter(p=>p[0]>0).map(p=>`${p[0]} ${p[1]}`).join(" · ");
+    box.innerHTML+=`<div class="callout">${fill(T["continue.ppc"],{dir:j.ppc.dir,n:j.ppc.files.length,platforms})}</div>`;
   }
-  notify(fill(T["continue.toast"],{n:j.exported,m:j.regen}));
+  notify(fill(T["continue.toast"],{n:j.exported,
+    queued:j.regen>0?fill(T["continue.toastqueued"],{m:j.regen}):""}));
   setStep(7);
 }
 async function openDelivery(){
