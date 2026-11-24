@@ -43,10 +43,9 @@ then clears copy.json, adjustments and the queue — briefing, examples and atta
    `.md`/`.txt` content goes into the field, any file lands in `attachments/` for you to read.
    Point out the third field, **Technical direction** (optional): limits per platform, how many
    variants they need, terms that must appear or never be cut, languages, delivery formats.
-   Then start `python3 -m kit.cli copy wait <folder>` in the background: the wizard's last
-   panel has a **Next step →** button — when the user presses it, `wait` returns
-   `stage:"ready"` and you continue in chat (the copy-phrase fallback under the button
-   works too).
+   Then **end your turn**: the wizard's last panel shows a paste-ready line with a copy
+   button — the user pastes it in chat and you generate the copy (manual handoff; the page
+   cannot start the agent).
 5. **`copy plan <folder>`** prints the briefing + examples + **the technical direction** +
    **attached files** (if any) + the destinations/kinds vocabulary. **Read the attachments**
    (plain text directly; PDF/docx/image: extract with your tools) — they are part of the source
@@ -96,8 +95,9 @@ then clears copy.json, adjustments and the queue — briefing, examples and atta
    apply the `note`. Change the `text`, set `status:"pending"` back, clear `note`, re-stamp
    `updated_at`/`updated_by`. The table updates by itself (4 s poll), the row comes back badged
    **NEW** and `requests.json` empties. Run `copy wait` again for the next round.
-   If no `wait` is running, the table shows a **handoff** callout with a paste-ready line —
-   that is the manual fallback, not the normal path.
+   The table always shows a **handoff** callout with a paste-ready line — the normal path is
+   the user pasting it in chat; a `copy wait` still running inside your turn picks the batch
+   up without the paste.
 8. **Delivery:** everything approved → the user clicks **Export approved** in the table (or you
    run **`copy deliver <folder>`**). **The export is gated:** while any row is still
    rejected/redo, the button is disabled and `deliver` returns `{"locked": n, "batch": [...]}` —

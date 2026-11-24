@@ -98,7 +98,7 @@ _WIZ_T = {
     "folder.saved": "Folder saved: {path}",
     "folder.already": "Folder already saved — {path}. Rename or move it any time; the files follow.",
     "prog": "{filled}/{total} briefing sections filled",
-    "ready": "Briefing filled. Paste examples if you like, save and say “ready” in chat.",
+    "ready": "Briefing filled. Paste examples if you like, save, then copy the line in step 3 into the agent chat.",
     "missing": "Fill the briefing (at least the objective) and save. Examples are optional.",
     "p1.title": "Briefing + examples",
     "p1.desc": "Text only: no logo, brandbook or visual references. The agent generates copy from this.",
@@ -120,17 +120,16 @@ _WIZ_T = {
     "saved": "Briefing, examples and direction saved.",
     "mode.hint": "Visual mode is live — switching keeps everything you typed here",
     "mode.off": "Visual mode is not running — ask the agent: onboard <folder>",
-    "p2.title": "Generate with the agent",
-    "p2.desc": "Press Next step and the agent continues in chat — it generates the copy and opens the table review.",
+    "p2.title": "Continue in the agent chat",
+    "p2.desc": "This page saves everything locally but cannot start the agent by itself. "
+               "Copy the line below and paste it in the chat of the agent opened on this folder — "
+               "it generates the copy and opens the table review.",
+    "p2.hint": "Manual by design: nothing happens until you paste the line in chat.",
     "agentline": "Ready! Briefing and examples in {folder} — generate the copy (PPC + overlay) and open the review.",
-    "next": "Next step →",
-    "next.waiting": "Signal sent — the agent continues in chat and opens the next step.",
-    "next.fallback": "Nothing happening? The agent may not be watching — paste this phrase in chat:",
-    "next.failed": "Could not send the signal — use the phrase below instead.",
-    "copy": "Copy",
+    "copy": "Copy phrase",
     "copied": "Line copied — paste it in chat.",
     "hascopy": "copy.json already exists in this folder — the agent can open the review directly.",
-    "nocopy": "No copy.json yet — the agent generates it after your “ready”.",
+    "nocopy": "No copy.json yet — the agent generates it after you paste the line.",
 }
 
 
@@ -174,12 +173,9 @@ def wizard_page():
 <div class="panel"><h2><span class="n">3</span>{t['p2.title']}</h2>
 <p class="desc">{t['p2.desc']}</p>
 <div class="row" style="margin-top:12px;align-items:center">
-<button class="btn primary" id="nextbtn" onclick="nextStep()">{t['next']}</button>
-<span class="meta" id="nextmsg"></span></div>
-<div id="nextfallback" style="display:none">
-<p class="desc" style="margin-top:10px">{t['next.fallback']}</p>
-<div class="row"><input type="text" id="agentline" readonly style="flex:1">
-<button class="btn" onclick="copyAgent()">{t['copy']}</button></div></div>
+<input type="text" id="agentline" readonly style="flex:1">
+<button class="btn primary" onclick="copyAgent()">{t['copy']}</button></div>
+<p class="hint">{t['p2.hint']}</p>
 <p class="hint" id="copynote"></p></div>
 </div>
 """ + ui._modal() + ui._JS_UTIL + ui._flow_js("copy", "wizard") + (
@@ -217,8 +213,6 @@ async function load(){
     `<button title="Remove" onclick="detach('${esc(a.name)}')">×</button></span>`).join("");
   document.getElementById("agentline").value=fill(T.agentline,{folder:S.folder});
   document.getElementById("copynote").textContent=S.has_copy?T.hascopy:T.nocopy;
-  document.getElementById("nextmsg").textContent=S.next?T["next.waiting"]:"";
-  document.getElementById("nextfallback").style.display=S.next?"":"none";
 }
 async function persist(){
   await fetch("/save",{method:"POST",body:JSON.stringify({
@@ -268,12 +262,6 @@ async function detach(name){
 async function copyAgent(){
   await navigator.clipboard.writeText(document.getElementById("agentline").value);
   notify(T.copied);
-}
-async function nextStep(){
-  const {ok}=await pj("/ready",{method:"POST",body:"{}"});
-  if(!ok){await tell(T["next.failed"]);return;}
-  document.getElementById("nextmsg").textContent=T["next.waiting"];
-  document.getElementById("nextfallback").style.display="";
 }
 async function pickFolder(){
   const {ok,j}=await pj("/pick-folder",{method:"POST",body:"{}"});
@@ -327,7 +315,8 @@ _REV_T = {
     "queue.rewrite": "rewrite (rejected)",
     "newbadge": "NEW",
     "handoff.title": "Batch ready — {n} row(s) for the agent.",
-    "handoff.hint": "An agent watching this folder (`kit.cli copy wait`) picks it up by itself. If none is running, paste this line in chat:",
+    "handoff.hint": "The page only queues the batch locally. Paste this line in the agent chat to run it "
+                    "(an agent already running `kit.cli copy wait` picks it up without pasting):",
     "handoff.line": "Rewrite the marked copy in {req} — each row carries its note (redo) or needs a new direction (rejected). Update the text in {copy}, set those rows back to status pending, clear the note and re-stamp updated_at; the table updates by itself.",
     "handoff.copy": "Copy the line",
     "handoff.copied": "Line copied — paste it in chat.",
@@ -695,7 +684,6 @@ class CopyHandler(ui.Handler):
                     "direction": copy.read_text(self.root, "direction.md"),
                     "attachments": copy.attachments(self.root),
                     "filled": filled, "total": total, "ready": filled > 0,
-                    "next": onboard.ready_pending(self.root),
                     "has_copy": os.path.isfile(os.path.join(self.root, "copy.json"))})
             else:
                 payload = copy.review_payload(self.root)
@@ -753,9 +741,6 @@ class CopyHandler(ui.Handler):
                 stored = copy.save_attachment(self.root, name, raw)
                 return self._send(200, {"ok": True, "name": stored})
             payload = json.loads(raw or b"{}")
-            if url.path == "/ready":
-                onboard.press_ready(self.root)
-                return self._send(200, {"ok": True})
             if url.path == "/pick-folder":
                 try:
                     picked = ui._pick_folder()

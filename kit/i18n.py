@@ -66,19 +66,18 @@ _CATALOG = {
     "ob.p3.desc": "Generates the palette from the logo and opens the single round of questions.",
     "ob.p3.idph": "brand id (e.g. acme)",
     "ob.p3.run": "run intake",
-    "ob.p4.title": "Next steps (the agent continues)",
-    "ob.p4.desc": "Press Next step and the agent continues in chat. After the brand, it runs:",
+    "ob.p4.title": "Continue in the agent chat",
+    "ob.p4.desc": "This page saves everything locally but cannot start the agent by itself. "
+                  "Copy the line below and paste it in the chat of the agent opened on this folder — "
+                  "that is what continues the pipeline. After the brand, it runs:",
     "ob.p4.pipe": "<code>plan</code> art direction from the briefing + refs → "
                   "<code>assets</code> generates image/video with a ≈ cost notice → "
                   "<code>render</code> assembles the pieces → "
                   "<code>review</code> you approve / reject / redo (step 5).",
     "ob.p4.copy": "copy phrase",
+    "ob.p4.hint": "Manual by design: nothing happens until you paste the line in chat.",
     # dynamic wizard JS
     "ob.js.agentline": "read AGENTS.md and run the campaign for {inbox}",
-    "ob.js.next": "Next step →",
-    "ob.js.next.waiting": "Signal sent — the agent continues in chat and opens the next step.",
-    "ob.js.next.fallback": "Nothing happening? The agent may not be watching — paste this phrase in chat:",
-    "ob.js.next.failed": "Could not send the signal — try again.",
     "ob.js.mode.hint": "Copy mode is live — switch keeps everything you typed here",
     "ob.js.mode.off": "Copy mode is not running — ask the agent: copy onboard <folder>",
     "ob.js.dirsaved": "Briefing and technical direction saved.",
@@ -222,7 +221,8 @@ _CATALOG = {
     "rv.js.rule.status.kept": "kept the original",
     "rv.js.newbadge": "NEW",
     "rv.js.handoff.title": "Batch ready — {n} piece(s) for the agent.",
-    "rv.js.handoff.hint": "An agent watching this campaign (`kit.cli wait`) picks it up by itself. If none is running, paste this line in chat:",
+    "rv.js.handoff.hint": "The page only queues the batch locally. Paste this line in the agent chat to run it "
+                          "(an agent already running `kit.cli wait` picks it up without pasting):",
     "rv.js.handoff.line": "Fulfill the regeneration batch in {req} (apply each note for redo, recreate the rejected ones), then run: python3 -m kit.cli render {root} --ids {ids}",
     "rv.js.handoff.copy": "Copy the line",
     "rv.js.handoff.copied": "Line copied — paste it in chat.",
@@ -348,14 +348,16 @@ _CATALOG = {
     "as.js.rule.status.kept": "kept the original",
     "as.js.newbadge": "NEW",
     "as.js.handoff.title": "Batch ready — {n} asset(s) for the agent.",
-    "as.js.handoff.hint": "An agent watching this campaign (`kit.cli wait`) picks it up by itself. If none is running, paste this line in chat:",
+    "as.js.handoff.hint": "The page only queues the batch locally. Paste this line in the agent chat to run it "
+                          "(an agent already running `kit.cli wait` picks it up without pasting):",
     "as.js.handoff.line": "Regenerate the marked assets in {req} (apply each note to the prompt, recreate the rejected ones) with the provider: python3 -m kit.cli assets {root} --jobs {jobs} — they come back to the approval page as pending.",
     "as.js.handoff.copy": "Copy the line",
     "as.js.handoff.copied": "Line copied — paste it in chat.",
     "as.js.next": "Next: render",
     "as.js.next.locked": "The render waits on {n} asset(s): approve them, or mark them and the agent regenerates.",
-    "as.js.next.ready": "All {n} asset(s) approved — the agent renders the pieces now (logo, overlays, copy, compliance) and the piece review opens.",
-    "as.js.next.toast": "All approved — render is next.",
+    "as.js.next.ready": "All {n} asset(s) approved — the render does not start by itself. "
+                        "Copy the command and paste it in the agent chat:",
+    "as.js.next.toast": "Render command ready — copy it and paste it in chat.",
     "as.js.next.busy": "{n} asset(s) still waiting on you.",
     "as.js.next.cmd": "python3 -m kit.cli render {root}",
     "as.js.openfolder.toast": "Assets folder opened: {dir}",
@@ -397,13 +399,9 @@ _CATALOG = {
     "cli.deliver.nostate": "no state.json — run render before deliver",
     "cli.deliver.ppc": "PPC sheets (Meta + Google) in {dir}/ — {n} files (CSV + XLSX): {platforms}",
     "cli.ppc.truncated": "{n} copy field(s) cut to the platform limit — shorten them in the briefing/copy and export again: {list}",
-    "cli.wait.waiting": "waiting for the wizard's Next step, the approval page or the review to mark work — "
-                        "{root}/ready.json + {root}/assets/requests.json + {root}/requests.json (Ctrl+C to stop)",
+    "cli.wait.waiting": "waiting for the approval page or the review to mark work — "
+                        "{root}/assets/requests.json + {root}/requests.json (Ctrl+C to stop)",
     "cli.wait.empty": "timeout — nothing was marked",
-    "cli.wait.ready": "Next step pressed in the wizard — run the pipeline for {root}: "
-                      "intake (if the brand is not derived yet) → plan → assets (cost notice first) → render → review.",
-    "cli.copy.wait.ready": "Next step pressed in the copy wizard — generate the copy for {folder}: "
-                           "copy plan → write copy.json → copy review.",
     "cli.wait.fulfill": "{n} item(s) to work on: reason=redo → apply the note; reason=rejected → readjust the layout and recreate",
     "cli.wait.rejectcheck": "rejected is a layout brief, not a re-roll — check every one before re-rendering: "
                             "(1) framing for this format, persona and action realigned to the middle of the scene; "

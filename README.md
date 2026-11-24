@@ -37,9 +37,9 @@ onboarding in the browser and walks you through to review. You just **chat with 
 2. Say: *"read AGENTS.md and start a campaign"*. The agent follows the repository
    rules, installs the dependencies (`pip install -r requirements.txt`, once) and opens
    the onboarding in a **local browser tab** (`127.0.0.1`).
-3. Everything is managed in the browser: you fill the inbox in the wizard and press
-   **Next step →** in its last card — the agent picks up the signal and continues in the
-   chat (a copy-phrase fallback stays under the button). You approve pieces in the review;
+3. Everything is managed in the browser: you fill the inbox in the wizard, then copy the
+   paste-ready line in its last card into the agent chat — the handoff is manual, the page
+   cannot start the agent by itself. You approve pieces in the review;
    the agent drives the rest. No plugin or native
    install is required — any agent that reads `AGENTS.md` can drive it.
 
@@ -87,9 +87,9 @@ everything the agent authors after it: templates, formats, image prompts and cop
 the same field (limits per platform, how many variants, terms that must not be cut, languages).
 If it conflicts with the briefing, the agent asks instead of guessing.
 
-**Done filling?** Press **Next step →** in the wizard's last card — the agent is watching
-and continues the pipeline in the chat. If nothing happens (no agent watching), a phrase
-appears under the button to copy and paste in the chat.
+**Done filling?** Copy the line in the wizard's last card and paste it in the agent chat —
+that is what continues the pipeline. The handoff is manual by design: the browser page saves
+everything locally but cannot start the agent by itself.
 
 **Already have a briefing in any format** (Word, PDF, text, email)? No need to rewrite
 anything: the agent **normalizes** it into the kit template and asks you only about what
@@ -177,8 +177,8 @@ working** on marked pieces — it unlocks when every change is done.
   to `campaigns/<campaign>/rules/overrides.yaml` — it is merged on every render, so `brand.yaml`
   and `campaign.json` stay exactly as you wrote them. **Keep the original rule** leaves the rule
   (and the finding it produces) alone, and the agent fixes the layout or the copy instead.
-- **No agent watching?** The review shows a **handoff** line with the exact instruction — copy it
-  into the chat and the agent runs the batch.
+- **Handoff is manual:** the review shows a **handoff** line with the exact instruction — copy it
+  into the chat and the agent runs the batch (a `wait` still running picks it up by itself).
 - Delivered (approved) pieces: `~/Desktop/Campaign Kit/<campaign>/<concept>/` (png/mp4), on
   your Desktop. The working render lives in `campaigns/<campaign>/out/<concept>/` + contact
   sheet `review/sheet_<concept>.png`.
@@ -387,8 +387,8 @@ The step-by-step is the same as the visual one, but lighter:
    **drag-and-drop / browse zone**: already have the copy in a file? Drop it — `.md`/`.txt`
    content goes straight into the field, and any file (PDF/docx included) is saved in
    `attachments/` for the agent to read. Only `briefing.md` + `examples.txt` + attachments —
-   no logo/brandbook/refs/photos/videos. Done? Press **Next step →** in the last card and
-   the agent continues in the chat (copy-phrase fallback under the button).
+   no logo/brandbook/refs/photos/videos. Done? Copy the line in the last card and paste it
+   in the agent chat — the handoff is manual, the page cannot start the agent.
 2. **Generate** — the agent writes the copy from the briefing + examples + attached files,
    in volume (concepts × axes × destinations × versions), following the platform playbook:
    **Google RSA** — 15 headlines (≤30) + 4 descriptions (≤90) per concept × axis, keywords
@@ -407,8 +407,8 @@ The step-by-step is the same as the visual one, but lighter:
    Reject/redo **start working right away**: the row goes to `requests.json` and to a
    **Working queue** panel (with your note and the time), the agent rewrites it and the table
    updates by itself — rewritten rows come back as pending with a **NEW** badge, so you can
-   close the browser and check later. No agent watching? The table shows a **handoff** line to
-   paste in the chat.
+   close the browser and check later. The table always shows a **handoff** line to paste in
+   the chat — that is the normal way to run the batch.
 4. **Deliver** — all approved → click **Export approved** (or `copy deliver`):
    **CSV + XLSX** sheets in `~/Desktop/Copy Kit/<folder>/`, with **download** in the
    table itself and an **Open folder** button.

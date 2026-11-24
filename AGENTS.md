@@ -35,11 +35,10 @@ phrase and `<kit>/.last-inbox` carry the current path (`intake` falls back to th
 the old path is gone). Saving the card writes `folder.json` inside the folder — the shared
 "already saved" record both wizards read, so the card stays visible with a notice instead of
 asking again. `onboard` does the scaffold (`logo/ refs/ brandbook/ fonts/ photos/ videos/ briefing/ briefing.md`).
-Announce in the chat that onboarding opened, then start `python3 -m kit.cli wait <inbox>`
-in the background — it works from the wizard onward (no campaign.json needed yet). When the
-user presses **Next step →** in the wizard's last panel, `wait` returns `stage:"ready"` and
-you follow the pipeline. The wizard keeps a copy-phrase fallback under the button (shown
-after the press) for when no `wait` is running; a pasted "ready" phrase works the same way.
+Announce in the chat that onboarding opened, then end your turn telling the user to copy the
+paste-ready line from the wizard's last panel into the chat. The handoff is **manual**: the
+page saves everything locally but cannot start you, and there is no auto-signal. When the
+line arrives, follow the pipeline.
 
 **ffmpeg / codecs:** do not install system ffmpeg or codecs. `imageio-ffmpeg` embeds
 the ffmpeg binary (used by the video module for trim/reframe/overlay/concat/captions).
@@ -77,9 +76,8 @@ python3 -m kit.cli onboard ~/inbox/acme
 #    copy: copy.json, styles/ and the queue. Briefing, uploads, generated asset files
 #    (assets/manifest.json included) and delivered files are kept. After clearing, the
 #    review lands back on the wizard; the agent re-runs the pipeline from the briefing.
-#    The last panel has a **Next step →** button: it writes ready.json in the folder; the
-#    agent's background `wait <inbox>` returns stage:"ready" (consumed once) and the pipeline
-#    continues in chat. The copy-phrase row stays as a fallback under the button.
+#    The last panel shows a paste-ready line with a copy button: the user pastes it in the
+#    chat and the pipeline continues. Manual by design — the page cannot start the agent.
 #    --no-ui = scaffold + checklist only, no server.
 
 # 2. Derive the brand from the dropped folder (palette, logo, refs analysis, gaps)
@@ -460,8 +458,9 @@ python3 -m kit.cli wait campaigns/<slug>        # you: blocks until something is
 
 `wait` returns as soon as `requests.json` has items: it prints the batch JSON on stdout and the
 exact commands to fulfill it on stderr (`--timeout N` to give up; 0 = wait forever). Run it again
-after fulfilling for the next round. If no `wait` is running, the review shows a **handoff**
-callout with a paste-ready line — that is the manual fallback, not the normal path.
+after fulfilling for the next round. The review always shows a **handoff** callout with a
+paste-ready line — that is the normal path: the user pastes it in chat. A `wait` still running
+inside your turn picks the batch up without the paste.
 
 **The "Continue" button (or `kit.cli deliver`) exports:**
 1. **Exports** the approved pieces from `out/` to `~/Desktop/Campaign Kit/<campaign>/<concept>/`

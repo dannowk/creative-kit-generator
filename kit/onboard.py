@@ -150,35 +150,6 @@ def save_folder_record(root):
     return rec
 
 
-READY_RECORD = "ready.json"
-
-
-def press_ready(root):
-    """The wizard's Next step button: signal the agent's background `wait` to continue
-    the pipeline. Consumed (deleted) by take_ready so one press fires once."""
-    rec = {"at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
-    with open(os.path.join(root, READY_RECORD), "w", encoding="utf-8") as f:
-        json.dump(rec, f)
-    return rec
-
-
-def take_ready(root):
-    p = os.path.join(root, READY_RECORD)
-    if not os.path.isfile(p):
-        return {}
-    try:
-        with open(p, encoding="utf-8") as f:
-            rec = json.load(f) or {}
-    except ValueError:
-        rec = {}
-    os.remove(p)
-    return rec
-
-
-def ready_pending(root):
-    return os.path.isfile(os.path.join(root, READY_RECORD))
-
-
 def _sections(text):
     out = []
     for m in re.finditer(r"^## (.+)$", text, re.M):
@@ -269,5 +240,4 @@ def status(inbox):
             "direction": read_direction(inbox),
             "briefing_docs": docs,
             "folder_saved": bool(folder_record(inbox)),
-            "next": ready_pending(inbox),
             "ready": slots["logo"]["ok"] and not missing}

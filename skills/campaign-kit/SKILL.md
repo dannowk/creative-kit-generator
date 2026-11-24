@@ -33,10 +33,9 @@ and the browser.**
    and generated assets stay).
    Deps already installed → just reopen the wizard.
 4. **Announce in the chat** that onboarding opened; ask for the logo (required) + photos/refs +
-   briefing (brandbook is optional), then start `python3 -m kit.cli wait <inbox>` in the
-   background. The wizard's last panel has a **Next step →** button — when the user presses
-   it, `wait` returns `stage:"ready"` and you continue the pipeline in chat (the copy-phrase
-   fallback under the button works too). In the briefing area there is
+   briefing (brandbook is optional), then **end your turn**: the wizard's last panel shows a
+   paste-ready line with a copy button, and the user pastes it in chat to continue the pipeline
+   (manual handoff — the page cannot start the agent). In the briefing area there is
    **"Supporting documents"** (several, they add up): ad copy, layout rules, safe
    areas, logo safety — text/PDF/Word/image/spreadsheet. `plan` lists them all; read and
    apply (copy → campaign.json.copy; rules → geometry/safe_zones/compliance).
@@ -77,8 +76,9 @@ and the browser.**
    ```
    `wait` prints the batch (`stage`, `id`, `concept`, `format`, `axes`, `asset`, `asset_job`,
    `reason`, `note`) plus the exact commands; `--timeout N` gives up (0 = wait forever). Run it
-   again after fulfilling for the next round. No `wait` running → the review shows a **handoff**
-   callout with a paste-ready line (manual fallback).
+   again after fulfilling for the next round. The review always shows a **handoff** callout
+   with a paste-ready line — the normal path is the user pasting it in chat; a `wait` still
+   running inside your turn picks the batch up without the paste.
    **Fulfill the batch**: adjust template/asset/copy (actually recreate — the render is
    deterministic). A note asking for **a different image** = regenerate that asset: rewrite the
    prompt of the job whose id is `asset_job` in `campaign.json.asset_jobs` and run

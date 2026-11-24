@@ -28,11 +28,10 @@ chat with you and use the browser. Drive in this order:
    (optional). In the briefing area there is 'Supporting documents' to attach several files:
    ad copy, layout rules, safe areas, logo safety — and a 'Technical direction' field for the
    constraints of this whole creation (formats, margins, minimum font size and line count, what
-   must never be covered). When you're done, press **Next step →** in the last card and I'll
-   continue here in the chat."*
-   Start `python3 -m kit.cli wait <inbox>` in the **background** right after opening the
-   wizard: the **Next step →** button writes `ready.json` and `wait` returns `stage:"ready"`
-   — your signal to run the pipeline (a pasted "ready" phrase works as fallback). `plan`
+   must never be covered). When you're done, copy the line in the last card and paste it
+   here in the chat — that is how I continue."*
+   The handoff is **manual**: the wizard's last panel shows a paste-ready line with a copy
+   button; the page cannot start the agent. When the line arrives, run the pipeline. `plan`
    prints the technical direction (`direction.md`) in full: it binds the
    templates, formats, asset prompts and copy.
 5. Read `AGENTS.md` and follow the pipeline: `intake (or brief --apply) → plan → assets →
