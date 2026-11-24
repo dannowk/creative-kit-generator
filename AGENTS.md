@@ -91,8 +91,19 @@ python3 -m kit.cli assets campaigns/acme-launch
 #    prints "≈ X credits (N image(s) + M video(s))" and generates/collects.
 #    --jobs <id> ...  regenerates ONLY those asset jobs (a redo asking for a different image)
 
+# 4b. Asset approval (step 5 in the UI) — the user looks at the RAW generated images/videos
+#     before anything is composited on them. Opens the browser (free port from 8769) and writes
+#     OPEN-ASSETS.html in the campaign folder. --no-open for headless.
+python3 -m kit.cli approve campaigns/acme-launch
+#    approve / reject / redo (with a note) per asset. Marks queue in assets/requests.json the
+#    moment they happen; `wait` picks them up and you regenerate ONLY those with --jobs.
+#    A regenerated file (new sha) comes back as pending on its own, badged NEW; untouched files
+#    keep their approval. Decisions live in assets/state.json, spend/provenance in assets/manifest.json.
+
 # 5. Render the piece matrix (concepts × formats × axes)
 python3 -m kit.cli render campaigns/acme-launch
+#    GATED: with assets still waiting for approval it stops and points at `approve`
+#    (the gate is on the first render; --force skips it, --dry and --ids are not gated).
 #    --concepts clean cinema --formats Meta-Feed --limit 4 --dry
 #    --ids <id> ...  re-renders ONLY those pieces (stage 6: recreate/redo) without losing the decisions
 
@@ -106,8 +117,11 @@ python3 -m kit.cli video campaigns/acme-launch
 #    --no-open for headless. The URL also appears at the top of the screen and at the end of render/video.
 python3 -m kit.cli review campaigns/acme-launch
 
-# 6b. YOUR trigger while the user reviews: blocks until requests.json has items, then prints the
-#     batch + the commands to fulfill it. Run it in the background, fulfill, run it again.
+# 6b. YOUR trigger while the user approves assets or reviews pieces: blocks until either queue has
+#     items, then prints the batch + the commands to fulfill it. Run it in the background, fulfill,
+#     run it again. Items carry "stage": "assets" or "pieces". With nothing marked but every
+#     generated asset approved and no state.json yet, it returns one synthetic item
+#     {"stage":"assets","reason":"all_approved"} — that is your signal to run `render`.
 #     --timeout N gives up after N seconds (0 = wait forever).
 python3 -m kit.cli wait campaigns/acme-launch
 
@@ -136,8 +150,9 @@ python3 -m kit.cli ppc campaigns/acme-launch
 - `brands/<id>/` — `brand.yaml` (palette, type roles with OS fallback, voice,
   axes, naming, compliance, safe zones, locales) + `assets/logo.png` + `intake.json`.
 - `campaigns/<slug>/` — `campaign.json` (brand, channels, concepts, axes, cta, copy,
-  provider, asset_jobs) + `assets/` + `out/<concept>/` (working render) + `review/`
-  + `styles/<concept>.yaml` (concept color/font adjustment, optional)
+  provider, asset_jobs) + `assets/` (generated files + `manifest.json` provenance/spend
+  + `state.json` approvals + `requests.json` regeneration batch) + `out/<concept>/` (working render)
+  + `review/` + `styles/<concept>.yaml` (concept color/font adjustment, optional)
   + `state.json` (decisions) + `requests.json` (regeneration batch).
 - `~/Desktop/Campaign Kit/<campaign>/` — **final delivery folder**, outside the kit, on the
   user's Desktop: `<concept>/` with the approved pieces exported by Continue + `ppc/` (Meta + Google
@@ -254,6 +269,10 @@ composed frame (overlay + middle frame), same as images.
    (`credits_per_video:`, `tolerancia_rosto:`…): read those through the null-safe helpers
    (`providers.base.num`, `compliance._num`) or `or <default>` so the pipeline keeps running with
    the documented default instead of dying mid-render.
+8. **The raw assets are approved before the render.** After `assets`, run `approve` and let the
+   user look at what the provider actually produced; `render` refuses to composite logo/overlay/copy
+   over unapproved assets. Fulfill `assets/requests.json` with `assets --jobs <id>` (only the marked
+   ones) and stay in `wait` — it also tells you when everything is approved and the render is unlocked.
 
 ## Providers (contract = folder + manifest, not API)
 
@@ -284,6 +303,29 @@ Your job as the agent:
 5. `brief <out>` (validates) → `brief <out> --apply` (writes brand + campaign).
 
 The deterministic guarantee is the **validate + apply**, not your reading of the prose.
+
+## Stage 5 — Asset approval (before logo/overlay/copy)
+
+The user approves the **raw generated images/videos** before anything is composited on them:
+regenerating a weak photo is cheap and fixes the cause, re-rendering a composited piece only hides it.
+
+```bash
+python3 -m kit.cli assets  campaigns/<slug>    # generate (cost notice first)
+python3 -m kit.cli approve campaigns/<slug>    # the user's browser (port from 8769)
+python3 -m kit.cli wait    campaigns/<slug>    # you: blocks until an asset is marked
+```
+
+- **approve** → ready for the render. **reject** → generate another image. **redo** + note →
+  regenerate applying the note to the prompt. Marks queue in `assets/requests.json` immediately;
+  each item is `{stage:"assets", id:<path>, file, job, kind, prompt, credits, reason, note, marked_at}`.
+- Fulfill with `assets campaigns/<slug> --jobs <job> ...` (only the marked jobs — the spend stays
+  proportional). The new file lands with a new sha, so it returns to the page as **pending**, badged
+  **NEW**, and the queue empties itself. Decisions are keyed by path + sha in `assets/state.json`:
+  untouched files keep their approval.
+- `wait` also fires **once** when every generated asset is approved and `state.json` does not exist
+  yet: `{"stage":"assets","reason":"all_approved","count":n}` — that is your signal to run `render`.
+- **`render` is gated** on unapproved assets (first render only). `--force` skips the gate, `--dry`
+  and `--ids` are not gated (a targeted re-render is the user iterating on pieces they already saw).
 
 ## Stage 6 — Delivery (Continue) and regeneration
 

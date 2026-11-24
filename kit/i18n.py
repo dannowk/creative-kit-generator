@@ -91,7 +91,7 @@ _CATALOG = {
 
     # ── review ──────────────────────────────────────────────────────
     "rv.title": "Review",
-    "rv.meta": "step 5 of 6 · review and deliver · {origin}",
+    "rv.meta": "step 6 of 7 · review and deliver · {origin}",
     "rv.p5.title": "Review pieces",
     "rv.p5.desc": "Click a piece to enlarge. Approve, reject or ask for a redo — each click only MARKS the piece; nothing runs until Continue (stage 6). Compliance blocks show on the card. "
                   "Lost the address? It is at the top of this screen and in the <b>OPEN-REVIEW.html</b> file in the campaign folder.",
@@ -117,7 +117,7 @@ _CATALOG = {
     "rv.js.lbl.rejected": "Rejected",
     "rv.js.lbl.redo": "Redo",
     "rv.js.lbl.blocked": "Blocked",
-    "rv.js.meta": "step 5 of 6 · review and deliver · {origin}",
+    "rv.js.meta": "step 6 of 7 · review and deliver · {origin}",
     "rv.js.sing.pending": "Pending",
     "rv.js.sing.approved": "Approved",
     "rv.js.sing.rejected": "Rejected",
@@ -171,6 +171,74 @@ _CATALOG = {
     "rv.js.openfolder.empty": "Nothing delivered yet — click Continue first.",
     "rv.js.secs": "s",
 
+    # ── Asset approval (stage 5: the generated images, before the render) ──
+    "as.title": "Approve assets",
+    "as.meta": "step 5 of 7 · the generated images, before logo/overlay/copy · {origin}",
+    "as.p5.title": "Approve the generated images",
+    "as.p5.desc": "Raw images and videos straight from the provider — no logo, overlay or copy on them yet. "
+                  "Approve what works; reject or ask for a change on the rest and the agent regenerates ONLY "
+                  "those. The render (logo, overlays, copy, safe zones, compliance) starts when every asset "
+                  "is approved.",
+    "as.legend": "Legend:",
+    "as.legend.approved": "approved = ready for the render",
+    "as.legend.pending": "pending = waiting on you",
+    "as.legend.rejected": "rejected = generate another image",
+    "as.legend.redo": "redo = regenerate with your note",
+    "as.p6.title": "Next: render the pieces",
+    "as.p6.desc": "With every asset approved the agent composites the pieces (logo, overlays, copy, safe zones, "
+                  "compliance) and the piece review opens. Nothing renders before that: a weak image is fixed "
+                  "here, not hidden under a logo.",
+    "as.p6.hint": "Marking an approved asset again reopens it — the render waits for all of them.",
+    "as.err.none": "No generated assets yet — run: python3 -m kit.cli assets <campaign>",
+    "as.err.unknown": "Unknown asset — reload the page and try again.",
+    "as.openfolder": "Open assets folder",
+    "as.js.meta": "step 5 of 7 · the generated images, before logo/overlay/copy · {origin}",
+    "as.js.lbl.working": "To review",
+    "as.js.lbl.pending": "Pending",
+    "as.js.lbl.approved": "Approved",
+    "as.js.lbl.rejected": "Rejected",
+    "as.js.lbl.redo": "Redo",
+    "as.js.sing.pending": "Pending",
+    "as.js.sing.approved": "Approved",
+    "as.js.sing.rejected": "Rejected",
+    "as.js.sing.redo": "Redo",
+    "as.js.stats": '<span class="stat"><b>{total}</b> asset(s)</span>'
+                   '<span class="stat"><b>{approved}</b> approved</span>'
+                   '<span class="stat"><b>{pending}</b> waiting on you</span>'
+                   '<span class="stat"><b>{marks}</b> marked for the agent</span>'
+                   '<span class="stat"><b>{credits}</b> credits</span>',
+    "as.js.empty": "No asset matches this filter.",
+    "as.js.none": "No generated assets yet — the agent runs `assets` first.",
+    "as.js.video": "video",
+    "as.js.prompt": "Prompt:",
+    "as.js.job": "job",
+    "as.js.approve": "✓ approve",
+    "as.js.reject": "✕ reject",
+    "as.js.redo": "↻ redo",
+    "as.js.approvetoast": "Asset approved — the render starts when all of them are.",
+    "as.js.rejecttoast": "Marked for regeneration — queued for the agent right away.",
+    "as.js.regenask": "What should change in this image? (the agent applies it to the prompt)",
+    "as.js.regentoast": "Adjustment queued — the agent regenerates it and this page updates by itself.",
+    "as.js.queue.title": "Working queue — {n} asset(s) marked for regeneration.",
+    "as.js.queue.hint": "They are queued in assets/requests.json the moment you mark them: the agent regenerates only those and this page updates by itself. Regenerated assets come back as pending, marked NEW since your last visit.",
+    "as.js.queue.waiting": "waiting for the agent",
+    "as.js.queue.regenerate": "regenerate",
+    "as.js.queue.queued": "queued",
+    "as.js.newbadge": "NEW",
+    "as.js.handoff.title": "Batch ready — {n} asset(s) for the agent.",
+    "as.js.handoff.hint": "An agent watching this campaign (`kit.cli wait`) picks it up by itself. If none is running, paste this line in chat:",
+    "as.js.handoff.line": "Regenerate the marked assets in {req} (apply each note to the prompt, recreate the rejected ones) with the provider: python3 -m kit.cli assets {root} --jobs {jobs} — they come back to the approval page as pending.",
+    "as.js.handoff.copy": "Copy the line",
+    "as.js.handoff.copied": "Line copied — paste it in chat.",
+    "as.js.next": "Next: render",
+    "as.js.next.locked": "The render waits on {n} asset(s): approve them, or mark them and the agent regenerates.",
+    "as.js.next.ready": "All {n} asset(s) approved — the agent renders the pieces now (logo, overlays, copy, compliance) and the piece review opens.",
+    "as.js.next.toast": "All approved — render is next.",
+    "as.js.next.busy": "{n} asset(s) still waiting on you.",
+    "as.js.next.cmd": "python3 -m kit.cli render {root}",
+    "as.js.openfolder.toast": "Assets folder opened: {dir}",
+    "as.js.secs": "s",
+
     # ── CLI ─────────────────────────────────────────────────────────
     "cli.folder": "folder at {inbox}",
     "cli.mark.ok": "ok",
@@ -203,11 +271,23 @@ _CATALOG = {
     "cli.deliver.locked": "locked — the agent is still working on {n} queued piece(s); deliver only opens after every change is done",
     "cli.deliver.nostate": "no state.json — run render before deliver",
     "cli.deliver.ppc": "PPC sheets (Meta + Google) in {dir}/ — {n} files (CSV + XLSX)",
-    "cli.wait.waiting": "waiting for the review to mark pieces — {root}/requests.json (Ctrl+C to stop)",
+    "cli.wait.waiting": "waiting for the approval page or the review to mark work — "
+                        "{root}/assets/requests.json + {root}/requests.json (Ctrl+C to stop)",
     "cli.wait.empty": "timeout — nothing was marked",
-    "cli.wait.fulfill": "{n} piece(s) to work on: reason=redo → apply the note; reason=rejected → recreate from scratch",
+    "cli.wait.fulfill": "{n} item(s) to work on: reason=redo → apply the note; reason=rejected → recreate from scratch",
     "cli.wait.asset": "a note asking for a different image needs a new asset first: python3 -m kit.cli assets {root} --jobs {jobs}",
     "cli.wait.next": "then re-render them: python3 -m kit.cli render {root} --ids {ids}",
+    "cli.wait.assets": "{n} asset(s) to regenerate: reason=redo → apply the note to the prompt; "
+                       "reason=rejected → a different image — python3 -m kit.cli assets {root} --jobs {jobs}",
+    "cli.wait.allapproved": "all {n} generated asset(s) approved — the render is unlocked: "
+                            "python3 -m kit.cli render {root}",
+    "cli.assets.next": "next step: python3 -m kit.cli approve {campaign}  "
+                       "(the user approves the raw images before logo/overlay/copy)",
+    "cli.approve.none": "no generated assets to approve — run: python3 -m kit.cli assets {campaign}",
+    "cli.approve.summary": "{total} generated asset(s) · {approved} approved · {pending} waiting · "
+                           "{marked} marked to regenerate",
+    "cli.render.gate": "{n} asset(s) still waiting for approval — run: python3 -m kit.cli approve {root} "
+                       "(render --force skips the stage)",
     "cli.ppc.summary": "{meta} Meta · {display} Google Display · {rsa} Google Search · {manifest} in manifest → {dir}/ ({n} files)",
     "cli.ppc.empty": "no approved pieces — approve them in the review, or use --all to export everything",
     "cli.ppc.nostate": "no state.json — run render before ppc",

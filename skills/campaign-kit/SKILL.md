@@ -6,7 +6,8 @@ description: Use when the user wants to create or run a marketing campaign (imag
 # campaign-kit
 
 Generates the campaign locally: declarative specs, compliance (never cover faces),
-video with embedded ffmpeg and browser review (approve/reject/redo).
+video with embedded ffmpeg and two browser approvals — the raw generated assets, then the
+composited pieces (approve/reject/redo).
 **The user does not open a terminal or type a command — you run everything; they use the chat
 and the browser.**
 
@@ -28,13 +29,21 @@ and the browser.**
    **"Supporting documents"** (several, they add up): ad copy, layout rules, safe
    areas, logo safety — text/PDF/Word/image/spreadsheet. `plan` lists them all; read and
    apply (copy → campaign.json.copy; rules → geometry/safe_zones/compliance).
-5. **Follow `AGENTS.md`**: `intake (or brief --apply) → plan → assets → render →
+5. **Follow `AGENTS.md`**: `intake (or brief --apply) → plan → assets → approve → render →
    video`. The art direction comes from the briefing + refs + brandbook (if any), not from
    another client. Free-form
    briefing (prose/PDF/docx)? `brief --normalize <source>` → fill the skeleton (vision
    for PDF; whatever is missing stays empty, becomes a gap) → `brief <out> --apply`.
 6. **Cost is a notice**: show ≈ credits before provider jobs and proceed.
-7. **Review + regeneration (stage 6)**: start `review` (opens the browser by itself; shortcut
+7. **Asset approval (stage 5)**: after `assets`, start `approve` — the user looks at the **raw
+   generated images/videos** in the browser (shortcut `OPEN-ASSETS.html`) before any logo, overlay
+   or copy is composited. Approve/reject/redo (with a note) queue in `assets/requests.json` right
+   away; fulfill them with `assets campaigns/<slug> --jobs <job>` (only the marked ones) and they
+   come back as pending badged **NEW** — untouched files keep their approval.
+   **`render` is gated**: it refuses to run while any asset is unapproved (`--force` skips it).
+   `wait` covers this queue too and, when everything is approved and there is no `state.json` yet,
+   returns `{"stage":"assets","reason":"all_approved"}` — your signal to render.
+8. **Review + regeneration (stage 6)**: start `review` (opens the browser by itself; shortcut
    `OPEN-REVIEW.html` in the campaign folder). Approve marks the piece for delivery;
    reject/redo **queue it in `requests.json` right away** — the work is yours and does not wait
    for Continue. **Stay watching while the user reviews:**
@@ -42,10 +51,10 @@ and the browser.**
    python3 -m kit.cli review campaigns/<slug>   # the user's browser
    python3 -m kit.cli wait campaigns/<slug>     # you: blocks until something is marked
    ```
-   `wait` prints the batch (`id`, `concept`, `format`, `axes`, `asset`, `asset_job`, `reason`,
-   `note`) plus the exact commands; `--timeout N` gives up (0 = wait forever). Run it again after
-   fulfilling for the next round. No `wait` running → the review shows a **handoff** callout with
-   a paste-ready line (manual fallback).
+   `wait` prints the batch (`stage`, `id`, `concept`, `format`, `axes`, `asset`, `asset_job`,
+   `reason`, `note`) plus the exact commands; `--timeout N` gives up (0 = wait forever). Run it
+   again after fulfilling for the next round. No `wait` running → the review shows a **handoff**
+   callout with a paste-ready line (manual fallback).
    **Fulfill the batch**: adjust template/asset/copy (actually recreate — the render is
    deterministic). A note asking for **a different image** = regenerate that asset: rewrite the
    prompt of the job whose id is `asset_job` in `campaign.json.asset_jobs` and run
@@ -59,7 +68,7 @@ and the browser.**
    **Per-concept style adjustment**: if the user used **Adjust style** in the review, there is a
    `styles/<concept>.yaml` (colors/fonts) that the **render itself applies** — for that batch
    `render --ids` is enough, no template editing. See "Per-concept style adjustment" in AGENTS.md.
-8. **PPC sheets (Meta + Google)**: Continue/`deliver` already generates `ppc/` in the delivery folder
+9. **PPC sheets (Meta + Google)**: Continue/`deliver` already generates `ppc/` in the delivery folder
    (Desktop) with each platform's bulk upload in CSV + XLSX (Meta Ads Manager, Google Search RSA, Google
    Display) + manifest. Or run `ppc <campaign>` (`--all` for non-approved). Names/copy/CTA/
    placements/size come pre-filled; **URL, budget, targeting and IDs stay blank for

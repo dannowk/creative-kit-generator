@@ -12,8 +12,8 @@ browser **table** (approve/reject/redo+note per row). **The user does not open a
 terminal or type a command — you run everything; they use the chat and the browser.**
 
 Independent of `campaign-kit` (visual): does not touch the visual campaign/render/ppc, does not ask for
-logo/brandbook/refs. **One flow at a time in the UI** — visual wizard 8766/review 8765; copy
-uses 8767 (wizard) / 8768 (table). Do not start both in the same session.
+logo/brandbook/refs. **One flow at a time in the UI** — visual wizard 8766/asset approval 8769/
+review 8765; copy uses 8767 (wizard) / 8768 (table). Do not start both in the same session.
 
 ## Steps
 

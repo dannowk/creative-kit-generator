@@ -359,7 +359,8 @@ def pending_batch(state):
         st = p.get("status")
         if st not in ("rejected", "redo"):
             continue
-        out.append({"id": p["id"], "concept": p["concept"], "format": p["format"],
+        out.append({"stage": "pieces", "id": p["id"], "concept": p["concept"],
+                    "format": p["format"],
                     "axes": p.get("axes", {}), "path": p["path"],
                     "kind": p.get("kind", "image"), "asset": p.get("asset"),
                     "asset_job": os.path.splitext(p["asset"])[0] if p.get("asset") else None,
@@ -397,18 +398,24 @@ def sync_requests(root, state=None):
 
 
 def wait_batch(root, timeout=0, interval=2.0):
-    """Block until the review produces work, then return the batch (the agent's hook).
+    """Block until there is work, then return the batch (the agent's hook for BOTH stages).
 
-    The user marks redo/reject in the browser; this returns as soon as `requests.json` has
-    items, so the agent can fulfill them and re-render without the user pasting anything.
+    One trigger for the whole loop: marked assets (`assets/requests.json`, regenerate with the
+    provider) and marked pieces (`requests.json`, re-render). When nothing is marked but every
+    generated asset is approved and no piece has been rendered yet, it returns a single
+    `all_approved` item — that is the signal to run `render` (logos, overlays, copy, compliance).
     `timeout` 0 = wait forever. Returns [] on timeout.
     """
+    from . import assets as approval
     import time
     deadline = time.time() + timeout if timeout else None
     while True:
-        batch = sync_requests(root)
+        batch = approval.sync_requests(root) + sync_requests(root)
         if batch:
             return batch
+        ok, total = approval.all_approved(root)
+        if ok and not os.path.isfile(os.path.join(root, "state.json")):
+            return [{"stage": "assets", "reason": "all_approved", "id": None, "count": total}]
         if deadline is not None and time.time() >= deadline:
             return []
         time.sleep(interval)

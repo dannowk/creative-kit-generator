@@ -1,12 +1,13 @@
-"""campaign-kit CLI: onboard -> intake -> assets -> render -> review -> deliver.
+"""campaign-kit CLI: onboard -> intake -> assets -> approve -> render -> review -> deliver.
 
   python3 -m kit.cli onboard ~/inbox/acme
   python3 -m kit.cli intake ~/inbox/acme acme
   python3 -m kit.cli assets campaigns/acme-launch
+  python3 -m kit.cli approve campaigns/acme-launch  # step 5: approve the raw images in the browser
   python3 -m kit.cli render campaigns/acme-launch
   python3 -m kit.cli review campaigns/acme-launch
-  python3 -m kit.cli wait campaigns/acme-launch     # agent hook: blocks until a piece is marked
-  python3 -m kit.cli deliver campaigns/acme-launch   # step 6: the review's Continue
+  python3 -m kit.cli wait campaigns/acme-launch     # agent hook: blocks until an asset/piece is marked
+  python3 -m kit.cli deliver campaigns/acme-launch   # step 7: the review's Continue
   python3 -m kit.cli ppc campaigns/acme-launch        # bulk-upload sheets (Meta + Google)
 """
 
@@ -15,7 +16,8 @@ import json
 import os
 import sys
 
-from . import briefing, campaign, copy, i18n, intake, onboard, providers, render, ui, video
+from . import (assets, briefing, campaign, copy, i18n, intake, onboard,
+               providers, render, ui, video)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -43,6 +45,11 @@ def main(argv=None):
     p.add_argument("campaign")
     p.add_argument("--jobs", nargs="*", help="regenerate only these asset job ids (a redo that asks for a different image)")
 
+    p = sub.add_parser("approve", help="step 5: approve the generated assets in the browser before the render")
+    p.add_argument("campaign")
+    p.add_argument("--port", type=int, default=8769)
+    p.add_argument("--no-open", action="store_true", help="don't open the browser (headless)")
+
     p = sub.add_parser("render", help="render the piece matrix")
     p.add_argument("campaign")
     p.add_argument("--concepts", nargs="*")
@@ -50,19 +57,20 @@ def main(argv=None):
     p.add_argument("--ids", nargs="*", help="re-render only these pieces (step 6: recreate/redo)")
     p.add_argument("--limit", type=int)
     p.add_argument("--dry", action="store_true")
+    p.add_argument("--force", action="store_true", help="render even with assets still waiting for approval")
 
     p = sub.add_parser("video", help="edit video: trim, subject-aware reframe, brand overlay, concat, captions")
     p.add_argument("campaign")
 
-    p = sub.add_parser("review", help="local approval UI")
+    p = sub.add_parser("review", help="step 6: local approval UI for the rendered pieces")
     p.add_argument("campaign")
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--no-open", action="store_true", help="don't open the browser (headless)")
 
-    p = sub.add_parser("deliver", help="step 6: export approved + queue recreate/redo (the review's Continue)")
+    p = sub.add_parser("deliver", help="step 7: export approved + queue recreate/redo (the review's Continue)")
     p.add_argument("campaign")
 
-    p = sub.add_parser("wait", help="block until the review marks pieces for redo/recreate, then print the batch (agent hook)")
+    p = sub.add_parser("wait", help="block until an asset or a piece is marked (or every asset is approved), then print the batch (agent hook)")
     p.add_argument("campaign")
     p.add_argument("--timeout", type=float, default=0, help="seconds to wait, 0 = until something is queued")
 
@@ -322,9 +330,35 @@ def main(argv=None):
                 print(json.dumps(json.load(f)["jobs"], indent=2, ensure_ascii=False))
             return 0
         print(json.dumps(result, indent=2, ensure_ascii=False))
+        print("  " + i18n.t("cli.assets.next", campaign=args.campaign))
+        return 0
+
+    if args.cmd == "approve":
+        root = camp["_root"]
+        state = assets.load(root)
+        if not state["assets"]:
+            print(i18n.t("cli.approve.none", campaign=args.campaign), file=sys.stderr)
+            return 1
+        c = assets.counts(state)
+        total = sum(c.values())
+        print(i18n.t("cli.approve.summary", total=total, approved=c["approved"],
+                     pending=c["pending"], marked=c["rejected"] + c["redo"]))
+        server, url = ui.serve_assets(root, args.port, open_browser=not args.no_open)
+        print("  " + i18n.t("cli.ctrlc"))
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            server.shutdown()
         return 0
 
     if args.cmd == "render":
+        # The gate is on the first render (the approval stage). A targeted --ids re-render is the
+        # user iterating on pieces they already saw, so it is not held up by a fresh raw asset.
+        if not args.dry and not args.force and not args.ids:
+            waiting = assets.unapproved(camp["_root"])
+            if waiting:
+                print(i18n.t("cli.render.gate", n=len(waiting), root=camp["_root"]), file=sys.stderr)
+                return 1
         state = campaign.run(camp, only_concepts=args.concepts, only_formats=args.formats,
                              limit=args.limit, dry=args.dry, only_ids=args.ids)
         print(i18n.t("cli.render.summary", n=len(state["pieces"]),
@@ -431,9 +465,6 @@ def main(argv=None):
 
     if args.cmd == "wait":
         root = camp["_root"]
-        if not os.path.isfile(os.path.join(root, "state.json")):
-            print(i18n.t("cli.deliver.nostate"), file=sys.stderr)
-            return 1
         print(i18n.t("cli.wait.waiting", root=root), file=sys.stderr)
         try:
             batch = campaign.wait_batch(root, args.timeout)
@@ -443,13 +474,23 @@ def main(argv=None):
             print(i18n.t("cli.wait.empty"), file=sys.stderr)
             return 1
         print(json.dumps(batch, indent=2, ensure_ascii=False))
-        print(i18n.t("cli.wait.fulfill", n=len(batch)), file=sys.stderr)
-        jobs = sorted({b["asset_job"] for b in batch
-                       if b["reason"] == "redo" and b.get("asset_job")})
-        if jobs:
-            print("  " + i18n.t("cli.wait.asset", root=root, jobs=" ".join(jobs)), file=sys.stderr)
-        print("  " + i18n.t("cli.wait.next", root=root,
-                            ids=" ".join(b["id"] for b in batch)), file=sys.stderr)
+        if batch[0].get("reason") == "all_approved":
+            print(i18n.t("cli.wait.allapproved", n=batch[0].get("count") or 0, root=root),
+                  file=sys.stderr)
+            return 0
+        marked = [b for b in batch if b.get("stage") == "assets"]
+        pieces = [b for b in batch if b.get("stage") != "assets"]
+        if marked:
+            print(i18n.t("cli.wait.assets", n=len(marked), root=root,
+                         jobs=" ".join(assets.jobs_for(marked))), file=sys.stderr)
+        if pieces:
+            print(i18n.t("cli.wait.fulfill", n=len(pieces)), file=sys.stderr)
+            jobs = sorted({b["asset_job"] for b in pieces
+                           if b["reason"] == "redo" and b.get("asset_job")})
+            if jobs:
+                print("  " + i18n.t("cli.wait.asset", root=root, jobs=" ".join(jobs)), file=sys.stderr)
+            print("  " + i18n.t("cli.wait.next", root=root,
+                                ids=" ".join(b["id"] for b in pieces)), file=sys.stderr)
         return 0
 
     if args.cmd == "ppc":

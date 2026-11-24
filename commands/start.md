@@ -21,10 +21,16 @@ chat with you and use the browser. Drive in this order:
    ad copy, layout rules, safe areas, logo safety. Let me know when you're done."*
    Wait for the OK.
 5. Read `AGENTS.md` and follow the pipeline: `intake (or brief --apply) → plan → assets →
-   render → video`. Free-form briefing (prose/PDF/docx)? `brief --normalize <source>` →
+   approve → render → video`. Free-form briefing (prose/PDF/docx)? `brief --normalize <source>` →
    fill the skeleton (vision for PDF; whatever is missing stays empty, becomes a gap) → `brief --apply`.
 6. Show the ≈ cost notice before provider jobs (it is a notice, not a gatekeeper).
-7. Start `review` (opens the browser by itself) **and `wait <campaign>` in the background** —
+7. After generating, start `approve` (opens the browser by itself) **and `wait <campaign>` in the
+   background**: the user looks at the **raw images/videos** before logo/overlay/copy and marks
+   reject/redo into `assets/requests.json`. Fulfill with `assets <campaign> --jobs <job>` (only the
+   marked ones) — they come back as pending badged **NEW**. `render` is **gated** on this approval;
+   when every asset is approved `wait` returns `{"stage":"assets","reason":"all_approved"}` — run
+   `render` then. See "Stage 5" in AGENTS.md.
+8. Start `review` (opens the browser by itself) **and `wait <campaign>` in the background** —
    approve marks the piece for delivery; reject/redo queue it in `requests.json` immediately and
    `wait` hands you the batch the moment it appears (no Continue needed). Fulfill it (actually
    recreate/redo, changing template/asset/copy — a note asking for a different image means
@@ -36,7 +42,7 @@ chat with you and use the browser. Drive in this order:
    Continue is disabled and `deliver` returns `{"locked": n, "batch": [...]}`.
    If the user used **Adjust style** (colors/fonts of a whole concept), the `styles/<concept>.yaml`
    is already applied by the render — for that batch `render --ids` is enough. See AGENTS.md.
-8. Continue/`deliver` also generates the **PPC sheets** (Meta + Google) in `ppc/` in the
+9. Continue/`deliver` also generates the **PPC sheets** (Meta + Google) in `ppc/` in the
    delivery folder (Desktop), CSV + XLSX, for the traffic team to bulk-import. Or run `ppc <campaign>`. URL/budget/
    targeting/IDs stay blank for PPC — do not invent. See "Stage 6b" in AGENTS.md.
 

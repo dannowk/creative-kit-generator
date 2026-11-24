@@ -68,4 +68,6 @@ def run_assets(campaign):
         json.dump(subjects, f, indent=2)
 
     record_manifest(root, entries)
-    return {**estimate, "generated": generated}
+    from .. import assets as approval
+    return {**estimate, "generated": generated,
+            "approval": approval.counts(approval.load(root))}

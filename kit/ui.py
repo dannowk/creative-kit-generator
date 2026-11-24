@@ -20,7 +20,7 @@ from urllib.parse import urlparse, parse_qs
 
 import yaml
 
-from . import campaign, i18n, intake, onboard
+from . import assets, campaign, i18n, intake, onboard
 
 # ThreadingHTTPServer serves concurrently: without this, two fast review clicks
 # read-modify-write state.json in parallel and the second clobbers the first.
@@ -140,7 +140,7 @@ dialog .msgbody p{margin:0;font-size:14px}
  padding:10px 16px;font-size:14px;box-shadow:0 4px 16px rgba(16,24,32,.15);max-width:90vw}
 </style>"""
 
-_STEPS = ["Files", "Briefing", "Brand", "Generate", "Review", "Deliver"]
+_STEPS = ["Files", "Briefing", "Brand", "Generate", "Assets", "Review", "Deliver"]
 
 
 def _head(title):
@@ -215,7 +215,7 @@ def review_page():
 <button class="btn primary contbtn" onclick="continueBatch()">{i18n.t('rv.js.continue')}</button>
 <button onclick="load()">{i18n.t('btn.refresh')}</button></header>
 <div class="banner">
-""" + _stepper(5, 4) + f"""
+""" + _stepper(6, 5) + f"""
 <div class="stats" id="stats"></div>
 <div class="legend"><b>{i18n.t('rv.legend')}</b>
 <span class="tag approved"><span class="dot"></span>{i18n.t('rv.legend.approved')}</span>
@@ -225,7 +225,7 @@ def review_page():
 <span class="tag blocked"><span class="dot"></span>{i18n.t('rv.legend.blocked')}</span></div>
 </div>
 <div class="wrap">
-<div class="panel"><h2><span class="n">5</span>{i18n.t('rv.p5.title')}</h2>
+<div class="panel"><h2><span class="n">6</span>{i18n.t('rv.p5.title')}</h2>
 <p class="desc">{i18n.t('rv.p5.desc')}</p>
 <div class="callout warn" id="queue" style="display:none"></div>
 <div class="callout" id="handoff" style="display:none"></div>
@@ -243,7 +243,7 @@ def review_page():
 <span class="meta" id="stylemsg"></span></div>
 </div>
 <div class="rgrid" id="grid"></div></div>
-<div class="panel"><h2><span class="n">6</span>{i18n.t('rv.p6.title')}</h2>
+<div class="panel"><h2><span class="n">7</span>{i18n.t('rv.p6.title')}</h2>
 <p class="desc">{i18n.t('rv.p6.desc')}</p>
 <div class="stats" id="deliver-summary"></div>
 <div class="row" style="align-items:center"><button class="btn primary contbtn" onclick="continueBatch()">{i18n.t('rv.js.continue')}</button>
@@ -283,7 +283,7 @@ function applyState(s){
   document.getElementById("deliver-summary").innerHTML = fill(T["deliver.summary"],
     {approved:c("approved"),regen:c("rejected")+c("redo")});
   document.getElementById("opendelivery").style.display = delivered>0 ? "" : "none";
-  if(delivered>0) setStep(6);
+  if(delivered>0) setStep(7);
   if(seenBefore===null&&state.campaign){
     const k="ck.lastseen."+state.campaign;
     seenBefore=localStorage.getItem(k)||"";
@@ -425,10 +425,180 @@ async function continueBatch(){
     box.innerHTML+=`<div class="callout">${fill(T["continue.ppc"],{dir:j.ppc.dir,n:j.ppc.files.length,meta:j.ppc.meta,display:j.ppc.google_display,rsa:j.ppc.google_rsa})}</div>`;
   }
   notify(fill(T["continue.toast"],{n:j.exported,m:j.regen}));
-  setStep(6);
+  setStep(7);
 }
 async function openDelivery(){
   const r=await fetch("/open-delivery",{method:"POST",body:"{}"});
+  const j=await r.json();
+  if(!r.ok){await tell(j.error||"error");return;}
+  notify(fill(T["openfolder.toast"],{dir:j.path}));
+}
+async function poll(){
+  if(document.querySelector("dialog[open]")) return;
+  const s=await (await fetch("/state")).json();
+  if(JSON.stringify(s)!==lastState) applyState(s);
+}
+load();
+setInterval(poll,4000);
+</script></body></html>"""
+
+
+def assets_page():
+    return _head(i18n.t("as.title")) + f"""
+<header><span class="brand">campaign-kit</span><h1 id="title">{i18n.t('as.title')}</h1>
+<span class="meta" id="meta"></span><span class="sp"></span>
+<button class="btn primary nextbtn" onclick="nextStep()" disabled>{i18n.t('as.js.next')}</button>
+<button onclick="load()">{i18n.t('btn.refresh')}</button></header>
+<div class="banner">
+""" + _stepper(5, 4) + f"""
+<div class="stats" id="stats"></div>
+<div class="legend"><b>{i18n.t('as.legend')}</b>
+<span class="tag approved"><span class="dot"></span>{i18n.t('as.legend.approved')}</span>
+<span class="tag"><span class="dot"></span>{i18n.t('as.legend.pending')}</span>
+<span class="tag rejected"><span class="dot"></span>{i18n.t('as.legend.rejected')}</span>
+<span class="tag redo"><span class="dot"></span>{i18n.t('as.legend.redo')}</span></div>
+</div>
+<div class="wrap">
+<div class="panel"><h2><span class="n">5</span>{i18n.t('as.p5.title')}</h2>
+<p class="desc">{i18n.t('as.p5.desc')}</p>
+<div class="callout warn" id="queue" style="display:none"></div>
+<div class="callout" id="handoff" style="display:none"></div>
+<div class="filters" id="filters"></div>
+<div class="rgrid" id="grid"></div></div>
+<div class="panel"><h2><span class="n">6</span>{i18n.t('as.p6.title')}</h2>
+<p class="desc">{i18n.t('as.p6.desc')}</p>
+<div class="row" style="align-items:center"><button class="btn primary nextbtn" onclick="nextStep()" disabled>{i18n.t('as.js.next')}</button>
+<button class="btn" onclick="openAssets()">{i18n.t('as.openfolder')}</button>
+<span class="meta">{i18n.t('as.p6.hint')}</span></div>
+<div class="callout warn" id="gate" style="display:none"></div>
+<div id="next-result"></div></div>
+</div>
+<dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
+""" + _modal() + _JS_UTIL + _inject("as.js") + """
+<script>
+let state=null, filter="working", lastState="", seenBefore=null;
+const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"]};
+const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"]};
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fill=(s,o)=>s.replace(/\\{(\\w+)\\}/g,(m,k)=>(k in o?o[k]:m));
+async function load(){applyState(await (await fetch("/state")).json());}
+function applyState(s){
+  state=s; lastState=JSON.stringify(s);
+  document.getElementById("title").textContent = (s.campaign||T.title||"assets") + " · " + (s.brand||"");
+  document.getElementById("meta").textContent = fill(T.meta,{origin:location.origin});
+  const A=s.assets||[], c=st=>A.filter(a=>a.status===st).length;
+  const working=A.filter(a=>a.status!=="approved").length;
+  const credits=A.reduce((t,a)=>t+(+a.credits||0),0);
+  document.getElementById("stats").innerHTML = fill(T.stats,
+    {total:A.length,approved:c("approved"),pending:c("pending"),
+     marks:c("rejected")+c("redo"),credits:Math.round(credits*100)/100});
+  const counts={working,approved:c("approved"),pending:c("pending"),rejected:c("rejected"),redo:c("redo")};
+  document.getElementById("filters").innerHTML = Object.entries(counts)
+    .map(([k,v])=>`<button class="${k===filter?'on':''}" onclick="setFilter('${k}')">${LBL[k]} (${v})</button>`).join("");
+  if(seenBefore===null&&s.campaign){
+    const k="ck.lastseen.assets."+s.campaign;
+    seenBefore=localStorage.getItem(k)||"";
+    localStorage.setItem(k,new Date().toISOString());
+  }
+  const q=(s.batch||[]);
+  const qel=document.getElementById("queue");
+  if(q.length){
+    qel.style.display="";
+    qel.innerHTML=`<b>${fill(T["queue.title"],{n:q.length})}</b> <span class="hint">${T["queue.hint"]}</span>`+
+      `<ul class="queuelist">`+q.map(b=>{
+        const what=b.reason==="redo"?`↻ ${esc(b.note||"")}`:`✕ ${T["queue.regenerate"]}`;
+        const when=b.marked_at?` · ${new Date(b.marked_at).toLocaleString()}`:"";
+        return `<li><b>${esc(b.file||b.id)}</b> — ${esc(b.prompt||"").slice(0,90)} — ${what} <span class="hint">[${T["queue.waiting"]}${when}]</span></li>`;
+      }).join("")+`</ul>`;
+  } else qel.style.display="none";
+  const ho=document.getElementById("handoff");
+  if(q.length&&s.root){
+    ho.style.display="";
+    const line=fill(T["handoff.line"],{req:s.root+"/"+s.requests_path,root:s.root,
+      jobs:(s.jobs||[]).join(" ")});
+    ho.innerHTML=`<b>${fill(T["handoff.title"],{n:q.length})}</b> <span class="hint">${T["handoff.hint"]}</span>`+
+      `<div class="row" style="align-items:center;margin-top:8px">`+
+      `<input type="text" id="handoffline" readonly style="flex:1" value="${esc(line)}">`+
+      `<button class="btn" onclick="copyHandoff()">${T["handoff.copy"]}</button></div>`;
+  } else ho.style.display="none";
+  const ready=A.length>0&&working===0;
+  document.querySelectorAll(".nextbtn").forEach(b=>b.disabled=!ready);
+  const g=document.getElementById("gate");
+  if(A.length&&!ready){g.style.display="";g.textContent=fill(T["next.locked"],{n:working});}
+  else g.style.display="none";
+  if(ready) setStep(6);
+  draw();
+}
+async function copyHandoff(){
+  await navigator.clipboard.writeText(document.getElementById("handoffline").value);
+  notify(T["handoff.copied"]);
+}
+function setFilter(f){filter=f;draw();}
+function setStep(n){document.querySelectorAll(".stepper .step").forEach(el=>{
+  const i=+el.dataset.step;el.classList.toggle("done",i<n);el.classList.toggle("current",i===n);
+  const d=el.querySelector(".n");if(d)d.textContent=i<n?"✓":String(i);});}
+function draw(){
+  const A=(state.assets||[]).filter(a=>filter==="working"?a.status!=="approved":a.status===filter);
+  const g=document.getElementById("grid");
+  if(!(state.assets||[]).length){g.innerHTML=`<div class="empty">${T.none}</div>`;return;}
+  if(!A.length){g.innerHTML=`<div class="empty">${T.empty}</div>`;return;}
+  g.innerHTML=A.map(a=>{
+    const isVid=a.kind==="video";
+    const src="/img?path="+encodeURIComponent(a.path);
+    const media=isVid
+      ? `<video controls preload="metadata" src="${src}"></video>`
+      : `<img loading="lazy" src="${src}" onclick="zoom('${encodeURIComponent(a.path)}')" alt="${esc(a.file)}">`;
+    const isNew=seenBefore&&a.updated_at&&a.updated_at>seenBefore&&a.status==="pending";
+    const badges=(a.queued?`<span class="tag"><span class="dot"></span>${T["queue.queued"]}</span>`:"")
+      +(isNew?`<span class="tag new"><span class="dot"></span>${T.newbadge}</span>`:"");
+    const note=(a.status==="redo"&&a.note)?`<p class="hint">↻ ${esc(a.note)}</p>`:"";
+    return `<div class="card rcard">
+      ${media}
+      <div class="body">
+        <div class="row"><span class="tag ${a.status}"><span class="dot"></span>${SING[a.status]||a.status}</span>
+          ${isVid?`<span class="tag">${T.video}</span>`:""}${badges}</div>
+        <div class="name">${esc(a.file)} <span class="hint">· ${T.job} ${esc(a.job||"—")}</span></div>
+        ${a.prompt?`<p class="hint">${T.prompt} ${esc(a.prompt).slice(0,180)}</p>`:""}
+        ${note}
+        <div class="row">
+          <button class="btn ok" onclick="decide('${esc(a.path)}','approved')">${T.approve}</button>
+          <button class="btn no" onclick="decide('${esc(a.path)}','rejected')">${T.reject}</button>
+          <button class="btn" onclick="regen('${esc(a.path)}')">${T.redo}</button></div>
+      </div></div>`;
+  }).join("");
+}
+function zoom(path){document.getElementById("zoomimg").src="/img?path="+path;
+  document.getElementById("zoom").showModal();}
+async function decide(path,status){
+  const r=await fetch("/decision",{method:"POST",body:JSON.stringify({path,status})});
+  if(!r.ok){await tell((await r.json()).error||"error");return;}
+  await load();
+  notify(status==="approved"?T.approvetoast:T.rejecttoast);
+}
+async function regen(path){
+  const note=await ask(T.regenask);
+  if(note===null||note.trim()==="") return;
+  const r=await fetch("/regen",{method:"POST",body:JSON.stringify({path,note})});
+  if(!r.ok){await tell((await r.json()).error||"error");return;}
+  await load();
+  notify(T.regentoast);
+}
+async function nextStep(){
+  const r=await fetch("/next",{method:"POST",body:"{}"});
+  const j=await r.json();
+  const box=document.getElementById("next-result");
+  if(!r.ok||j.waiting>0){
+    box.innerHTML="";
+    notify(fill(T["next.busy"],{n:j.waiting||0}));
+    return;
+  }
+  box.innerHTML=`<div class="callout ok">${fill(T["next.ready"],{n:j.total})}<br>`+
+    `<span class="hint">${esc(j.command)}</span></div>`;
+  notify(T["next.toast"]);
+  setStep(6);
+}
+async function openAssets(){
+  const r=await fetch("/open-assets",{method:"POST",body:"{}"});
   const j=await r.json();
   if(!r.ok){await tell(j.error||"error");return;}
   notify(fill(T["openfolder.toast"],{dir:j.path}));
@@ -766,11 +936,14 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         url = urlparse(self.path)
         if url.path == "/":
-            page = onboard_page() if self.mode == "onboard" else review_page()
+            page = (onboard_page() if self.mode == "onboard"
+                    else assets_page() if self.mode == "assets" else review_page())
             self._send(200, page.encode(), "text/html; charset=utf-8")
         elif url.path == "/state":
             if self.mode == "onboard":
                 return self._send(200, onboard.status(self.root))
+            if self.mode == "assets":
+                return self._send(200, self._assets_payload())
             with open(os.path.join(self.root, "state.json"), encoding="utf-8") as f:
                 state = json.load(f)
             campaign.sync_requests(self.root, state)
@@ -806,11 +979,48 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, {"error": "not found"})
 
+    def _assets_payload(self):
+        payload = assets.payload(self.root)
+        camp = {}
+        cpath = os.path.join(self.root, "campaign.json")
+        if os.path.isfile(cpath):
+            with open(cpath, encoding="utf-8") as f:
+                camp = json.load(f)
+        payload["campaign"] = camp.get("name") or camp.get("slug") or os.path.basename(self.root)
+        payload["brand"] = camp.get("brand", "")
+        return payload
+
+    def _assets_post(self, path, payload):
+        if path in ("/decision", "/regen"):
+            target = payload.get("path") or payload.get("id") or ""
+            if not target:
+                return self._send(400, {"error": i18n.t("as.err.unknown")})
+            redo = path == "/regen"
+            ok = assets.decide(self.root, target, "redo" if redo else payload.get("status", "pending"),
+                               payload.get("note", "") if redo else "", who="user")
+            if not ok:
+                return self._send(400, {"error": i18n.t("as.err.unknown")})
+            return self._send(200, {"ok": True, "queued": len(assets.sync_requests(self.root))})
+        if path == "/next":
+            ok, total = assets.all_approved(self.root)
+            return self._send(200, {"ok": ok, "total": total,
+                                    "waiting": len(assets.unapproved(self.root)),
+                                    "command": i18n.t("as.js.next.cmd", root=self.root)})
+        if path == "/open-assets":
+            d = os.path.join(self.root, assets.DIR)
+            if not os.path.isdir(d):
+                return self._send(400, {"error": i18n.t("as.err.none")})
+            _open_folder(d)
+            return self._send(200, {"ok": True, "path": d})
+        return self._send(404, {"error": "not found"})
+
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         if self.mode == "onboard":
             return self._onboard_post(length)
         payload = json.loads(self.rfile.read(length) or b"{}")
+        if self.mode == "assets":
+            return self._assets_post(self.path, payload)
         state_path = os.path.join(self.root, "state.json")
         if self.path in ("/decision", "/regen"):
             from datetime import datetime, timezone
@@ -937,6 +1147,14 @@ def serve(campaign_root, port=8765, open_browser=True):
     Handler.mode = "review"
     Handler.root = os.path.abspath(campaign_root)
     return _serve(os.path.abspath(campaign_root), port, open_browser)
+
+
+def serve_assets(campaign_root, port=8769, open_browser=True):
+    """Stage 5: approve the generated images before anything is composited on them."""
+    Handler.mode = "assets"
+    Handler.root = os.path.abspath(campaign_root)
+    return _serve(os.path.abspath(campaign_root), port, open_browser,
+                  shortcut_name="OPEN-ASSETS.html")
 
 
 def serve_onboard(inbox, brands_dir, port=8766, open_browser=True):
