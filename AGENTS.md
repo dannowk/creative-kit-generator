@@ -172,7 +172,8 @@ python3 -m kit.cli ppc campaigns/acme-launch
 - `brands/<id>/` — `brand.yaml` (palette, type roles with OS fallback, voice,
   axes, naming, compliance, safe zones, locales) + `assets/logo.png` + `intake.json`.
 - `campaigns/<slug>/` — `campaign.json` (brand, channels, concepts, axes, cta, copy,
-  provider, asset_jobs) + `assets/` (generated files + `manifest.json` provenance/spend
+  provider, asset_jobs, `assets_by_concept` — a per-concept asset map that wins over the
+  shared `assets` photo for every piece of that concept) + `assets/` (generated files + `manifest.json` provenance/spend
   + `state.json` approvals + `requests.json` regeneration batch) + `out/<concept>/` (working render)
   + `review/` + `styles/<concept>.yaml` (concept color/font adjustment, optional)
   + `styles/<concept>/refs/` (references attached in the Adjust style panel, optional)
