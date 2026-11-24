@@ -161,6 +161,12 @@ dialog::backdrop{background:rgba(20,26,32,.55)}
 .stylefield input[type=color]{width:56px;height:34px;padding:2px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
 .stylefield input[type=text]{width:200px}
 .stylenote{min-height:64px}
+.stylepanel.drag{outline:2px dashed var(--accent);outline-offset:3px}
+.stylerefs{display:flex;gap:6px;flex-wrap:wrap}
+.stylerefs .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);
+  background:#fff;border-radius:999px;padding:3px 6px 3px 10px;font-size:12px;color:var(--ink)}
+.stylerefs .chip button{border:0;background:var(--line);color:var(--ink);border-radius:50%;
+  width:16px;height:16px;line-height:14px;cursor:pointer;font-size:11px}
 .stylelabel{font-size:12.5px;color:var(--mut);font-weight:600}
 dialog .msgbody{display:grid;gap:12px;padding:10px 12px;min-width:320px;max-width:480px}
 dialog .msgbody p{margin:0;font-size:14px}
@@ -385,6 +391,10 @@ def review_page():
 <datalist id="fontlist"></datalist>
 <div><label class="stylelabel" for="stylenote">{i18n.t('rv.stylenote')}</label>
 <textarea id="stylenote" class="stylenote" rows="2"></textarea></div>
+<div class="row"><button class="btn" onclick="pickRefs()">{i18n.t('rv.js.style.attach')}</button>
+<input type="file" id="reffile" multiple hidden accept=".png,.jpg,.jpeg,.webp,.gif,.pdf">
+<span class="meta">{i18n.t('rv.js.style.drophint')}</span></div>
+<div class="stylerefs" id="stylerefs"></div>
 <div class="row"><button class="btn primary" onclick="applyStyle()">{i18n.t('rv.applystyle')}</button>
 <span class="meta" id="stylemsg"></span></div>
 </div>
@@ -500,6 +510,7 @@ async function openStyle(concept){
     return `<div class="stylefield"><label>${esc(role)}</label><input type="text" data-font="${esc(role)}" list="fontlist" value="${esc(file)}" placeholder="${esc(T["style.fontph"])}"></div>`;}).join("");
   document.getElementById("fontlist").innerHTML=(j.fonts||[]).map(f=>`<option value="${esc(f)}">`).join("");
   document.getElementById("stylenote").value=ov.note||"";
+  drawRefs(ov.refs||[]);
   document.getElementById("stylemsg").textContent="";
   document.getElementById("stylepanel").hidden=false;}
 async function applyStyle(){
@@ -513,6 +524,22 @@ async function applyStyle(){
   await load();
   notify(fill(T["style.applied"],{n:j.count,concept:styleConcept}));
   closeStyle();}
+function drawRefs(refs){document.getElementById("stylerefs").innerHTML=(refs||[]).map(n=>
+  `<span class="chip">${esc(n)}<button title="${esc(T["style.refdel"])}" `+
+  `onclick="delRef('${esc(n)}')">×</button></span>`).join("");}
+function pickRefs(){document.getElementById("reffile").click();}
+async function uploadRefs(files){
+  for(const f of files){
+    const {ok,j}=await pj("/style-ref?concept="+encodeURIComponent(styleConcept)+
+      "&name="+encodeURIComponent(f.name),{method:"POST",body:f});
+    if(!ok){await tell(j.error||T.failed);continue;}
+    drawRefs(j.refs);
+  }}
+async function delRef(name){
+  const {ok,j}=await pj("/style-ref-delete?concept="+encodeURIComponent(styleConcept)+
+    "&name="+encodeURIComponent(name));
+  if(!ok){await tell(j.error||T.failed);return;}
+  drawRefs(j.refs);}
 function setStep(n){document.querySelectorAll(".stepper .step").forEach(el=>{
   const i=+el.dataset.step;el.classList.toggle("done",i<n);el.classList.toggle("current",i===n);
   const d=el.querySelector(".n");if(d)d.textContent=i<n?"✓":String(i);});}
@@ -618,6 +645,12 @@ function schedule(){
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)poll();});
 window.addEventListener("focus",poll);
+document.getElementById("reffile").addEventListener("change",e=>{uploadRefs([...e.target.files]);e.target.value="";});
+const sp=document.getElementById("stylepanel");
+sp.addEventListener("dragover",e=>{e.preventDefault();sp.classList.add("drag");});
+sp.addEventListener("dragleave",()=>sp.classList.remove("drag"));
+sp.addEventListener("drop",e=>{e.preventDefault();sp.classList.remove("drag");
+  if(e.dataTransfer.files.length)uploadRefs([...e.dataTransfer.files]);});
 load();
 schedule();
 </script></body></html>"""
@@ -1203,6 +1236,29 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, {"error": "not found"})
 
+    def _style_ref(self, length):
+        url = urlparse(self.path)
+        q = parse_qs(url.query)
+        concept = q.get("concept", [""])[0]
+        camp = campaign.load_campaign(self.root)
+        known = set(campaign.available_concepts()) | set(camp.get("concepts") or [])
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", concept) or concept not in known:
+            return self._send(400, {"error": i18n.t("rv.err.concept")})
+        name = q.get("name", [""])[0]
+        if url.path == "/style-ref-delete":
+            if not campaign.drop_ref(self.root, concept, name):
+                return self._send(400, {"error": i18n.t("rv.js.style.refgone")})
+            return self._send(200, {"ok": True, "refs": campaign.list_refs(self.root, concept)})
+        if length > campaign.MAX_REF:
+            self.rfile.read(length)
+            return self._send(413, {"error": i18n.t("rv.js.style.big")})
+        try:
+            saved = campaign.add_ref(self.root, concept, name, self.rfile.read(length))
+        except ValueError:
+            return self._send(400, {"error": i18n.t("rv.js.style.badtype")})
+        return self._send(200, {"ok": True, "name": saved,
+                                "refs": campaign.list_refs(self.root, concept)})
+
     def _assets_payload(self):
         payload = assets.payload(self.root)
         camp = {}
@@ -1243,6 +1299,8 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         if self.mode == "onboard":
             return self._onboard_post(length)
+        if self.path.startswith("/style-ref"):
+            return self._style_ref(length)
         payload = json.loads(self.rfile.read(length) or b"{}")
         if self.path == "/rule-decision":
             prop = rules.decide(self.root, payload.get("id", ""), bool(payload.get("agree")), who="user")
@@ -1296,13 +1354,19 @@ class Handler(BaseHTTPRequestHandler):
                 if r in ("display", "text", "accent") and isinstance(v, str) and v.strip():
                     typ[r] = v.strip()
             note = (payload.get("note") or "").strip()
-            style = {}
+            style = campaign.load_style(self.root, concept)
             if pal:
                 style["palette"] = pal
+            else:
+                style.pop("palette", None)
             if typ:
                 style["type"] = typ
+            else:
+                style.pop("type", None)
             if note:
                 style["note"] = note
+            else:
+                style.pop("note", None)
             sp = campaign.style_path(self.root, concept)
             os.makedirs(os.path.dirname(sp), exist_ok=True)
             with open(sp, "w", encoding="utf-8") as f:

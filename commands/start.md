@@ -61,7 +61,9 @@ chat with you and use the browser. Drive in this order:
    it on the user's computer. **The export is gated:** while anything is still rejected/redo,
    Continue is disabled and `deliver` returns `{"locked": n, "batch": [...]}`.
    If the user used **Adjust style** (colors/fonts of a whole concept), the `styles/<concept>.yaml`
-   is already applied by the render — for that batch `render --ids` is enough. See AGENTS.md.
+   is already applied by the render — for that batch `render --ids` is enough. References attached
+   in the panel live in `styles/<concept>/refs/` (listed under `refs:`) — look at them first.
+   See AGENTS.md.
 9. Continue/`deliver` also generates the **PPC sheets** (Meta + Google) in `ppc/` in the
    delivery folder (Desktop), CSV + XLSX, for the traffic team to bulk-import. Or run `ppc <campaign>`. URL/budget/
    targeting/IDs stay blank for PPC — do not invent. See "Step 7b — PPC sheets" in AGENTS.md.

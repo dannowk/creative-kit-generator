@@ -203,6 +203,12 @@ _CATALOG = {
     "rv.js.style.fontph": ".ttf/.otf file (empty = substitute)",
     "rv.js.style.confirm": "This queues all {n} {concept} piece(s) to re-render with the new style (approved ones go back to pending). Continue?",
     "rv.js.style.applied": "{n} {concept} piece(s) queued — the agent re-renders them with the new style.",
+    "rv.js.style.attach": "Attach reference…",
+    "rv.js.style.drophint": "or drop images / PDFs on this panel — the agent looks at them before re-rendering.",
+    "rv.js.style.refdel": "remove this reference",
+    "rv.js.style.big": "That file is over the 15 MB limit.",
+    "rv.js.style.badtype": "References must be images (png/jpg/webp/gif) or a PDF.",
+    "rv.js.style.refgone": "That reference is no longer attached.",
     "rv.js.deliver.summary": '<span class="stat"><b>{approved}</b> approved → delivery folder (Desktop)</span>'
                              '<span class="stat"><b>{regen}</b> to recreate/redo</span>',
     "rv.js.continue.done": "{n} approved exported to <b>{dir}/</b>{queued}.",

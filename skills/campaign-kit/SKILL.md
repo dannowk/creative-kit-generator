@@ -101,7 +101,9 @@ and the browser.**
    and `deliver` returns `{"locked": n, "batch": [...]}` instead of exporting.
    **Per-concept style adjustment**: if the user used **Adjust style** in the review, there is a
    `styles/<concept>.yaml` (colors/fonts) that the **render itself applies** — for that batch
-   `render --ids` is enough, no template editing. See "Per-concept style adjustment" in AGENTS.md.
+   `render --ids` is enough, no template editing. References the user attached (Attach button or
+   drag&drop) live in `styles/<concept>/refs/` and are listed under `refs:` — open them before
+   re-rendering. See "Per-concept style adjustment" in AGENTS.md.
 9. **PPC sheets (Meta + Google)**: Continue/`deliver` already generates `ppc/` in the delivery folder
    (Desktop) with each platform's bulk upload in CSV + XLSX (Meta Ads Manager, Google Search RSA, Google
    Display) + manifest. Or run `ppc <campaign>` (`--all` for non-approved). Names/copy/CTA/

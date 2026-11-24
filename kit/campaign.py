@@ -166,6 +166,58 @@ def load_style(root, concept):
         return yaml.safe_load(f) or {}
 
 
+MAX_REF = 15 * 1024 * 1024
+REF_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".pdf")
+
+
+def refs_dir(root, concept):
+    return os.path.join(root, STYLES_DIR, concept, "refs")
+
+
+def list_refs(root, concept):
+    d = refs_dir(root, concept)
+    return sorted(os.listdir(d)) if os.path.isdir(d) else []
+
+
+def _set_refs(root, concept):
+    style = load_style(root, concept)
+    names = list_refs(root, concept)
+    if names:
+        style["refs"] = names
+    else:
+        style.pop("refs", None)
+    with open(style_path(root, concept), "w", encoding="utf-8") as f:
+        yaml.safe_dump(style, f, allow_unicode=True, sort_keys=False)
+
+
+def add_ref(root, concept, name, data):
+    """Save a reference attached in the review under styles/<concept>/refs/ and list it."""
+    base = re.sub(r"[^A-Za-z0-9._-]+", "-", os.path.basename(name or "").strip()).strip("-.")
+    if not base:
+        base = "reference"
+    if not base.lower().endswith(REF_EXT) or len(data) > MAX_REF:
+        raise ValueError(base)
+    d = refs_dir(root, concept)
+    os.makedirs(d, exist_ok=True)
+    stem, ext = os.path.splitext(base)
+    saved, n = base, 1
+    while os.path.isfile(os.path.join(d, saved)):
+        saved, n = f"{stem}-{n}{ext}", n + 1
+    with open(os.path.join(d, saved), "wb") as f:
+        f.write(data)
+    _set_refs(root, concept)
+    return saved
+
+
+def drop_ref(root, concept, name):
+    path = os.path.join(refs_dir(root, concept), os.path.basename(name or ""))
+    if not os.path.isfile(path):
+        return False
+    os.remove(path)
+    _set_refs(root, concept)
+    return True
+
+
 def styled_brand(brand, style):
     """Brand with the concept's palette/typography merged over the base brand."""
     if not style:

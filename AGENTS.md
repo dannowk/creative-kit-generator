@@ -169,6 +169,7 @@ python3 -m kit.cli ppc campaigns/acme-launch
   provider, asset_jobs) + `assets/` (generated files + `manifest.json` provenance/spend
   + `state.json` approvals + `requests.json` regeneration batch) + `out/<concept>/` (working render)
   + `review/` + `styles/<concept>.yaml` (concept color/font adjustment, optional)
+  + `styles/<concept>/refs/` (references attached in the Adjust style panel, optional)
   + `rules/` (`proposals.json` alarms + `overrides.yaml` accepted patches, optional)
   + `state.json` (decisions) + `requests.json` (regeneration batch).
 - `~/Desktop/Campaign Kit/<campaign>/` — **final delivery folder**, outside the kit, on the
@@ -400,7 +401,9 @@ user pressing Continue.
 - **Reject** → `status:"rejected"`. Queued to **recreate** (no note).
 - **Redo** → `status:"redo"` + `note` (what to adjust). Queued to **redo with the note**.
 - **Adjust style** (per concept, when a concept is filtered) → writes `styles/<concept>.yaml`
-  (colors/fonts/note) and queues **all** pieces of that concept as `redo`. See below.
+  (colors/fonts/note) and queues **all** pieces of that concept as `redo`. References attached
+  in the panel (button or drag&drop) land in `styles/<concept>/refs/`, listed under `refs:` —
+  look at them before re-rendering. See below.
 
 `requests.json` is a **derived view** of the marked pieces, refreshed on every review poll,
 after every `render` and on `deliver` — so it appears the moment the user marks something and
@@ -492,6 +495,11 @@ filters the concept in the review and clicks **Adjust style**: tweaks the palett
 free note. That writes `campaigns/<slug>/styles/<concept>.yaml` and queues all pieces of the
 concept as `redo` (approved ones go back to `pending`) — they land in `requests.json` right away,
 like any other redo.
+
+The panel also carries **visual references**: the **Attach reference…** button and drag&drop on
+the panel copy images/PDFs (up to 15 MB) to `campaigns/<slug>/styles/<concept>/refs/` and list
+them under `refs:` in the yaml. They are the user's look intent — open them before re-rendering
+the concept, and keep them when you refit the layout.
 
 **The override is applied by the render itself**, per concept: `campaign.run` merges
 `styles/<concept>.yaml` over the base brand's palette/typography (`styled_brand`) before

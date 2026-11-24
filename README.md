@@ -134,7 +134,9 @@ port). On screen you decide piece by piece — **reject and redo start working r
 - **↻ redo** → you write what to adjust; the agent applies your note and re-renders that piece.
 - **Adjust style (the whole concept)** → filter a concept and click **Adjust style** to
   change **colors and fonts of all its pieces at once** (palette and type roles, plus a free
-  note). The adjustment is saved to `styles/<concept>.yaml` and every piece of the concept
+  note). You can also **attach references** (button or drag&drop on the panel — images/PDFs):
+  they are saved with the concept and the agent looks at them before re-rendering.
+  The adjustment is saved to `styles/<concept>.yaml` and every piece of the concept
   enters the redo queue — the agent re-renders with the new look (and it applies to future
   renders too).
 
