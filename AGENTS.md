@@ -43,6 +43,9 @@ manual captions or `captions:"off"` never touch it.
 **Fonts:** do not download licensed fonts on your own. If the brand font did not come
 in the folder, intake asks (single round) and render degrades with an OS fallback
 (macOS/Windows/Linux), reporting exactly which ones were substituted (`font_warnings`).
+The search covers the brand folders, `CAMPAIGN_FONTS`, macOS user/all-users/system font
+folders and Windows user/system font folders, so fonts installed on the machine are
+found on either OS; `file:` values accept Windows or POSIX separators.
 To point at a fonts folder, use the `CAMPAIGN_FONTS` env var. It only fails if there is
 not even a system fallback (rare).
 

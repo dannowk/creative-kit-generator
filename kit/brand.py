@@ -53,22 +53,35 @@ def font_dirs(extra=()):
         os.environ.get(FONT_ENV),
         os.path.expanduser("~/Library/Fonts"),
         os.path.join(here, "..", "fonts"),
+        "/Library/Fonts",
+        "/System/Library/Fonts",
+        "/System/Library/Fonts/Supplemental",
         os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows", "Fonts"),
         os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts"),
     ] if d]
 
 
 def find_font(filename, dirs):
-    """Search by exact name, then by stem, in any known font folder."""
+    """Search by exact name, then by stem, in any known font folder.
+
+    Backslashes are normalized so a brand.yaml written on Windows resolves on
+    macOS/Linux (and a subfolder prefix that does not exist here is dropped).
+    """
     if not filename:
         return None
-    if os.path.isabs(filename) and os.path.isfile(filename):
-        return filename
+    rel = str(filename).replace("\\", "/")
+    if os.path.isabs(rel) and os.path.isfile(rel):
+        return rel
     for d in dirs:
-        p = os.path.join(d, filename)
+        p = os.path.join(d, rel)
         if os.path.isfile(p):
             return p
-    stem = os.path.splitext(os.path.basename(filename))[0].lower()
+    base = os.path.basename(rel)
+    for d in dirs:
+        p = os.path.join(d, base)
+        if os.path.isfile(p):
+            return p
+    stem = os.path.splitext(base)[0].lower()
     for d in dirs:
         for p in glob.glob(os.path.join(d, "*")):
             if os.path.splitext(os.path.basename(p))[0].lower() == stem:
