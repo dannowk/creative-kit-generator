@@ -99,7 +99,7 @@ _CATALOG = {
     "rv.legend": "Legend:",
     "rv.legend.approved": "approved = goes to the delivery folder (Desktop)",
     "rv.legend.pending": "pending = waiting on you",
-    "rv.legend.rejected": "rejected = the agent recreates it",
+    "rv.legend.rejected": "rejected = the agent recreates it (framing, safe zones, contrast, faces, copy refit to the frame)",
     "rv.legend.redo": "redo = adjustment requested (with your note)",
     "rv.legend.blocked": "blocked = compliance rule violated",
     "rv.p7.title": "Deliver campaign",
@@ -140,7 +140,7 @@ _CATALOG = {
     "rv.js.delivered": "delivered",
     "rv.js.queued": "queued",
     "rv.js.approvetoast": "Marked for delivery — Continue exports it to the folder on your Desktop.",
-    "rv.js.rejecttoast": "Marked for recreation — queued for the agent right away.",
+    "rv.js.rejecttoast": "Marked for recreation — the agent readjusts framing, safe zones, contrast and the copy fit, then re-renders it.",
     "rv.js.regenask": "What should change in this piece? (the agent applies it)",
     "rv.js.regentoast": "Adjustment queued — the agent works on it and this page updates by itself.",
     "rv.js.queue.title": "Working queue — {n} piece(s) marked for recreation/redo.",
@@ -282,7 +282,13 @@ _CATALOG = {
     "cli.wait.waiting": "waiting for the approval page or the review to mark work — "
                         "{root}/assets/requests.json + {root}/requests.json (Ctrl+C to stop)",
     "cli.wait.empty": "timeout — nothing was marked",
-    "cli.wait.fulfill": "{n} item(s) to work on: reason=redo → apply the note; reason=rejected → recreate from scratch",
+    "cli.wait.fulfill": "{n} item(s) to work on: reason=redo → apply the note; reason=rejected → readjust the layout and recreate",
+    "cli.wait.rejectcheck": "rejected is a layout brief, not a re-roll — check every one before re-rendering: "
+                            "(1) framing for this format, persona and action realigned to the middle of the scene; "
+                            "(2) safe zones clear of the platform chrome; (3) text contrast readable over what is behind it; "
+                            "(4) nothing over a face; then (5) refit the elements to the frame — font size, one/two/more lines, "
+                            "width and max_h — so the copy never hides the image and no word is cut in half "
+                            "(AGENTS.md → \"A reject is a layout brief\")",
     "cli.wait.asset": "a note asking for a different image needs a new asset first: python3 -m kit.cli assets {root} --jobs {jobs}",
     "cli.wait.next": "then re-render them: python3 -m kit.cli render {root} --ids {ids}",
     "cli.wait.assets": "{n} asset(s) to regenerate: reason=redo → apply the note to the prompt; "

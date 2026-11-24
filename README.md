@@ -117,7 +117,11 @@ port). On screen you decide piece by piece — **reject and redo start working r
 
 - **✓ approve** → the piece is marked to go to the delivery folder (on your Desktop) and
   leaves the working grid (it goes only to the **Approved** list).
-- **✕ reject** → the agent **recreates** another one automatically.
+- **✕ reject** → the agent **recreates** another one automatically, and it always goes through
+  the same readjustment checklist first: framing for that format (persona and action centered in
+  the scene), safe zones, text contrast, nothing over a face — then the elements are refit to the
+  frame (font size, one/two/more lines, text box) so the copy never hides the image and no word is
+  cut in half.
 - **↻ redo** → you write what to adjust; the agent applies your note and re-renders that piece.
 - **Adjust style (the whole concept)** → filter a concept and click **Adjust style** to
   change **colors and fonts of all its pieces at once** (palette and type roles, plus a free

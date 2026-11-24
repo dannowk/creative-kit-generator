@@ -39,6 +39,12 @@ def _print_truncated(warnings):
     print("  " + i18n.t("cli.ppc.truncated", n=len(warnings), list=listed + more), file=sys.stderr)
 
 
+def _print_reject_check(batch):
+    """A reject carries no note — print the layout checklist so it is fulfilled, not re-rolled."""
+    if any(b.get("reason") == "rejected" for b in batch):
+        print("  " + i18n.t("cli.wait.rejectcheck"), file=sys.stderr)
+
+
 def main(argv=None):
     # Windows console (cp1252) can't encode the kit's Unicode symbols (➜, ✓, ≈): force UTF-8.
     for stream in (sys.stdout, sys.stderr):
@@ -466,6 +472,7 @@ def main(argv=None):
             print(i18n.t("cli.deliver.locked", n=result["locked"]), file=sys.stderr)
             print(json.dumps(batch, indent=2, ensure_ascii=False))
             print(i18n.t("cli.wait.fulfill", n=result["locked"]), file=sys.stderr)
+            _print_reject_check(batch)
             print("  " + i18n.t("cli.wait.next", root=camp["_root"],
                                 ids=" ".join(b["id"] for b in batch)), file=sys.stderr)
             return 1
@@ -507,6 +514,7 @@ def main(argv=None):
                          jobs=" ".join(assets.jobs_for(marked))), file=sys.stderr)
         if pieces:
             print(i18n.t("cli.wait.fulfill", n=len(pieces)), file=sys.stderr)
+            _print_reject_check(pieces)
             jobs = sorted({b["asset_job"] for b in pieces
                            if b["reason"] == "redo" and b.get("asset_job")})
             if jobs:

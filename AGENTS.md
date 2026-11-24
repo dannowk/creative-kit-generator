@@ -273,6 +273,10 @@ composed frame (overlay + middle frame), same as images.
    user look at what the provider actually produced; `render` refuses to composite logo/overlay/copy
    over unapproved assets. Fulfill `assets/requests.json` with `assets --jobs <id>` (only the marked
    ones) and stay in `wait` — it also tells you when everything is approved and the render is unlocked.
+9. **A reject is a layout brief, not a re-roll.** Every `reason:"rejected"` piece goes through the
+   framing/safe-zone/contrast/face checklist and then has its elements refit to the frame (font size,
+   one/two/more lines, box) — see **"A reject is a layout brief"** in Stages 6–7. Regenerating the
+   same spec with the same numbers is not fulfilling it.
 
 ## Providers (contract = folder + manifest, not API)
 
@@ -373,7 +377,8 @@ change is done (all marked pieces re-rendered via `render --ids`).
 
 **YOUR JOB as the agent — fulfill the batch:**
 1. For each piece: `reason:"redo"` → apply the `note` (adjust the template/copy/asset);
-   `reason:"rejected"` → **recreate** (new direction, new asset via MCP, or a layout variation).
+   `reason:"rejected"` → **recreate** (new direction, new asset via MCP, or a layout variation)
+   **through the checklist below** — a reject has no note, so the checklist *is* the note.
    The render is **deterministic**: re-rendering the same spec gives the same image — to change
    the result you **must** change an input (template, asset, copy or fx).
    A note asking for **a different image** means regenerating that asset: rewrite the prompt of
@@ -387,6 +392,32 @@ change is done (all marked pieces re-rendered via `render --ids`).
 3. The review **updates by itself** (4 s poll of `state.json`): the rejected/redo pieces
    reappear as pending with the new image, on the same page, badged **NEW**; the approved ones stay
    only in the approved list. The user reviews again until done.
+
+### A reject is a layout brief (checklist, every time)
+
+Permanent rule. A rejected rendered piece is readjusted in this order — **framing first, then the
+elements inside the frame**:
+
+1. **Framing for this format.** Is the persona *and* the action realigned to the middle of the
+   scene, and does the crop suit *this* aspect ratio (a 9:16 story and a 1:1 feed frame the same
+   asset differently)? Knobs: the `fx`/`crop` layer (`zoom`, `face_at`, `fx_at`, `face_y`,
+   `subject_at`). Check the format, not only the asset.
+2. **Safe zones.** Nothing important under the platform chrome — `safe_top`/`safe_bottom` in
+   `kit/formats.py` plus `safe_zones` in `brand.yaml`; logo and copy inside the margins.
+3. **Contrast.** Every text block readable over what sits behind it (`contrast_min`, ratio ≥ 3.0 —
+   the findings are on the piece card in the review). Fix it with the scrim/`fade_to`/overlay, the
+   ink color or the position; **never** by deleting the check.
+4. **Nothing over a face.** `subject_safe`: no text, logo or overlay covering the subject. If it
+   fails, reposition — move `at`, narrow `width`, push the block into the margin.
+5. **Elements refit to the frame.** With the framing right, resize the copy to the space that is
+   left so it never hides the image: `size`/`min_size` (font), `max_lines` (one line, two, or
+   more), `width` + `max_h` (the box), `align`, `at`. Words wrap whole and the type shrinks until
+   it fits — but if it *cannot* fit (a word wider than `width`, or the box too short), it overflows
+   the block instead of breaking the word: widen the box, shorten the copy or lower `min_size`.
+   No term is ever cut in half, and no line spills over the subject.
+
+A `redo` with a note follows the same checklist, with the note on top: the note says *what* the
+user wants changed, the checklist says *what still has to hold* after the change.
 
 The final delivery folder (approved + PPC) lives at `~/Desktop/Campaign Kit/<campaign>/`, on the
 user's Desktop — the **Open folder** button in the review opens it. `out/` (inside

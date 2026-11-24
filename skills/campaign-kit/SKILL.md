@@ -61,6 +61,11 @@ and the browser.**
    `assets campaigns/<slug> --jobs <asset_job>` (only that asset, not the whole set). Then
    `render --ids <ids>` (preserves the approved) and the review updates by itself, with the
    re-rendered pieces back as pending badged **NEW**.
+   **A reject is a layout brief** (permanent rule — no note comes with it, so the checklist *is*
+   the note): framing for that format with the persona and the action realigned to the middle of
+   the scene → safe zones clear → text contrast readable → nothing over a face → then refit the
+   elements to the frame (font size, one/two/more lines, `width`/`max_h`) so the copy never hides
+   the image and no word is cut in half. `wait` prints it whenever the batch has a reject.
    **Continue** (or `deliver`) exports the approved pieces to the Desktop delivery folder
    (`~/Desktop/Campaign Kit/<campaign>/`); the **Open folder** button opens it on the user's
    computer. **The export is gated:** while anything is still rejected/redo, Continue is disabled
