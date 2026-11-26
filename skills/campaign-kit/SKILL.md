@@ -53,7 +53,10 @@ and the browser.**
    propose a provider image or new ops. Every copy field lands where the direction places it.
    Free-form briefing (prose/PDF/docx)? `brief --normalize <source>` → fill the skeleton (vision
    for PDF; whatever is missing stays empty, becomes a gap) → `brief <out> --apply`.
-6. **Cost is a notice**: show ≈ credits before provider jobs and proceed.
+6. **Cost is a notice**: show ≈ credits before provider jobs and proceed. A provider failure
+   opens a **fix box** in the browser (error + failed jobs + local key field + copyable retry
+   line); the key is saved in `campaign.json` only. Point the user at the box instead of
+   asking for a prose "retry".
 7. **Asset approval (stage 5)**: after `assets`, start `approve` — the user looks at the **raw
    generated images/videos** in the browser (shortcut `OPEN-ASSETS.html`) before any logo, overlay
    or copy is composited. Approve/reject/redo (with a note) queue in `assets/requests.json` right

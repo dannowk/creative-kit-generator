@@ -38,6 +38,9 @@ chat with you and use the browser. Drive in this order:
    approve → render → video`. Free-form briefing (prose/PDF/docx)? `brief --normalize <source>` →
    fill the skeleton (vision for PDF; whatever is missing stays empty, becomes a gap) → `brief --apply`.
 6. Show the ≈ cost notice before provider jobs (it is a notice, not a gatekeeper).
+   If a job fails, a **fix box opens in the browser** (wizard/approval/review) with the
+   error, a local key field and a copyable retry line — tell the user to fix it there and
+   paste the retry line here; do not ask them to "say retry" in prose.
 7. After generating, start `approve` (opens the browser by itself) **and `wait <campaign>` in the
    background**: the user looks at the **raw images/videos** before logo/overlay/copy and marks
    reject/redo into `assets/requests.json`. Fulfill with `assets <campaign> --jobs <job>` (only the

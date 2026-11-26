@@ -1,7 +1,7 @@
 {
   "name": "campaign-kit",
-  "description": "Generates complete campaigns (image + video) from logo, references and briefing \u2014 and, with /campaign-kit:copy, copy only (PPC + overlay) from briefing + examples. Runs locally, with a technical-direction field, asset approval and piece review in the browser (regenerations show a processing indicator, the new image replaces the old one in place, an All filter keeps every piece in one grid, and any rule change pops a blocking alarm + desktop notification for the user to accept or keep), and a Visual | Copy switch between the two wizards.",
-  "version": "2.14.0",
+  "description": "Generates complete campaigns (image + video) from logo, references and briefing \u2014 and, with /campaign-kit:copy, copy only (PPC + overlay) from briefing + examples. Runs locally, with a technical-direction field, asset approval and piece review in the browser (regenerations show a processing indicator, the new image replaces the old one in place, an All filter keeps every piece in one grid, any rule change pops a blocking alarm + desktop notification for the user to accept or keep, and a provider failure opens a fix box to paste the key locally and copy the retry line), and a Visual | Copy switch between the two wizards.",
+  "version": "2.15.0",
   "author": {
     "name": "Dann Owczarzak"
   }

@@ -511,6 +511,7 @@ def restart(root):
         if os.path.isdir(p):
             shutil.rmtree(p)
     for f in ("requests.json", "ready.json",  # ready.json: legacy pre-2.14 auto-signal
+              "provider_alarm.json",
               os.path.join(assets.DIR, "state.json"),
               os.path.join(assets.DIR, "requests.json")):
         p = os.path.join(root, f)

@@ -7,6 +7,8 @@ Video is a provider job (kind=video), not local render.
 
 import json
 import os
+import urllib.error
+from datetime import datetime, timezone
 
 from PIL import Image
 
@@ -28,6 +30,31 @@ def get_provider(cfg):
     return HttpAPI(cfg)
 
 
+def alarm_path(root):
+    return os.path.join(root, "provider_alarm.json")
+
+
+def read_alarm(root):
+    p = alarm_path(root)
+    if not os.path.isfile(p):
+        return None
+    try:
+        with open(p, encoding="utf-8") as f:
+            return json.load(f) or None
+    except (OSError, ValueError):
+        return None
+
+
+def clear_alarm(root):
+    p = alarm_path(root)
+    if os.path.isfile(p):
+        os.remove(p)
+
+
+def _is_auth(e):
+    return (isinstance(e, urllib.error.HTTPError) and e.code in (401, 403)) or isinstance(e, KeyError)
+
+
 def run_assets(campaign):
     root = campaign["_root"]
     jobs = campaign.get("asset_jobs") or []
@@ -45,9 +72,13 @@ def run_assets(campaign):
         for j in jobs:
             j["_jobs_path"] = jobs_path
 
-    generated, entries = [], []
+    generated, entries, failed = [], [], []
     for j in jobs:
-        paths = provider.generate(j)
+        try:
+            paths = provider.generate(j)
+        except Exception as e:
+            failed.append({"id": j["id"], "error": str(e), "auth": _is_auth(e)})
+            continue
         kind = j.get("kind", "image")
         rate = num(provider.credits_per_video if kind == "video" else provider.credits_per_image)
         for p in paths:
@@ -56,7 +87,18 @@ def run_assets(campaign):
                             "kind": kind, "aspect": j.get("aspect"), "credits": rate,
                             "path": os.path.relpath(p, root), "sha": sha256(p)})
 
+    if failed:
+        cfg = campaign.get("provider") or {}
+        with open(alarm_path(root), "w", encoding="utf-8") as f:
+            json.dump({"at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                       "provider": provider.name, "jobs": failed,
+                       "keyable": bool(cfg.get("api_key_env") or cfg.get("api_key"))
+                                  or any(x["auth"] for x in failed)}, f, indent=2)
+    else:
+        clear_alarm(root)
+
     subjects = {}
+    os.makedirs(out_dir, exist_ok=True)
     spath = os.path.join(out_dir, "subject.json")
     if os.path.isfile(spath):
         with open(spath, encoding="utf-8") as f:
@@ -69,5 +111,5 @@ def run_assets(campaign):
 
     record_manifest(root, entries)
     from .. import assets as approval
-    return {**estimate, "generated": generated,
+    return {**estimate, "generated": generated, "failed": failed,
             "approval": approval.counts(approval.load(root))}

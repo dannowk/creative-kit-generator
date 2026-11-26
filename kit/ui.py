@@ -21,7 +21,7 @@ from urllib.parse import urlparse, parse_qs
 
 import yaml
 
-from . import assets, campaign, i18n, intake, onboard, rules
+from . import assets, campaign, i18n, intake, onboard, providers, rules
 
 # ThreadingHTTPServer serves concurrently: without this, two fast review clicks
 # read-modify-write state.json in parallel and the second clobbers the first.
@@ -279,13 +279,89 @@ async function decideRule(agree){
   notify(fill(T[agree?"rule.agreed":"rule.kept"],{target:j.target||id}));
   await load();
 }
+</script>
+"""
+
+
+def _provider_alarm():
+    """The blocking fix box: a provider job failed, the user fixes it right here."""
+    t = lambda k: i18n.t(f"pv.js.{k}")
+    return f"""
+<dialog id="pvalarm"><div class="rulebody">
+<h3>{t('title')}</h3>
+<p class="desc">{t('desc')}</p>
+<div class="rulemeta" id="pvmeta"></div>
+<pre id="pverror" style="white-space:pre-wrap"></pre>
+<div id="pvkeywrap">
+<label class="stylelabel" for="pvkey">{t('key')}</label>
+<div class="row"><input type="password" id="pvkey" style="flex:1" placeholder="{t('keyph')}">
+<button class="btn primary" onclick="saveProviderKey()">{t('save')}</button></div>
+<p class="hint" id="pvsaved" style="display:none"></p></div>
+<p class="desc" style="margin-top:10px">{t('retry')}</p>
+<div class="row"><input type="text" id="pvline" readonly style="flex:1">
+<button class="btn" onclick="copyProviderLine()">{t('copy')}</button></div>
+<div class="row" style="margin-top:10px"><span class="sp"></span>
+<button class="btn" onclick="dismissProvider()">{t('dismiss')}</button></div>
+</div></dialog>
+"""
+
+
+_PROVIDER_JS = """<script>
+let pvSeen=null;
+const pvAlarm=()=>(typeof state!=="undefined"&&state&&state.provider_alarm)
+  ||(typeof S!=="undefined"&&S&&S.provider_alarm)||null;
+const pvRoot=()=>(typeof state!=="undefined"&&state&&state.root)
+  ||(typeof S!=="undefined"&&S&&(S.inbox||S.folder))||"";
+function syncProvider(){
+  const a=pvAlarm(), d=document.getElementById("pvalarm");
+  if(!a){if(d.open)d.close();pvSeen=null;return;}
+  if(pvSeen!==a.at){pvSeen=a.at;desktopNotify(PV.notify);}
+  document.getElementById("pvmeta").innerHTML=
+    `<span class="tag">${esc(a.provider||"provider")}</span>`+
+    `<span class="hint">${PV.jobs}: ${(a.jobs||[]).map(j=>esc(j.id)).join(", ")}</span>`;
+  document.getElementById("pverror").textContent=(a.jobs||[]).map(j=>j.id+": "+j.error).join("\\n");
+  document.getElementById("pvkeywrap").style.display=a.keyable?"":"none";
+  document.getElementById("pvline").value=fill(PV.line,{root:pvRoot(),
+    jobs:(a.jobs||[]).map(j=>j.id).join(" ")});
+  if(!d.open) d.showModal();
+}
+async function saveProviderKey(){
+  const key=document.getElementById("pvkey").value.trim();
+  if(!key){await tell(PV.keyph);return;}
+  const {ok,j}=await pj("/provider-key",{method:"POST",body:JSON.stringify({key})});
+  if(!ok){await tell(j.error||"error");return;}
+  const s=document.getElementById("pvsaved");s.textContent=PV.saved;s.style.display="";
+  notify(PV.saved);
+}
+async function copyProviderLine(){
+  await navigator.clipboard.writeText(document.getElementById("pvline").value);
+  notify(PV.copied);
+}
+async function dismissProvider(){
+  const {ok}=await pj("/provider-alarm-clear",{method:"POST",body:"{}"});
+  if(ok){document.getElementById("pvalarm").close();pvSeen=null;await load();}
+}
 function desktopNotify(msg){
   if(!("Notification" in window)) return;
   if(Notification.permission==="granted"){try{new Notification("campaign-kit",{body:msg});}catch(e){}}
   else if(Notification.permission!=="denied"){try{Notification.requestPermission();}catch(e){}}
 }
+async function pvPoll(){
+  let s; try{s=await (await fetch("/state")).json();}catch(e){return;}
+  if(typeof state!=="undefined"&&state) state.provider_alarm=s.provider_alarm;
+  if(typeof S!=="undefined"&&S) S.provider_alarm=s.provider_alarm;
+  syncProvider();
+}
+setInterval(pvPoll,4000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)pvPoll();});
+window.addEventListener("focus",pvPoll);
 </script>
 """
+
+
+def _provider_inject():
+    return ('<script>const PV=' + json.dumps(i18n.js_dict("pv.js"), ensure_ascii=False)
+            + ';</script>') + _PROVIDER_JS
 
 
 _JS_UTIL = """<script>
@@ -476,7 +552,7 @@ def review_page():
 <div id="deliver-result"></div></div>
 </div>
 <dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
-""" + _modal() + _rule_alarm("rv.js") + _JS_UTIL + _flow_js("visual", "review") + _inject("rv.js") + _RULE_JS + """
+""" + _modal() + _rule_alarm("rv.js") + _provider_alarm() + _JS_UTIL + _flow_js("visual", "review") + _inject("rv.js") + _provider_inject() + _RULE_JS + """
 <script>
 let state=null, filter="working", cfilter="all", lastState="", styleOpen=false, styleConcept=null, seenBefore=null, sel=new Set();
 let busyAt={}, timer=null, pollMs=0;
@@ -531,6 +607,7 @@ function applyState(s){
       }).join("")+`</ul>`;
   } else qel.style.display="none";
   const inprog=q.length, rulewait=syncRules();
+  syncProvider();
   document.querySelectorAll(".contbtn").forEach(b=>b.disabled=inprog>0||rulewait>0);
   const lh=document.getElementById("lockhint");
   if(rulewait>0){lh.style.display="";lh.textContent=fill(T["rule.locked"],{n:rulewait});}
@@ -783,7 +860,7 @@ def assets_page():
 <div id="next-result"></div></div>
 </div>
 <dialog id="zoom" onclick="this.close()"><img id="zoomimg" alt=""></dialog>
-""" + _modal() + _rule_alarm("as.js") + _JS_UTIL + _flow_js("visual", "assets") + _inject("as.js") + _RULE_JS + """
+""" + _modal() + _rule_alarm("as.js") + _provider_alarm() + _JS_UTIL + _flow_js("visual", "assets") + _inject("as.js") + _provider_inject() + _RULE_JS + """
 <script>
 let state=null, filter="working", lastState="", seenBefore=null;
 let busyAt={}, timer=null, pollMs=0;
@@ -833,6 +910,7 @@ function applyState(s){
       `<button class="btn" onclick="copyHandoff()">${T["handoff.copy"]}</button></div>`;
   } else ho.style.display="none";
   const rulewait=syncRules();
+  syncProvider();
   const ready=A.length>0&&working===0&&rulewait===0;
   document.querySelectorAll(".nextbtn").forEach(b=>b.disabled=!ready);
   const g=document.getElementById("gate");
@@ -1013,7 +1091,7 @@ def onboard_page():
 <button class="btn primary" onclick="copyAgent()">{i18n.t('ob.p4.copy')}</button></div>
 <p class="hint">{i18n.t('ob.p4.hint')}</p></div>
 </div>
-""" + _modal() + _JS_UTIL + _flow_js("visual", "wizard") + _inject("ob.js") + """
+""" + _modal() + _provider_alarm() + _JS_UTIL + _flow_js("visual", "wizard") + _inject("ob.js") + _provider_inject() + """
 <script>
 let S=null, INT=null;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -1072,6 +1150,7 @@ async function load(){
     ? docs.map(f=>`<li><span>${esc(f.name)}</span><span class="row"><span class="meta">${fmt(f.size)}</span>
         <button class="btn docremove" title="${T["docs.remove"]}" onclick="removeDoc('${esc(f.name)}')">✕</button></span></li>`).join("")
     : `<li><span class="meta">${T["docs.empty"]}</span></li>`;
+  syncProvider();
 }
 async function pickFolder(){
   const {ok,j}=await pj("/pick-folder",{method:"POST",body:"{}"});
@@ -1382,13 +1461,16 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, page.encode(), "text/html; charset=utf-8")
         elif url.path == "/state":
             if self.mode == "onboard":
-                return self._send(200, onboard.status(self.root))
+                return self._send(200, {**onboard.status(self.root),
+                                        "provider_alarm": providers.read_alarm(self.root)})
             if self.mode == "assets":
                 return self._send(200, self._assets_payload())
             with open(os.path.join(self.root, "state.json"), encoding="utf-8") as f:
                 state = json.load(f)
             campaign.sync_requests(self.root, state)
             state["rule_proposals"] = rules.payload(self.root)
+            state["provider_alarm"] = providers.read_alarm(self.root)
+            state["root"] = self.root
             self._send(200, state)
         elif url.path == "/img":
             rel = parse_qs(url.query).get("path", [""])[0]
@@ -1462,6 +1544,8 @@ class Handler(BaseHTTPRequestHandler):
         payload["campaign"] = camp.get("name") or camp.get("slug") or os.path.basename(self.root)
         payload["brand"] = camp.get("brand", "")
         payload["rule_proposals"] = rules.payload(self.root)
+        payload["provider_alarm"] = providers.read_alarm(self.root)
+        payload["root"] = self.root
         return payload
 
     def _assets_post(self, path, payload):
@@ -1494,6 +1578,23 @@ class Handler(BaseHTTPRequestHandler):
             self.rfile.read(length)
             with _STATE_LOCK:
                 campaign.restart(self.root)
+            return self._send(200, {"ok": True})
+        if urlparse(self.path).path in ("/provider-key", "/provider-alarm-clear"):
+            payload = json.loads(self.rfile.read(length) or b"{}")
+            if urlparse(self.path).path == "/provider-alarm-clear":
+                providers.clear_alarm(self.root)
+                return self._send(200, {"ok": True})
+            key = (payload.get("key") or "").strip()
+            if not key:
+                return self._send(400, {"error": "empty key"})
+            cpath = os.path.join(self.root, "campaign.json")
+            if not os.path.isfile(cpath):
+                return self._send(400, {"error": "no campaign.json yet"})
+            with open(cpath, encoding="utf-8") as f:
+                camp = json.load(f)
+            camp.setdefault("provider", {})["api_key"] = key
+            with open(cpath, "w", encoding="utf-8") as f:
+                json.dump(camp, f, indent=2, ensure_ascii=False)
             return self._send(200, {"ok": True})
         if self.mode == "onboard":
             return self._onboard_post(length)

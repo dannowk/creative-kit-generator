@@ -386,6 +386,14 @@ composed frame (overlay + middle frame), same as images.
 
 `estimate()` is mandatory on every provider and returns the informative notice.
 
+**Failure = a fix box in the browser, not a prose apology.** `run_assets` catches per-job
+errors, records them in `provider_alarm.json`, and the wizard/approval/review pages open a
+blocking box: the error, the failed jobs, a field to paste a new API key (saved locally as
+`provider.api_key` in `campaign.json` — never in the repo; it wins over `api_key_env`) and a
+copyable retry line (`assets <campaign> --jobs <ids>`) for the user to paste in the chat.
+A successful run clears the alarm. Do not ask the user to "say retry" in prose — point at
+the box.
+
 ## Normalize (free-form briefing → schema, agent-mediated)
 
 Same logic as the providers: Python prepares, the agent fulfills, Python validates.

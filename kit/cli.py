@@ -435,6 +435,14 @@ def main(argv=None):
                 print(json.dumps(json.load(f)["jobs"], indent=2, ensure_ascii=False))
             return 0
         print(json.dumps(result, indent=2, ensure_ascii=False))
+        failed = result.get("failed") or []
+        if failed:
+            for f in failed:
+                print(f"  FAILED {f['id']}: {f['error']}", file=sys.stderr)
+            cmd = ("python3 -m kit.cli assets " + args.campaign
+                   + " --jobs " + " ".join(f["id"] for f in failed))
+            print(i18n.t("cli.assets.failed", n=len(failed), cmd=cmd), file=sys.stderr)
+            return 0 if result.get("generated") else 1
         print("  " + i18n.t("cli.assets.next", campaign=args.campaign))
         return 0
 

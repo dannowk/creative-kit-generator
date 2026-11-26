@@ -226,8 +226,10 @@ provider:
    `manifest.json` (type + credits).
 
 Alternatives: `manual` (no MCP — you drop the files into `drop_dir` yourself) and `http`
-(generic API: `api_url` + `api_key_env`, e.g. `MAGNIFIC_API_KEY`; **the key lives in an
-environment variable, never in the briefing**).
+(generic API: `api_url` + `api_key_env`, e.g. `MAGNIFIC_API_KEY`). If a provider job fails
+(e.g. an invalid key), a **fix box opens in the browser** (wizard, approval or review):
+paste a valid key there — it is saved locally in `campaign.json`, never in the repo — and
+copy the retry line into the agent chat.
 
 </details>
 

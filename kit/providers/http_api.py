@@ -52,8 +52,14 @@ class HttpAPI(Provider):
                           .replace("{aspect}", job.get("aspect", "1:1"))
                           .replace("{duration}", str(job.get("duration", 5))))
         headers = dict(cfg.get("headers", {}))
-        if cfg.get("api_key_env"):
-            headers.setdefault("Authorization", "Bearer " + os.environ[cfg["api_key_env"]])
+        if cfg.get("api_key"):
+            headers.setdefault("Authorization", "Bearer " + cfg["api_key"])
+        elif cfg.get("api_key_env"):
+            key = os.environ.get(cfg["api_key_env"])
+            if not key:
+                raise KeyError(f"env {cfg['api_key_env']} is not set — "
+                               "paste the key in the browser fix box")
+            headers.setdefault("Authorization", "Bearer " + key)
         resp = self._post(cfg["url"], body, headers)
 
         poll = cfg.get("poll")

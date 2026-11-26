@@ -363,6 +363,23 @@ _CATALOG = {
     "as.js.openfolder.toast": "Assets folder opened: {dir}",
     "as.js.secs": "s",
 
+    # ── provider fix box (every visual page) ────────────────────────
+    "pv.js.title": "Provider failed — fix it here",
+    "pv.js.desc": "Generation stopped with an error. Fix it in this box: paste a valid API key "
+                  "(saved locally in campaign.json, never in the repo) or fix it elsewhere, then "
+                  "copy the retry line into the agent chat.",
+    "pv.js.jobs": "failed job(s)",
+    "pv.js.key": "API key",
+    "pv.js.keyph": "paste the provider API key",
+    "pv.js.save": "Save key",
+    "pv.js.saved": "Key saved locally — copy the retry line and paste it in the agent chat.",
+    "pv.js.retry": "Retry does not start by itself — paste this line in the agent chat:",
+    "pv.js.line": "python3 -m kit.cli assets {root} --jobs {jobs}",
+    "pv.js.copy": "Copy the line",
+    "pv.js.copied": "Line copied — paste it in chat.",
+    "pv.js.dismiss": "Dismiss",
+    "pv.js.notify": "campaign-kit: provider failed — a fix box is open in the browser",
+
     # ── CLI ─────────────────────────────────────────────────────────
     "cli.folder": "folder at {inbox}",
     "cli.intake.moved": "folder moved in the wizard: {old} → {new}",
@@ -401,6 +418,9 @@ _CATALOG = {
     "cli.ppc.truncated": "{n} copy field(s) cut to the platform limit — shorten them in the briefing/copy and export again: {list}",
     "cli.wait.waiting": "waiting for the approval page or the review to mark work — "
                         "{root}/assets/requests.json + {root}/requests.json (Ctrl+C to stop)",
+    "cli.assets.failed": "{n} job(s) failed — a fix box opened in the browser (wizard, approval or "
+                         "review). Paste a valid key there or fix it elsewhere, then copy the retry "
+                         "line into the agent chat: {cmd}",
     "cli.wait.empty": "timeout — nothing was marked",
     "cli.wait.fulfill": "{n} item(s) to work on: reason=redo → apply the note; reason=rejected → readjust the layout and recreate",
     "cli.wait.rejectcheck": "rejected is a layout brief, not a re-roll — check every one before re-rendering: "
