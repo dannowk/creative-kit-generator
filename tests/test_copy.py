@@ -114,6 +114,34 @@ class DecideTest(unittest.TestCase):
         r = next(r for r in copy.load(self.root)["rows"] if r["id"] == "k01")
         self.assertEqual(r.get("note", ""), "")
 
+    def test_approve_saves_hand_edit(self):
+        ok = copy.decide(self.root, "k01", "approved", who="Dann", text="My hand-edited hook.")
+        self.assertTrue(ok)
+        r = next(r for r in copy.load(self.root)["rows"] if r["id"] == "k01")
+        self.assertEqual(r["text"], "My hand-edited hook.")
+        self.assertEqual(r["origin"], "user")
+        self.assertEqual(r["status"], "approved")
+
+    def test_approve_without_text_keeps_origin(self):
+        copy.decide(self.root, "k01", "approved", who="Dann")
+        r = next(r for r in copy.load(self.root)["rows"] if r["id"] == "k01")
+        self.assertEqual(r["origin"], "agent")
+        self.assertEqual(r["text"], "Your week, planned in minutes.")
+
+    def test_unchanged_text_does_not_mark_user(self):
+        original = "Your week, planned in minutes."
+        copy.decide(self.root, "k01", "approved", text=original)
+        r = next(r for r in copy.load(self.root)["rows"] if r["id"] == "k01")
+        self.assertEqual(r["origin"], "agent")
+
+    def test_empty_edit_raises(self):
+        with self.assertRaises(ValueError):
+            copy.decide(self.root, "k01", "approved", text="   ")
+
+    def test_user_origin_validates(self):
+        copy.decide(self.root, "k01", "approved", text="Edited.")
+        self.assertEqual(copy.validate(copy.load(self.root)), [])
+
 
 class PayloadTest(unittest.TestCase):
     def test_counts_and_none(self):

@@ -78,7 +78,9 @@ then clears copy.json, adjustments and the queue — briefing, examples and atta
 7. **`copy review <folder>`** opens the **table** in the browser (shortcut `OPEN-COPY-REVIEW.html`
    in the folder). Each row has approve / reject / redo+note and is labeled with **Concept,
    Program, Platform and a readable Type** (Headline ≤30 / Primary text / Hook / CTA button…) —
-   the raw `axis` only appears as a small hint. Filters by status, destination (PPC/overlay),
+   the raw `axis` only appears as a small hint. The user can click **Edit** to change a row's
+   text by hand and **Approve** to save it (the row is marked `origin: "user"`, badged *edited*;
+   the counter warns over the limit but does not block). Filters by status, destination (PPC/overlay),
    platform, concept and program. **Adjust copy** (always-available button, same format as the
    visual Adjust style): a concept picker + direction note + attached references; queues the
    whole concept as redo, or only the rows the user ticked / **Select all**. The direction and

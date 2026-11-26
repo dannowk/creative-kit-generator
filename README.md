@@ -400,7 +400,9 @@ The step-by-step is the same as the visual one, but lighter:
    (hook/kicker/program/cta) for the pieces. It never invents beyond the
    briefing/examples/attachments.
 3. **Review (table)** — approve / reject / redo+note **row by row** in a browser table.
-   Every row says plainly **which concept and which program** it belongs to, plus the
+   Click **Edit** on any row to change the text by hand and **Approve** to save your version
+   (the row is marked *edited*; the character counter warns over the platform limit but never
+   blocks — the call is yours). Every row says plainly **which concept and which program** it belongs to, plus the
    **platform** (Google / Meta / Google + Meta / Overlay) and a **readable type**
    (Headline ≤30, Primary text, Link description, CTA button, Hook, Kicker…) — no raw
    `axis`/`kind` jargon (the axis appears only as a small hint). Filters by status,

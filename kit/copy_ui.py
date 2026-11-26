@@ -29,6 +29,10 @@ table.copy .txt{min-width:240px;max-width:440px}
 table.copy .cnt{color:var(--mut);font-size:11.5px;white-space:nowrap}
 table.copy .cnt.over{color:#B42318;font-weight:600}
 .tag.new{background:var(--ok-bg);border-color:var(--ok-line);color:var(--ok)}
+.tag.edited{background:#eef4ff;border-color:#bcd0f7;color:#0B6BCB}
+.editarea{width:100%;min-height:64px;font:inherit;font-size:13.5px;padding:7px 9px;
+ border:1px solid var(--accent);border-radius:8px;background:#fff;color:var(--ink);resize:vertical}
+.editbtn{min-height:24px;padding:2px 8px;font-size:12px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .queuelist{margin:8px 0 0;padding-left:18px}
 .queuelist li{margin:3px 0}
@@ -309,6 +313,9 @@ _REV_T = {
     "kind.cta": "CTA button", "kind.hook": "Hook", "kind.kicker": "Kicker",
     "kind.program": "Program line",
     "approve": "Approve", "reject": "Reject", "redo": "Redo",
+    "edit": "Edit", "edit.title": "Edit this text by hand — Approve saves your version",
+    "editcancel": "Cancel", "edited": "edited",
+    "edit.hint": "Editing by hand — Approve saves your text.",
     "regenask": "What to adjust in this copy? (note required)",
     "queue.title": "Working queue — {n} row(s) marked for rewrite.",
     "queue.hint": "They are queued in requests.json the moment you mark them: the agent rewrites these and the table updates by itself. You can close the browser and check later — rewritten rows come back as pending, marked NEW since your last visit.",
@@ -324,7 +331,7 @@ _REV_T = {
     "regentoast": "Marked for redo — the agent rewrites with the note.",
     "empty": "No rows in this filter.",
     "p3.title": "Review copy",
-    "p3.desc": "Approve/reject/redo row by row. Nothing ships unapproved. Redo requires a note.",
+    "p3.desc": "Approve/reject/redo row by row — or click Edit to change the text by hand and Approve to save your version. Nothing ships unapproved. Redo requires a note.",
     "p4.title": "Deliver",
     "p4.desc": "Exports only approved copy to the Desktop folder: copy_manifest + overlay (vertical — one text per row, with Concept and Program) and the Meta / Google RSA import files.",
     "p4.hint": "CSV + XLSX. Approve in the vertical sheets; upload with the Meta/Google ones. URL/budget/IDs are left blank for the PPC team.",
@@ -422,7 +429,7 @@ def review_page():
         '<script>const T=' + json.dumps(t, ensure_ascii=False) + ';</script>') + """
 <script>
 let state=null,filter="working",dest="all",pf="all",cf="all",prf="all",last="",seenBefore=null,
-    sel=new Set(),adjOpen=false,adjConcept=null;
+    sel=new Set(),adjOpen=false,adjConcept=null,editing=null,drafts={};
 const LBL={working:T["lbl.working"],approved:T["lbl.approved"],pending:T["lbl.pending"],rejected:T["lbl.rejected"],redo:T["lbl.redo"]};
 const SING={pending:T["sing.pending"],approved:T["sing.approved"],rejected:T["sing.rejected"],redo:T["sing.redo"]};
 const LIM={headline:30,description:90,link_description:40};
@@ -520,12 +527,20 @@ function draw(){
   if(!items.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty">${T.empty}</div></td></tr>`;return;}
   tb.innerHTML=items.map(r=>{
     const note=(r.status==="redo"&&r.note)?`<div class="hint">↻ ${esc(r.note)}</div>`:"";
-    const n=(r.text||"").length,lim=LIM[r.kind];
-    const cnt=lim?` <span class="cnt${n>lim?" over":""}">[${n}/${lim}]</span>`
-      :(r.destination==="ppc"?` <span class="cnt">[${n}]</span>`:"");
     const axis=(r.axis&&r.axis!=="default")?`<div class="hint">${T["axis.hint"]}: ${esc(r.axis)}</div>`:"";
     const isnew=(seenBefore&&r.updated_at&&r.updated_at>seenBefore&&r.status==="pending")
       ?` <span class="tag new"><span class="dot"></span>${T.newbadge}</span>`:"";
+    const edited=(r.origin==="user")?` <span class="tag edited"><span class="dot"></span>${T.edited}</span>`:"";
+    const txt=(editing===r.id)
+      ?`<textarea id="edit-${esc(r.id)}" class="editarea" rows="3"
+          oninput="editInput('${esc(r.id)}',this.value)">${esc(drafts[r.id])}</textarea>
+        <div class="row" style="align-items:center;margin-top:4px">
+          <span id="cnt-${esc(r.id)}">${cntHtml(drafts[r.id],r)}</span>
+          <span class="hint">${T["edit.hint"]}</span><span class="sp"></span>
+          <button class="btn" onclick="cancelEdit()">${T.editcancel}</button></div>`
+      :`${esc(r.text)}${cntHtml(r.text,r)}${edited}${note}
+        <div style="margin-top:4px"><button class="btn editbtn" title="${T["edit.title"]}"
+          onclick="startEdit('${esc(r.id)}')">✎ ${T.edit}</button></div>`;
     return `<tr>
       <td class="tickcell"><input type="checkbox" class="rowtick" title="${T["adj.tick"]}"
         ${sel.has(r.id)?"checked":""} onchange="adjToggle('${esc(r.id)}',this.checked)"></td>
@@ -534,18 +549,34 @@ function draw(){
       <td>${esc(r.program||"—")}</td>
       <td>${esc(platLbl(r))}</td>
       <td>${esc(KIND[r.kind]||r.kind)}</td>
-      <td class="txt">${esc(r.text)}${cnt}${note}</td>
+      <td class="txt">${txt}</td>
       <td class="acts">
         <button class="btn ok" onclick="decide('${r.id}','approved')">${T.approve}</button>
         <button class="btn no" onclick="decide('${r.id}','rejected')">${T.reject}</button>
         <button class="btn" onclick="regen('${r.id}')">${T.redo}</button></td>
     </tr>`;}).join("");
 }
+function cntHtml(text,r){const n=(text||"").length,lim=LIM[r.kind];
+  return lim?` <span class="cnt${n>lim?" over":""}">[${n}/${lim}]</span>`
+    :(r.destination==="ppc"?` <span class="cnt">[${n}]</span>`:"");}
+const rowById=id=>state.rows.find(r=>r.id===id);
+function startEdit(id){const r=rowById(id);if(!r)return;
+  editing=id;drafts[id]=r.text||"";draw();
+  const el=document.getElementById("edit-"+id);
+  if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}}
+function cancelEdit(){if(editing!==null){delete drafts[editing];editing=null;draw();}}
+function editInput(id,val){drafts[id]=val;const r=rowById(id);
+  const c=document.getElementById("cnt-"+id);if(c&&r)c.innerHTML=cntHtml(val,r);}
 async function decide(id,status){
-  await fetch("/decide",{method:"POST",body:JSON.stringify({id,status,who:"user"})});
+  const body={id,status,who:"user"};
+  if(editing===id&&status==="approved")body.text=drafts[id];
+  const r=await fetch("/decide",{method:"POST",body:JSON.stringify(body)});
+  if(!r.ok){await tell((await r.json()).error);return;}
+  if(editing===id){delete drafts[id];editing=null;}
   await load();notify(status==="approved"?T.approvetoast:T.rejecttoast);
 }
 async function regen(id){
+  if(editing===id){delete drafts[id];editing=null;}
   const note=await ask(T.regenask);
   if(note===null||note.trim()==="")return;
   const r=await fetch("/decide",{method:"POST",body:JSON.stringify({id,status:"redo",note,who:"user"})});
@@ -557,6 +588,7 @@ async function copyHandoff(){
   notify(T["handoff.copied"]);
 }
 async function poll(){
+  if(editing!==null)return;
   if(document.querySelector("dialog[open]"))return;
   const s=await (await fetch("/state")).json();
   if(JSON.stringify(s)!==last)applyState(s);
@@ -810,7 +842,8 @@ class CopyHandler(ui.Handler):
         if url.path == "/decide":
             try:
                 found = copy.decide(self.root, payload.get("id"), payload.get("status"),
-                                    payload.get("note", ""), payload.get("who", ""))
+                                    payload.get("note", ""), payload.get("who", ""),
+                                    payload.get("text"))
             except ValueError as e:
                 return self._send(400, {"error": str(e)})
             if not found:

@@ -31,7 +31,7 @@ VOLUME = {
 }
 STATUSES = ("pending", "approved", "rejected", "redo")
 LANGS = ("en",)
-ORIGINS = ("agent", "sheet")
+ORIGINS = ("agent", "sheet", "user")
 USES = ("image", "ppc", "both")
 
 PLATFORM_RULES = """  platform playbook (ppc rows carry platform: google | meta | both):
@@ -115,21 +115,29 @@ def validate(data):
     return errs
 
 
-def decide(root, row_id, status, note="", who=""):
+def decide(root, row_id, status, note="", who="", text=None):
     """Mark a row (intent). Writes status/note + stamp. False if the id is unknown.
 
     redo requires a note. approve/reject clear the note. The agent never calls approved —
     the decision belongs to the user in the table.
+
+    text (optional): the user's hand edit from the review table. When it differs from the
+    stored text it is saved and the row is marked origin "user" — approving keeps the edit.
     """
     if status not in STATUSES:
         raise ValueError(f"invalid status: {status}")
     if status == "redo" and not str(note).strip():
         raise ValueError("redo requires a note (what to adjust)")
+    if text is not None and not str(text).strip():
+        raise ValueError("text cannot be empty")
     with _LOCK:
         data = load(root)
         found = False
         for r in data.get("rows") or []:
             if r.get("id") == row_id:
+                if text is not None and text != r.get("text"):
+                    r["text"] = text
+                    r["origin"] = "user"
                 r["status"] = status
                 if status == "redo":
                     r["note"] = note

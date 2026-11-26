@@ -35,7 +35,10 @@ chat and use the browser. This command is the **copy kit** (independent of
 7. `copy review <folder>` → opens the **table** (shortcut `OPEN-COPY-REVIEW.html`). Each row is
    labeled with **Concept, Program, Platform and a readable Type** (not raw axis/kind). The user
    approves/rejects/redo+note per row — marking queues the row in `<folder>/requests.json`
-   immediately. **Start `copy wait <folder>` in the background** while they review: it returns the
+   immediately. They can also click **Edit** to rewrite a row's text by hand and **Approve** to
+   save it (the row becomes `origin: "user"`, badged *edited*; the limit counter warns, never
+   blocks). A hand edit is saved locally — no agent rewrite is queued for it.
+   **Start `copy wait <folder>` in the background** while they review: it returns the
    batch (ids, texts, reason, note) as soon as a row is marked (`--timeout N`, 0 = forever).
    Fulfill it by rewriting the text, setting pending back, clearing the note and re-stamping
    updated_at/by; the table updates by itself and the row comes back badged **NEW**. Run `wait`
