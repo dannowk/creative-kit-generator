@@ -27,7 +27,7 @@ class FindFont(unittest.TestCase):
         self.assertTrue(found and os.path.samefile(found, self.font))
 
     def test_absolute_path_passes_through(self):
-        self.assertEqual(brand.find_font(self.font, []), self.font)
+        self.assertEqual(os.path.normcase(brand.find_font(self.font, [])), os.path.normcase(self.font))
 
     def test_empty_and_unknown(self):
         self.assertIsNone(brand.find_font("", [self.dir]))

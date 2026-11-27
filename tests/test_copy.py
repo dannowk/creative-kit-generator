@@ -2,6 +2,8 @@
 
 import json
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -225,8 +227,8 @@ class AttachTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             copy.scaffold(root)
             copy.save_attachment(root, "brief.docx", b"\x00binary")
-            with os.popen(f"python3 -m kit.cli copy plan {root!r}") as p:
-                out = p.read()
+            out = subprocess.run([sys.executable, "-m", "kit.cli", "copy", "plan", root],
+                                 capture_output=True, text=True).stdout
             self.assertIn("attached files", out)
             self.assertIn("brief.docx", out)
 
